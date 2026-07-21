@@ -1,0 +1,14 @@
+[package]
+name = "ose-coalesce"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Singleflight coalescing for shared manifest fetches"
+
+[dependencies]
+tokio = { workspace = true, features = ["sync"] }
+parking_lot.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt", "macros", "time"] }

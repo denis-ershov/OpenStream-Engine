@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" type="dynamic" profiles="urn:mpeg:dash:profile:isoff-live:2011">
+  <Period id="p0" start="PT0S">
+    <AdaptationSet id="0" contentType="video" mimeType="video/mp4">
+      <Representation id="v0" bandwidth="800000" codecs="avc1.4D401F"/>
+    </AdaptationSet>
+  </Period>
+  <Period id="ad_preroll" start="PT30S">
+    <AssetIdentifier schemeIdUri="urn:scte:dash:ad" value="preroll"/>
+    <AdaptationSet id="99" contentType="video">
+      <Role schemeIdUri="urn:mpeg:dash:role:2011" value="advertisement"/>
+      <Representation id="ad0" bandwidth="400000"/>
+    </AdaptationSet>
+  </Period>
+  <Period id="p1" start="PT45S">
+    <AdaptationSet id="1" contentType="video" mimeType="video/mp4">
+      <Representation id="v1" bandwidth="800000"/>
+    </AdaptationSet>
+  </Period>
+</MPD>

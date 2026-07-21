@@ -1,0 +1,2 @@
+# Prebuilt binary for OpenWrt packaging (from scripts/build-a53.sh --copy-pkg)
+streamproxyd

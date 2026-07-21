@@ -1,0 +1,12 @@
+[package]
+name = "ose-media"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Unified MediaFilter trait for HLS and DASH manifests"
+
+[dependencies]
+ose-manifest.workspace = true
+ose-dash.workspace = true
+thiserror.workspace = true
+serde.workspace = true

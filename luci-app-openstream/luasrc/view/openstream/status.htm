@@ -1,0 +1,44 @@
+<%+header%>
+<h2 name="content"><%:OpenStream Engine%> — <%:Status%></h2>
+<p>
+	<button type="button" class="btn cbi-button cbi-button-apply" id="ose-reload"><%:Apply and Reload%></button>
+	<span id="ose-reload-msg"></span>
+</p>
+<div id="ose-status">
+	<p><%:Loading…%></p>
+</div>
+<script type="text/javascript">
+async function oseRefresh() {
+	try {
+		const r = await fetch('<%=url("admin/services/openstream/api_status")%>');
+		const j = await r.json();
+		const el = document.getElementById('ose-status');
+		el.innerHTML =
+			'<table class="table"><tr><th><%:Running%></th><td>' + (j.error ? '<%:No%>' : '<%:Yes%>') + '</td></tr>' +
+			'<tr><th><%:Playlists%></th><td>' + (j.playlists||0) + '</td></tr>' +
+			'<tr><th><%:Ads Found%></th><td>' + (j.ads||0) + '</td></tr>' +
+			'<tr><th><%:Segments Removed%></th><td>' + (j.removed_segments||0) + '</td></tr>' +
+			'<tr><th><%:Current Streams%></th><td>' + (j.streams||0) + '</td></tr>' +
+			'<tr><th><%:Events buffered%></th><td>' + (j.events_buffered||0) + '</td></tr>' +
+			'<tr><th><%:Plugin ABI%></th><td>' + (j.plugin_abi||'—') + '</td></tr>' +
+			'<tr><th><%:Plugins%></th><td>' + ((j.plugins||[]).join(', ')||'—') + '</td></tr></table>';
+	} catch (e) {
+		document.getElementById('ose-status').innerHTML = '<p><%:Daemon unreachable%></p>';
+	}
+}
+document.getElementById('ose-reload').onclick = async function () {
+	const msg = document.getElementById('ose-reload-msg');
+	msg.textContent = '…';
+	try {
+		const r = await fetch('<%=url("admin/services/openstream/api_reload")%>');
+		const t = await r.text();
+		msg.textContent = t.indexOf('"ok"') >= 0 ? '<%:Reloaded%>' : t;
+		oseRefresh();
+	} catch (e) {
+		msg.textContent = '<%:Daemon unreachable%>';
+	}
+};
+oseRefresh();
+setInterval(oseRefresh, 5000);
+</script>
+<%+footer%>

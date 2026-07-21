@@ -1,0 +1,82 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/streamproxyd",
+    "crates/ose-manifest",
+    "crates/ose-segment",
+    "crates/ose-cache",
+    "crates/ose-detector",
+    "crates/ose-plugin",
+    "crates/ose-plugin-twitch",
+    "crates/ose-plugin-hls",
+    "crates/ose-plugin-dash",
+    "crates/ose-rules",
+    "crates/ose-dash",
+    "crates/ose-media",
+    "crates/ose-coalesce",
+    "crates/ose-observe",
+    "crates/ose-proxy",
+    "crates/ose-api",
+    "crates/ose-config",
+    "crates/ose-neighbors",
+]
+
+[workspace.package]
+version = "0.4.2"
+edition = "2021"
+license = "MIT"
+authors = ["Denis Ershov"]
+repository = "https://github.com/denis-ershov/OpenStream-Engine"
+
+[workspace.dependencies]
+ose-manifest = { path = "crates/ose-manifest" }
+ose-segment = { path = "crates/ose-segment" }
+ose-cache = { path = "crates/ose-cache" }
+ose-detector = { path = "crates/ose-detector" }
+ose-plugin = { path = "crates/ose-plugin" }
+ose-plugin-twitch = { path = "crates/ose-plugin-twitch" }
+ose-plugin-hls = { path = "crates/ose-plugin-hls" }
+ose-plugin-dash = { path = "crates/ose-plugin-dash" }
+ose-rules = { path = "crates/ose-rules" }
+ose-dash = { path = "crates/ose-dash" }
+ose-media = { path = "crates/ose-media" }
+ose-coalesce = { path = "crates/ose-coalesce" }
+ose-observe = { path = "crates/ose-observe" }
+ose-proxy = { path = "crates/ose-proxy", default-features = false }
+ose-api = { path = "crates/ose-api" }
+ose-config = { path = "crates/ose-config" }
+ose-neighbors = { path = "crates/ose-neighbors" }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "io-util", "sync", "time", "fs", "signal"] }
+hyper = { version = "1", features = ["full"] }
+hyper-util = { version = "0.1", features = ["full"] }
+http-body-util = "0.1"
+bytes = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+async-trait = "0.1"
+parking_lot = "0.12"
+clap = { version = "4", features = ["derive"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
+tokio-rustls = "0.26"
+rustls-pemfile = "2"
+http = "1"
+anyhow = "1"
+regex = "1"
+futures-util = "0.3"
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = "z"
+strip = true
+panic = "abort"
+
+[profile.release-fast]
+inherits = "release"
+opt-level = 3
+strip = true

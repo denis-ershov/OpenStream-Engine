@@ -1,0 +1,17 @@
+[package]
+name = "ose-plugin-hls"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Generic HLS rules plugin + Kick/Trovo presets"
+
+[dependencies]
+async-trait.workspace = true
+ose-detector.workspace = true
+ose-manifest.workspace = true
+ose-plugin.workspace = true
+ose-rules.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt", "macros"] }

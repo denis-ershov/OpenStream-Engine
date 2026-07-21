@@ -1,0 +1,16 @@
+[package]
+name = "ose-plugin-dash"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Generic DASH MPD ad Period/AdaptationSet filter plugin"
+
+[dependencies]
+async-trait.workspace = true
+ose-dash.workspace = true
+ose-media.workspace = true
+ose-plugin.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt", "macros"] }

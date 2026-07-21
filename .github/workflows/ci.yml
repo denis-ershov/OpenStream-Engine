@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: test + clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Test
+        run: cargo test --workspace
+      - name: Clippy
+        run: cargo clippy --workspace -- -D warnings
+      - name: Slim Twitch build
+        run: cargo build -p streamproxyd --no-default-features --features slim-twitch
+
+  musl-aarch64:
+    name: release aarch64-musl
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-unknown-linux-musl
+      - uses: Swatinem/rust-cache@v2
+      - name: Install musl linker
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+      - name: Build streamproxyd (size profile)
+        run: |
+          rustup target add aarch64-unknown-linux-musl
+          cargo build --release -p streamproxyd --target aarch64-unknown-linux-musl
+      - name: Size report
+        run: ls -lh target/aarch64-unknown-linux-musl/release/streamproxyd
+      - uses: actions/upload-artifact@v4
+        with:
+          name: streamproxyd-aarch64-musl
+          path: target/aarch64-unknown-linux-musl/release/streamproxyd
+
+  musl-armv7:
+    name: release armv7-musleabihf
+    runs-on: ubuntu-latest
+    needs: test
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: armv7-unknown-linux-musleabihf
+      - uses: Swatinem/rust-cache@v2
+      - name: Cross build via cargo-zigbuild
+        run: |
+          cargo install cargo-zigbuild --locked
+          cargo zigbuild --release -p streamproxyd --target armv7-unknown-linux-musleabihf
+      - name: Size report
+        run: ls -lh target/armv7-unknown-linux-musleabihf/release/streamproxyd || true
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: streamproxyd-armv7-musleabihf
+          path: target/armv7-unknown-linux-musleabihf/release/streamproxyd

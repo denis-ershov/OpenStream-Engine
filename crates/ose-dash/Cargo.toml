@@ -1,0 +1,18 @@
+[package]
+name = "ose-dash"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "DASH MPD parser, serializer, and ad Period/AdaptationSet filters"
+
+[dependencies]
+quick-xml = "0.37"
+thiserror.workspace = true
+serde.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+
+[[bench]]
+name = "filter_mpd"
+harness = false

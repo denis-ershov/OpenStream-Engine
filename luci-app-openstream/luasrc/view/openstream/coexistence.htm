@@ -1,0 +1,24 @@
+<%+header%>
+<h2 name="content"><%:OpenStream Engine%> — <%:Environment%></h2>
+<p><%:OpenStream uses only nft table inet openstream and defaults to explicit proxy. It does not modify zapret or podkop.%></p>
+<div id="ose-env"><p><%:Loading…%></p></div>
+<script type="text/javascript">
+async function oseEnv() {
+	try {
+		const r = await fetch('<%=url("admin/services/openstream/api_status")%>');
+		const j = await r.json();
+		let html = '<p><strong><%:Coexistence%></strong>: ' +
+			(j.coexistence_ok ? '<%:OK%>' : '<%:Prefer explicit mode%>') + '</p><ul>';
+		(j.neighbors||[]).forEach(n => {
+			html += '<li>' + n.name + ': ' + (n.detected ? '<%:detected%>' : '<%:not found%>') +
+				' — ' + (n.hint||'') + '</li>';
+		});
+		html += '</ul><p><%:Mode hint%>: ' + (j.mode_hint||'') + '</p>';
+		document.getElementById('ose-env').innerHTML = html;
+	} catch (e) {
+		document.getElementById('ose-env').innerHTML = '<p><%:Daemon unreachable%></p>';
+	}
+}
+oseEnv();
+</script>
+<%+footer%>

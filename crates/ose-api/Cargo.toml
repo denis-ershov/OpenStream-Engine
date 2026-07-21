@@ -1,0 +1,13 @@
+[package]
+name = "ose-api"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+ose-neighbors.workspace = true
+ose-plugin.workspace = true
+ose-observe.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+parking_lot.workspace = true

@@ -1,0 +1,37 @@
+[package]
+name = "ose-proxy"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+default = ["dash"]
+## Обработка .mpd (парсинг + plugin process_mpd)
+dash = ["dep:ose-dash"]
+
+[dependencies]
+ose-api.workspace = true
+ose-cache.workspace = true
+ose-coalesce.workspace = true
+ose-config.workspace = true
+ose-dash = { workspace = true, optional = true }
+ose-manifest.workspace = true
+ose-observe.workspace = true
+ose-plugin.workspace = true
+ose-segment.workspace = true
+tokio.workspace = true
+hyper.workspace = true
+hyper-util.workspace = true
+http-body-util.workspace = true
+bytes.workspace = true
+http.workspace = true
+tracing.workspace = true
+anyhow.workspace = true
+rustls.workspace = true
+tokio-rustls.workspace = true
+parking_lot.workspace = true
+rcgen = { version = "0.14", default-features = true, features = ["x509-parser"] }
+rustls-pki-types = "1"
+webpki-roots = "0.26"
+rustls-pemfile.workspace = true
+futures-util.workspace = true

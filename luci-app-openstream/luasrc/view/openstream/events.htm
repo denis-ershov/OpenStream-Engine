@@ -1,0 +1,42 @@
+<%+header%>
+<h2 name="content"><%:OpenStream Engine%> — <%:Events%></h2>
+<p><%:Ring-buffer of recent ad-strip / reload events (for LuCI).%></p>
+<div id="ose-events">
+	<p><%:Loading…%></p>
+</div>
+<script type="text/javascript">
+function esc(s) {
+	return String(s == null ? '' : s)
+		.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+async function oseEvents() {
+	try {
+		const r = await fetch('<%=url("admin/services/openstream/api_events")%>');
+		const arr = await r.json();
+		const el = document.getElementById('ose-events');
+		if (!arr || !arr.length) {
+			el.innerHTML = '<p><%:No events yet.%></p>';
+			return;
+		}
+		let rows = '';
+		for (let i = arr.length - 1; i >= 0; i--) {
+			const e = arr[i];
+			const t = e.ts_unix_ms ? new Date(e.ts_unix_ms).toLocaleString() : '—';
+			rows += '<tr><td>' + esc(t) + '</td><td>' + esc(e.kind) + '</td><td>' +
+				esc(e.plugin) + '</td><td>' + esc(e.host) + '</td><td>' +
+				esc(e.path) + '</td><td>' + esc(e.units_removed) + '</td><td>' +
+				esc(e.detail) + '</td></tr>';
+		}
+		el.innerHTML =
+			'<table class="table"><thead><tr>' +
+			'<th><%:Time%></th><th><%:Kind%></th><th><%:Plugin%></th>' +
+			'<th><%:Host%></th><th><%:Path%></th><th><%:Removed%></th><th><%:Detail%></th>' +
+			'</tr></thead><tbody>' + rows + '</tbody></table>';
+	} catch (e) {
+		document.getElementById('ose-events').innerHTML = '<p><%:Daemon unreachable%></p>';
+	}
+}
+oseEvents();
+setInterval(oseEvents, 5000);
+</script>
+<%+footer%>

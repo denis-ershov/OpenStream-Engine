@@ -1,0 +1,13 @@
+[package]
+name = "ose-plugin-example"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Skeleton plugin for OpenStream Engine SDK (not linked into streamproxyd by default)"
+publish = false
+
+[dependencies]
+async-trait = "0.1"
+# Path deps when developing inside the monorepo:
+# ose-plugin = { path = "../../crates/ose-plugin" }
+# ose-manifest = { path = "../../crates/ose-manifest" }

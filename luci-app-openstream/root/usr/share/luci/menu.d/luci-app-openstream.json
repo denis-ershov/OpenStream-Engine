@@ -1,0 +1,69 @@
+{
+	"admin/services/openstream": {
+		"title": "OpenStream Engine",
+		"order": 60,
+		"action": {
+			"type": "firstchild"
+		},
+		"depends": {
+			"acl": [ "luci-app-openstream" ],
+			"uci": { "openstream": true }
+		}
+	},
+	"admin/services/openstream/status": {
+		"title": "Status",
+		"order": 1,
+		"action": {
+			"type": "template",
+			"path": "openstream/status"
+		}
+	},
+	"admin/services/openstream/twitch": {
+		"title": "Twitch",
+		"order": 2,
+		"action": {
+			"type": "view",
+			"path": "openstream/twitch"
+		}
+	},
+	"admin/services/openstream/services": {
+		"title": "Services",
+		"order": 3,
+		"action": {
+			"type": "view",
+			"path": "openstream/services"
+		}
+	},
+	"admin/services/openstream/events": {
+		"title": "Events",
+		"order": 4,
+		"action": {
+			"type": "template",
+			"path": "openstream/events"
+		}
+	},
+	"admin/services/openstream/metrics": {
+		"title": "Metrics",
+		"order": 5,
+		"action": {
+			"type": "template",
+			"path": "openstream/metrics"
+		}
+	},
+	"admin/services/openstream/logs": {
+		"title": "Logs",
+		"order": 6,
+		"action": {
+			"type": "template",
+			"path": "openstream/logs"
+		}
+	},
+	"admin/services/openstream/coexistence": {
+		"title": "Environment",
+		"order": 7,
+		"action": {
+			"type": "template",
+			"path": "openstream/coexistence"
+		}
+	}
+}

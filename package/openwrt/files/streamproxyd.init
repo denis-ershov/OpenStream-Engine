@@ -1,0 +1,57 @@
+#!/bin/sh /etc/rc.common
+# OpenStream Engine — procd init (не трогает чужие nft-таблицы)
+
+START=95
+STOP=10
+USE_PROCD=1
+
+NAME=streamproxyd
+PROG=/usr/bin/streamproxyd
+UCI2YAML=/usr/libexec/openstream-uci2yaml
+CONFIG=/etc/openstream/config.yaml
+NFT_FILE=/usr/share/openstream/nft/openstream.nft
+
+regen_config() {
+	if [ -x "$UCI2YAML" ]; then
+		"$UCI2YAML" "$CONFIG" >/dev/null || logger -t openstream "uci2yaml failed"
+	fi
+}
+
+notify_reload() {
+	wget -qO- --post-data='' http://127.0.0.1:18080/api/reload >/dev/null 2>&1 || true
+}
+
+start_service() {
+	local enabled mode
+	config_load openstream
+	config_get_bool enabled main enabled 1
+	[ "$enabled" = "1" ] || return 0
+
+	config_get mode proxy mode explicit
+	regen_config
+
+	procd_open_instance
+	procd_set_param command "$PROG" --config "$CONFIG"
+	procd_set_param file "$CONFIG"
+	procd_set_param respawn
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_close_instance
+
+	if [ "$mode" = "redirect_whitelist" ] && [ -f "$NFT_FILE" ]; then
+		nft -f "$NFT_FILE" 2>/dev/null || logger -t openstream "nft apply failed (fail-soft)"
+	fi
+}
+
+reload_service() {
+	regen_config
+	notify_reload
+}
+
+service_triggers() {
+	procd_add_reload_trigger openstream
+}
+
+stop_service() {
+	nft delete table inet openstream 2>/dev/null || true
+}

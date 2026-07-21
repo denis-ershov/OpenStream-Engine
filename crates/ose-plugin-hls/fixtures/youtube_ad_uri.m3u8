@@ -1,0 +1,10 @@
+#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-TARGETDURATION:5
+#EXT-X-MEDIA-SEQUENCE:1
+#EXTINF:5.000,
+https://googlevideo.com/videoplayback/live_001.ts
+#EXTINF:5.000,
+https://googlevideo.com/videoplayback/ad_break_001.ts
+#EXTINF:5.000,
+https://googlevideo.com/videoplayback/live_002.ts

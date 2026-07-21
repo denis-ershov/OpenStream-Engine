@@ -1,0 +1,37 @@
+[package]
+name = "streamproxyd"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "OpenStream Engine daemon"
+
+[[bin]]
+name = "streamproxyd"
+path = "src/main.rs"
+
+[features]
+default = ["plugin-twitch", "plugin-hls", "plugin-dash"]
+## Twitch Segment Stripping
+plugin-twitch = ["dep:ose-plugin-twitch", "dep:ose-detector"]
+## Kick / Trovo / YouTube / YAML rulesets
+plugin-hls = ["dep:ose-plugin-hls", "dep:ose-rules"]
+## DASH MPD Period/AdaptationSet filter (+ proxy MPD path)
+plugin-dash = ["dep:ose-plugin-dash", "ose-proxy/dash"]
+## Урезанная сборка только Twitch (для слабых mips)
+slim-twitch = ["plugin-twitch"]
+
+[dependencies]
+ose-api.workspace = true
+ose-config.workspace = true
+ose-plugin.workspace = true
+ose-proxy = { workspace = true, default-features = false }
+ose-detector = { workspace = true, optional = true }
+ose-plugin-twitch = { workspace = true, optional = true }
+ose-plugin-hls = { workspace = true, optional = true }
+ose-plugin-dash = { workspace = true, optional = true }
+ose-rules = { workspace = true, optional = true }
+tokio.workspace = true
+clap.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+anyhow.workspace = true

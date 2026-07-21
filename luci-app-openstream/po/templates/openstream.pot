@@ -1,0 +1,116 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "OpenStream Engine"
+msgstr ""
+
+msgid "Status"
+msgstr ""
+
+msgid "Twitch"
+msgstr ""
+
+msgid "Logs"
+msgstr ""
+
+msgid "Environment"
+msgstr ""
+
+msgid "Loading…"
+msgstr ""
+
+msgid "Running"
+msgstr ""
+
+msgid "Yes"
+msgstr ""
+
+msgid "No"
+msgstr ""
+
+msgid "Playlists"
+msgstr ""
+
+msgid "Ads Found"
+msgstr ""
+
+msgid "Segments Removed"
+msgstr ""
+
+msgid "Current Streams"
+msgstr ""
+
+msgid "Plugins"
+msgstr ""
+
+msgid "Daemon unreachable"
+msgstr ""
+
+msgid "No recent log entries."
+msgstr ""
+
+msgid "OpenStream uses only nft table inet openstream and defaults to explicit proxy. It does not modify zapret or podkop."
+msgstr ""
+
+msgid "Coexistence"
+msgstr ""
+
+msgid "OK"
+msgstr ""
+
+msgid "Prefer explicit mode"
+msgstr ""
+
+msgid "detected"
+msgstr ""
+
+msgid "not found"
+msgstr ""
+
+msgid "Mode hint"
+msgstr ""
+
+msgid "Twitch plugin"
+msgstr ""
+
+msgid "Segment Stripping for Twitch HLS. Client waits during ad breaks."
+msgstr ""
+
+msgid "Detection"
+msgstr ""
+
+msgid "Enable"
+msgstr ""
+
+msgid "Detect stitched"
+msgstr ""
+
+msgid "Detect EXT-X-DATERANGE"
+msgstr ""
+
+msgid "Regex heuristics"
+msgstr ""
+
+msgid "Maximum wait (sec)"
+msgstr ""
+
+msgid "Debug"
+msgstr ""
+
+msgid "Proxy"
+msgstr ""
+
+msgid "Mode"
+msgstr ""
+
+msgid "Explicit (recommended)"
+msgstr ""
+
+msgid "Redirect whitelist (opt-in)"
+msgstr ""
+
+msgid "Off"
+msgstr ""
+
+msgid "Listen"
+msgstr ""

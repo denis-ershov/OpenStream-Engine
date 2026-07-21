@@ -1,0 +1,212 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "OpenStream Engine"
+msgstr "OpenStream Engine"
+
+msgid "Status"
+msgstr "Status"
+
+msgid "Twitch"
+msgstr "Twitch"
+
+msgid "Services"
+msgstr "Services"
+
+msgid "Events"
+msgstr "Events"
+
+msgid "Metrics"
+msgstr "Metrics"
+
+msgid "Logs"
+msgstr "Logs"
+
+msgid "Environment"
+msgstr "Environment"
+
+msgid "Loading…"
+msgstr "Loading…"
+
+msgid "Running"
+msgstr "Running"
+
+msgid "Yes"
+msgstr "Yes"
+
+msgid "No"
+msgstr "No"
+
+msgid "Playlists"
+msgstr "Playlists"
+
+msgid "Ads Found"
+msgstr "Ads Found"
+
+msgid "Segments Removed"
+msgstr "Segments Removed"
+
+msgid "Current Streams"
+msgstr "Current Streams"
+
+msgid "Events buffered"
+msgstr "Events buffered"
+
+msgid "Plugin ABI"
+msgstr "Plugin ABI"
+
+msgid "Plugins"
+msgstr "Plugins"
+
+msgid "Daemon unreachable"
+msgstr "Daemon unreachable"
+
+msgid "Apply and Reload"
+msgstr "Apply and Reload"
+
+msgid "Reloaded"
+msgstr "Reloaded"
+
+msgid "No recent log entries."
+msgstr "No recent log entries."
+
+msgid "OpenStream uses only nft table inet openstream and defaults to explicit proxy. It does not modify zapret or podkop."
+msgstr "OpenStream uses only nft table inet openstream and defaults to explicit proxy. It does not modify zapret or podkop."
+
+msgid "Coexistence"
+msgstr "Coexistence"
+
+msgid "OK"
+msgstr "OK"
+
+msgid "Prefer explicit mode"
+msgstr "Prefer explicit mode"
+
+msgid "detected"
+msgstr "detected"
+
+msgid "not found"
+msgstr "not found"
+
+msgid "Mode hint"
+msgstr "Mode hint"
+
+msgid "Twitch plugin"
+msgstr "Twitch plugin"
+
+msgid "Segment Stripping for Twitch HLS. Client waits during ad breaks."
+msgstr "Segment Stripping for Twitch HLS. Client waits during ad breaks."
+
+msgid "Detection"
+msgstr "Detection"
+
+msgid "Enable"
+msgstr "Enable"
+
+msgid "Detect stitched"
+msgstr "Detect stitched"
+
+msgid "Detect EXT-X-DATERANGE"
+msgstr "Detect EXT-X-DATERANGE"
+
+msgid "Regex heuristics"
+msgstr "Regex heuristics"
+
+msgid "Maximum wait (sec)"
+msgstr "Maximum wait (sec)"
+
+msgid "Debug"
+msgstr "Debug"
+
+msgid "Backup seamless (opt-in scaffold)"
+msgstr "Backup seamless (opt-in scaffold)"
+
+msgid "Does not enable GraphQL/token by default. Strip remains the primary mode."
+msgstr "Does not enable GraphQL/token by default. Strip remains the primary mode."
+
+msgid "Proxy"
+msgstr "Proxy"
+
+msgid "Mode"
+msgstr "Mode"
+
+msgid "Explicit (recommended)"
+msgstr "Explicit (recommended)"
+
+msgid "Redirect whitelist (opt-in)"
+msgstr "Redirect whitelist (opt-in)"
+
+msgid "Off"
+msgstr "Off"
+
+msgid "Listen"
+msgstr "Listen"
+
+msgid "Public proxy URL"
+msgstr "Public proxy URL"
+
+msgid "Used for master playlist rewrite."
+msgstr "Used for master playlist rewrite."
+
+msgid "MITM for HLS/DASH hosts"
+msgstr "MITM for HLS/DASH hosts"
+
+msgid "Services & observability"
+msgstr "Services & observability"
+
+msgid "Enable additional HLS/DASH plugins and metrics endpoints."
+msgstr "Enable additional HLS/DASH plugins and metrics endpoints."
+
+msgid "Kick"
+msgstr "Kick"
+
+msgid "Trovo"
+msgstr "Trovo"
+
+msgid "YouTube Live"
+msgstr "YouTube Live"
+
+msgid "DASH"
+msgstr "DASH"
+
+msgid "Observability"
+msgstr "Observability"
+
+msgid "OpenMetrics /metrics"
+msgstr "OpenMetrics /metrics"
+
+msgid "Events API /api/events"
+msgstr "Events API /api/events"
+
+msgid "Event ring capacity"
+msgstr "Event ring capacity"
+
+msgid "Ring-buffer of recent ad-strip / reload events (for LuCI)."
+msgstr "Ring-buffer of recent ad-strip / reload events (for LuCI)."
+
+msgid "No events yet."
+msgstr "No events yet."
+
+msgid "Time"
+msgstr "Time"
+
+msgid "Kind"
+msgstr "Kind"
+
+msgid "Plugin"
+msgstr "Plugin"
+
+msgid "Host"
+msgstr "Host"
+
+msgid "Path"
+msgstr "Path"
+
+msgid "Removed"
+msgstr "Removed"
+
+msgid "Detail"
+msgstr "Detail"
+
+msgid "OpenMetrics exposition from"
+msgstr "OpenMetrics exposition from"

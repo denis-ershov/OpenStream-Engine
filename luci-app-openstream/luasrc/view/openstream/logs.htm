@@ -1,0 +1,12 @@
+<%+header%>
+<h2 name="content"><%:OpenStream Engine%> — <%:Logs%></h2>
+<pre style="white-space:pre-wrap;max-height:60vh;overflow:auto"><%
+	local util = require "luci.util"
+	local log = util.exec("logread -e streamproxyd 2>/dev/null | tail -n 80")
+	if log and #log > 0 then
+		write(luci.util.pcdata(log))
+	else
+		write(translate("No recent log entries."))
+	end
+%></pre>
+<%+footer%>

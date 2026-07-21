@@ -1,0 +1,13 @@
+#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-TARGETDURATION:2
+#EXT-X-MEDIA-SEQUENCE:10
+#EXTINF:2.000,live
+live_a.ts
+#EXT-X-DATERANGE:ID="stitched-ad",CLASS="stitched",START-DATE="2026-01-01T00:00:00Z"
+#EXTINF:2.000,
+ad_segment_01.ts
+#EXTINF:2.000,
+ad_segment_02.ts
+#EXTINF:2.000,live
+live_b.ts

@@ -1,0 +1,18 @@
+<%+header%>
+<h2 name="content"><%:OpenStream Engine%> — <%:Metrics%></h2>
+<p><%:OpenMetrics exposition from%> <code>/metrics</code></p>
+<pre id="ose-metrics" style="white-space:pre-wrap;max-height:60vh;overflow:auto"><%:Loading…%></pre>
+<script type="text/javascript">
+async function oseMetrics() {
+	try {
+		const r = await fetch('<%=url("admin/services/openstream/api_metrics")%>');
+		const t = await r.text();
+		document.getElementById('ose-metrics').textContent = t || '# empty';
+	} catch (e) {
+		document.getElementById('ose-metrics').textContent = '# <%:Daemon unreachable%>';
+	}
+}
+oseMetrics();
+setInterval(oseMetrics, 5000);
+</script>
+<%+footer%>

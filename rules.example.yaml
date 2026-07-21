@@ -1,0 +1,18 @@
+# Универсальные HLS rulesets (подключается через config.rules_file)
+rulesets:
+  - name: example-hls
+    enabled: false
+    hosts:
+      - "example-cdn.com"
+    strip_prefetch_on_ads: true
+    rewrite_master: true
+    rules:
+      - kind: contains
+        pattern: stitched
+        enabled: true
+      - kind: date_range
+        pattern: stitched
+        enabled: true
+      - kind: ext_inf_not_live
+        pattern: live
+        enabled: false

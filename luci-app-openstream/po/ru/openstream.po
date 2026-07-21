@@ -1,0 +1,212 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "OpenStream Engine"
+msgstr "OpenStream Engine"
+
+msgid "Status"
+msgstr "Состояние"
+
+msgid "Twitch"
+msgstr "Twitch"
+
+msgid "Services"
+msgstr "Сервисы"
+
+msgid "Events"
+msgstr "События"
+
+msgid "Metrics"
+msgstr "Метрики"
+
+msgid "Logs"
+msgstr "Журнал"
+
+msgid "Environment"
+msgstr "Окружение"
+
+msgid "Loading…"
+msgstr "Загрузка…"
+
+msgid "Running"
+msgstr "Работает"
+
+msgid "Yes"
+msgstr "Да"
+
+msgid "No"
+msgstr "Нет"
+
+msgid "Playlists"
+msgstr "Плейлисты"
+
+msgid "Ads Found"
+msgstr "Реклама найдена"
+
+msgid "Segments Removed"
+msgstr "Сегментов удалено"
+
+msgid "Current Streams"
+msgstr "Активные потоки"
+
+msgid "Events buffered"
+msgstr "Событий в буфере"
+
+msgid "Plugin ABI"
+msgstr "Plugin ABI"
+
+msgid "Plugins"
+msgstr "Плагины"
+
+msgid "Daemon unreachable"
+msgstr "Демон недоступен"
+
+msgid "Apply and Reload"
+msgstr "Применить и перезагрузить"
+
+msgid "Reloaded"
+msgstr "Перезагружено"
+
+msgid "No recent log entries."
+msgstr "Нет свежих записей в журнале."
+
+msgid "OpenStream uses only nft table inet openstream and defaults to explicit proxy. It does not modify zapret or podkop."
+msgstr "OpenStream использует только nft-таблицу inet openstream и по умолчанию explicit proxy. Не изменяет zapret и podkop."
+
+msgid "Coexistence"
+msgstr "Сосуществование"
+
+msgid "OK"
+msgstr "OK"
+
+msgid "Prefer explicit mode"
+msgstr "Рекомендуется режим explicit"
+
+msgid "detected"
+msgstr "обнаружен"
+
+msgid "not found"
+msgstr "не найден"
+
+msgid "Mode hint"
+msgstr "Подсказка режима"
+
+msgid "Twitch plugin"
+msgstr "Плагин Twitch"
+
+msgid "Segment Stripping for Twitch HLS. Client waits during ad breaks."
+msgstr "Segment Stripping для Twitch HLS. Клиент ждёт во время рекламных блоков."
+
+msgid "Detection"
+msgstr "Обнаружение"
+
+msgid "Enable"
+msgstr "Включить"
+
+msgid "Detect stitched"
+msgstr "Детекция stitched"
+
+msgid "Detect EXT-X-DATERANGE"
+msgstr "Детекция EXT-X-DATERANGE"
+
+msgid "Regex heuristics"
+msgstr "Regex-эвристики"
+
+msgid "Maximum wait (sec)"
+msgstr "Максимальное ожидание (сек)"
+
+msgid "Debug"
+msgstr "Отладка"
+
+msgid "Backup seamless (opt-in scaffold)"
+msgstr "Backup seamless (opt-in каркас)"
+
+msgid "Does not enable GraphQL/token by default. Strip remains the primary mode."
+msgstr "Не включает GraphQL/token по умолчанию. Основной режим — strip."
+
+msgid "Proxy"
+msgstr "Прокси"
+
+msgid "Mode"
+msgstr "Режим"
+
+msgid "Explicit (recommended)"
+msgstr "Explicit (рекомендуется)"
+
+msgid "Redirect whitelist (opt-in)"
+msgstr "Redirect whitelist (opt-in)"
+
+msgid "Off"
+msgstr "Выкл"
+
+msgid "Listen"
+msgstr "Слушать"
+
+msgid "Public proxy URL"
+msgstr "Публичный URL прокси"
+
+msgid "Used for master playlist rewrite."
+msgstr "Для rewrite master playlist."
+
+msgid "MITM for HLS/DASH hosts"
+msgstr "MITM для HLS/DASH хостов"
+
+msgid "Services & observability"
+msgstr "Сервисы и observability"
+
+msgid "Enable additional HLS/DASH plugins and metrics endpoints."
+msgstr "Включение доп. HLS/DASH плагинов и метрик."
+
+msgid "Kick"
+msgstr "Kick"
+
+msgid "Trovo"
+msgstr "Trovo"
+
+msgid "YouTube Live"
+msgstr "YouTube Live"
+
+msgid "DASH"
+msgstr "DASH"
+
+msgid "Observability"
+msgstr "Observability"
+
+msgid "OpenMetrics /metrics"
+msgstr "OpenMetrics /metrics"
+
+msgid "Events API /api/events"
+msgstr "Events API /api/events"
+
+msgid "Event ring capacity"
+msgstr "Ёмкость кольца событий"
+
+msgid "Ring-buffer of recent ad-strip / reload events (for LuCI)."
+msgstr "Кольцевой буфер событий strip/reload (для LuCI)."
+
+msgid "No events yet."
+msgstr "Пока нет событий."
+
+msgid "Time"
+msgstr "Время"
+
+msgid "Kind"
+msgstr "Тип"
+
+msgid "Plugin"
+msgstr "Плагин"
+
+msgid "Host"
+msgstr "Хост"
+
+msgid "Path"
+msgstr "Путь"
+
+msgid "Removed"
+msgstr "Удалено"
+
+msgid "Detail"
+msgstr "Детали"
+
+msgid "OpenMetrics exposition from"
+msgstr "OpenMetrics из"

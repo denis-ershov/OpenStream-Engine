@@ -1,0 +1,46 @@
+listen: "0.0.0.0:18080"
+# Для rewrite master playlist укажите LAN-адрес роутера:
+# proxy_public_url: "http://192.168.1.1:18080"
+mode: explicit
+cache_ttl_secs: 2
+max_manifest_bytes: 2097152
+nft_file: "/usr/share/openstream/nft/openstream.nft"
+mitm: true
+prefetch_policy: strip_when_ads_removed
+
+twitch:
+  enabled: true
+  detect_stitched: true
+  detect_daterange: true
+  detect_regex: false
+  max_wait_secs: 30
+  debug: false
+  # Opt-in scaffold (не включает GraphQL/token; default strip):
+  backup_seamless: false
+
+kick:
+  enabled: false
+  debug: false
+
+trovo:
+  enabled: false
+  debug: false
+
+youtube:
+  enabled: false
+  debug: false
+
+dash:
+  enabled: true
+  debug: false
+
+observability:
+  metrics: true
+  events: true
+  event_capacity: 128
+
+# rules_file: "rules.example.yaml"
+
+tls:
+  ca_cert: null
+  ca_key: null

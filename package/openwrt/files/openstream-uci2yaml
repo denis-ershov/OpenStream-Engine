@@ -1,0 +1,90 @@
+#!/bin/sh
+# Генерирует /etc/openstream/config.yaml из UCI openstream.
+
+OUT="${1:-/etc/openstream/config.yaml}"
+TMP="${OUT}.tmp.$$"
+
+uci_get() {
+	uci -q get "openstream.$1" 2>/dev/null
+}
+
+# bool: default $2 (0|1) when empty
+uci_bool_d() {
+	local v d="$2"
+	v="$(uci_get "$1")"
+	[ -n "$v" ] || v="$d"
+	case "$v" in
+		1|on|true|yes|enabled) echo true ;;
+		*) echo false ;;
+	esac
+}
+
+uci_num() {
+	local v d="$2"
+	v="$(uci_get "$1")"
+	[ -n "$v" ] || v="$d"
+	echo "$v"
+}
+
+mkdir -p "$(dirname "$OUT")"
+
+LISTEN="$(uci_get proxy.listen)"; [ -n "$LISTEN" ] || LISTEN="0.0.0.0:18080"
+MODE="$(uci_get proxy.mode)"; [ -n "$MODE" ] || MODE="explicit"
+TTL="$(uci_num proxy.cache_ttl_secs 2)"
+MAXM="$(uci_num proxy.max_manifest_bytes 2097152)"
+MITM="$(uci_bool_d proxy.mitm 1)"
+PREFETCH="$(uci_get proxy.prefetch_policy)"; [ -n "$PREFETCH" ] || PREFETCH="strip_when_ads_removed"
+PUBLIC="$(uci_get proxy.proxy_public_url)"
+NFT="$(uci_get proxy.nft_file)"; [ -n "$NFT" ] || NFT="/usr/share/openstream/nft/openstream.nft"
+
+{
+	echo "listen: \"$LISTEN\""
+	[ -n "$PUBLIC" ] && echo "proxy_public_url: \"$PUBLIC\""
+	echo "mode: $MODE"
+	echo "cache_ttl_secs: $TTL"
+	echo "max_manifest_bytes: $MAXM"
+	echo "nft_file: \"$NFT\""
+	echo "mitm: $MITM"
+	echo "prefetch_policy: $PREFETCH"
+	echo ""
+	echo "twitch:"
+	echo "  enabled: $(uci_bool_d twitch.enabled 1)"
+	echo "  detect_stitched: $(uci_bool_d twitch.detect_stitched 1)"
+	echo "  detect_daterange: $(uci_bool_d twitch.detect_daterange 1)"
+	echo "  detect_regex: $(uci_bool_d twitch.detect_regex 0)"
+	echo "  max_wait_secs: $(uci_num twitch.max_wait_secs 30)"
+	echo "  debug: $(uci_bool_d twitch.debug 0)"
+	echo "  backup_seamless: $(uci_bool_d twitch.backup_seamless 0)"
+	echo ""
+	echo "kick:"
+	echo "  enabled: $(uci_bool_d kick.enabled 0)"
+	echo "  debug: $(uci_bool_d kick.debug 0)"
+	echo ""
+	echo "trovo:"
+	echo "  enabled: $(uci_bool_d trovo.enabled 0)"
+	echo "  debug: $(uci_bool_d trovo.debug 0)"
+	echo ""
+	echo "youtube:"
+	echo "  enabled: $(uci_bool_d youtube.enabled 0)"
+	echo "  debug: $(uci_bool_d youtube.debug 0)"
+	echo ""
+	echo "dash:"
+	echo "  enabled: $(uci_bool_d dash.enabled 1)"
+	echo "  debug: $(uci_bool_d dash.debug 0)"
+	echo ""
+	echo "observability:"
+	echo "  metrics: $(uci_bool_d observability.metrics 1)"
+	echo "  events: $(uci_bool_d observability.events 1)"
+	echo "  event_capacity: $(uci_num observability.event_capacity 128)"
+	echo ""
+	RULES="$(uci_get main.rules_file)"
+	[ -n "$RULES" ] && echo "rules_file: \"$RULES\"" && echo ""
+	CA_CERT="$(uci_get tls.ca_cert)"
+	CA_KEY="$(uci_get tls.ca_key)"
+	echo "tls:"
+	if [ -n "$CA_CERT" ]; then echo "  ca_cert: \"$CA_CERT\""; else echo "  ca_cert: null"; fi
+	if [ -n "$CA_KEY" ]; then echo "  ca_key: \"$CA_KEY\""; else echo "  ca_key: null"; fi
+} >"$TMP"
+
+mv "$TMP" "$OUT"
+echo "$OUT"

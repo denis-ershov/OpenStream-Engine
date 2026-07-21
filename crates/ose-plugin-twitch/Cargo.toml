@@ -1,0 +1,20 @@
+[package]
+name = "ose-plugin-twitch"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+async-trait.workspace = true
+ose-detector.workspace = true
+ose-manifest.workspace = true
+ose-plugin.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt", "macros"] }
+criterion.workspace = true
+
+[[bench]]
+name = "strip_twitch"
+harness = false

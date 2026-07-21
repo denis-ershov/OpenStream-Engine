@@ -1,0 +1,14 @@
+[package]
+name = "ose-plugin"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+async-trait.workspace = true
+ose-manifest.workspace = true
+ose-detector.workspace = true
+ose-dash.workspace = true
+ose-media.workspace = true
+serde.workspace = true
+thiserror.workspace = true
