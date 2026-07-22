@@ -1,64 +1,62 @@
 # ADR 0003 — Цель №1: только роутер, все клиенты, ноль действий на устройстве
 
-- **Статус:** Accepted — Goal `[blocked]` (TLS)
+- **Статус:** Accepted — Goal `[research]` (inspect TLS = blocked; кандидат = [ADR 0004](0004-geo-split-egress.md))
 - **Дата:** 2026-07-22
-- **Связь:** supersedes product claim of [ADR 0002](0002-playlist-edge.md) as Goal №1 solution; 0002 остаётся lab path
+- **Обновлено:** 2026-07-22 (MITM out; geo-split candidate)
+- **Связь:** supersedes product claim of [ADR 0002](0002-playlist-edge.md); кандидат пути — [ADR 0004](0004-geo-split-egress.md)
 
 ## Цель №1 (строго)
 
-1. Вся логика strip / манифестов — **на роутере**.
-2. Клиенты: ТВ, ПК, телефон, приставки; **приложение или браузер**.
-3. **Ноль** действий на клиенте: ни установка CA, ни смена URL плейлиста, ни companion/расширение, ни VPN-профиль, ни отдельный «пакет для браузера» на роутере как замена решению.
+1. Решение для **OpenWrt** (логика на роутере).
+2. Клиенты: ТВ, ПК, телефон, приставки; **приложение или браузер** — полное покрытие.
+3. **Ноль** действий на клиенте: ни CA, ни смена URL, ни companion/расширение, ни VPN-профиль на устройстве, ни «пакет только для браузера» как замена.
 
 Компромиссы по п.3 **не принимаются**.
 
+**Разрешено на роутере:** WireGuard/SOCKS/VPS exit, nft/DNS/SNI routing — это не установка VPN на ТВ/телефон.
+
 ## Ядро
 
-Ради Goal №1 **разрешено** ломать и переписывать `ose-proxy`, `streamproxyd`, nft/init, режимы, Plugin ABI. Ограничение не в «нельзя трогать код» — в физике TLS на устройстве клиента.
+Ради Goal №1 **разрешено** ломать `ose-proxy`, nft, режимы, ABI. Ограничение для *чтения* HTTPS — TLS на клиенте, не «нельзя трогать код».
 
-## Инвариант TLS
+## Инвариант TLS (content inspect)
 
-Клиент устанавливает HTTPS к Twitch и **проверяет сертификат сервера** (цепочка trust anchors на устройстве). Роутер на пути (nft, TPROXY, DNS) видит ciphertext.
+Клиент проверяет сертификат сервера. Роутер на пути видит ciphertext.
 
-- Passiveive decrypt после TLS 1.3 / PFS — невозможен без ключей сессии клиента.
-- Active MITM (подмена leaf) — клиент отклонит рукопожатие, пока не доверяет CA роутера → это **действие на клиенте**, запрещено Goal №1.
-- Переписать ядро OpenStream **не снимает** проверку сертификата на ТВ/телефоне.
+- Passiveive decrypt / active MITM без trust на клиенте — **невозможны** как Goal №1.
+- **MITM навсегда отвергнут** как продукт Goal №1.
 
-См. модель enterprise TLS inspection: без managed trust на клиенте inspection невозможна.
+Это **не** запрещает менять **маршрут** пакетов по SNI/DNS без терминации TLS ([ADR 0004](0004-geo-split-egress.md)).
 
 ## Матрица отвергнутых путей (не Goal №1)
 
 | Путь | Почему отвергнут |
 |------|------------------|
-| DNS hijack usher → IP роутера | Клиент ждёт валидный cert `usher.ttvnw.net`; без CA — fail |
-| nft divert HLS без CA | То же: MITM без trust → TLS alert / broken stream |
-| Playlist Edge `GET /twitch/<channel>` | Требует другой URL на клиенте (VLC/companion) |
-| Companion / userscript / browser extension | Манипуляция на клиенте |
-| Отдельный IPK «реклама в браузере» | Не покрывает приложения/ТВ; клиентский обход |
-| MITM + установка CA | Действие на каждом устройстве |
-| DPI / угадывание рекламных `.ts` без m3u8 | SSAI: те же CDN/хосты, что live; ломает стрим |
-| Блокировка «ad» доменов | Twitch stitched ads в том же playlist/CDN |
-| Публичный/скомпрометированный CA | Вне этики и продукта |
-| Эксплойты TLS | Вне продукта |
+| MITM + CA | Действие на каждом устройстве; **rejected** |
+| DNS hijack usher → IP роутера + fake cert | Без CA — TLS fail |
+| nft divert HLS без CA | MITM без trust |
+| Playlist Edge / companion | URL или расширение на клиенте |
+| Browser-only IPK | Не покрывает app/TV |
+| DPI-guess / block ad CDN | SSAI / ломает стрим |
+| Публичный CA / эксплойты TLS | Вне продукта |
 
 ## Решение
 
-1. Goal №1 **зафиксирована** как продуктовая цель №1.
-2. Goal №1 **сейчас `[blocked]` криптографией**, не нехваткой фич в ядре.
-3. Продукт **не обещает** чистый Twitch во всех стоковых клиентах при нулевых действиях на устройстве.
-4. [ADR 0002](0002-playlist-edge.md) Edge / MITM+CA / companion — **lab / не Goal №1**; не продавать как закрытие цели.
-5. Рефактор ядра — только после появления механизма, совместимого с Goal №1 (сейчас неизвестен). До тех пор lab-код не выдавать за Goal №1.
+1. Goal №1 — продуктовая цель №1.
+2. **Content inspect** без клиента = permanently blocked (TLS).
+3. **Кандидат:** geo-split egress без MITM — [ADR 0004](0004-geo-split-egress.md), статус `[research]` до gate E0–E4.
+4. [ADR 0002](0002-playlist-edge.md) Edge/MITM — lab archive, не Goal №1.
+5. Рефактор под geo-split — после эмпирики Lab; не развивать strip/MITM как Goal №1.
 
 ## Последствия
 
-- Roadmap / README / архитектура ведут с Goal №1 + blocked.
-- Stage H (Edge) — инженерный прототип, не default «для всех девайсов».
-- H7 companion **не** спринт «решить стену Goal №1».
-- Мониторинг экосистемы TLS: если появится честный Goal1-совместимый путь — полный redesign ядра допустим.
+- README / Roadmap: research front; MITM rejected.
+- Stage R (OpenTwitch Lab) — текущий фокус.
+- H7 companion **не** решение Goal №1.
 
 ## Ссылки
 
+- [0004-geo-split-egress.md](0004-geo-split-egress.md)
+- [../research/OPENTWITCH_LAB.md](../research/OPENTWITCH_LAB.md)
 - [ROADMAP.md](../ROADMAP.md)
-- [ARCHITECTURE.md](../ARCHITECTURE.md)
-- [PROXY_ARCHITECTURE.md](../PROXY_ARCHITECTURE.md)
 - [0002-playlist-edge.md](0002-playlist-edge.md)

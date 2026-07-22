@@ -1,44 +1,32 @@
 # Документация OpenStream Engine
 
-Актуальная база: **0.4.2**, IPK **14**.
+**Research** toward OpenWrt Goal №1 (все клиенты, ноль действий на устройстве).  
+Статус: **`[research]`** — [ADR 0003](adr/0003-goal1-router-only-tls.md) · кандидат [ADR 0004](adr/0004-geo-split-egress.md).
 
-**Цель №1** (только роутер, все клиенты, ноль действий на устройстве): **`[blocked]` TLS** — [ADR 0003](adr/0003-goal1-router-only-tls.md).  
-Lab-код (Edge/MITM) **не** закрывает Goal №1.
+IPK 0.4.2-14 = lab archive (Edge/MITM), не claim Goal №1.
 
 ## С чего начать
 
 | Документ | Содержание |
 |----------|------------|
-| [adr/0003-goal1-router-only-tls.md](adr/0003-goal1-router-only-tls.md) | **Цель №1** + TLS-инвариант (читать первым) |
-| [ROADMAP.md](ROADMAP.md) | Цель №1, lab Stage H, спринт |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Компоненты; Goal №1 vs lab Edge |
-| [adr/0002-playlist-edge.md](adr/0002-playlist-edge.md) | Lab Playlist Edge (не Goal №1) |
-| [PROXY_ARCHITECTURE.md](PROXY_ARCHITECTURE.md) | Режимы, API, rewrite, MITM lab |
-| [COEXISTENCE.md](COEXISTENCE.md) | Соседи + lab Edge smoke |
-| [CHANGELOG.md](CHANGELOG.md) | История IPK / docs |
+| [../README.md](../README.md) | Research front door |
+| [adr/0003-goal1-router-only-tls.md](adr/0003-goal1-router-only-tls.md) | Цель №1 |
+| [adr/0004-geo-split-egress.md](adr/0004-geo-split-egress.md) | Гипотеза geo-split |
+| [research/OPENTWITCH_LAB.md](research/OPENTWITCH_LAB.md) | Gate E0–E4 |
+| [research/TWITCH_TRAFFIC_MAP.md](research/TWITCH_TRAFFIC_MAP.md) | Карта трафика |
+| [../research/twitch/autolab/README.md](../research/twitch/autolab/README.md) | Автолаб ПК |
+| [ROADMAP.md](ROADMAP.md) | Stage R |
 
-## Архитектура по слоям
+## Lab archive
 
-| Документ | Слой |
-|----------|------|
-| [HLS_ARCHITECTURE.md](HLS_ARCHITECTURE.md) | m3u8, master vs media, strip |
-| [DASH_ARCHITECTURE.md](DASH_ARCHITECTURE.md) | MPD |
-| [PLUGIN_ARCHITECTURE.md](PLUGIN_ARCHITECTURE.md) | Trait Plugin |
-| [SDK.md](SDK.md) | Авторам плагинов (ABI 3) |
-| [adr/0001-plugin-abi.md](adr/0001-plugin-abi.md) | Статическая линковка |
+| Документ | |
+|----------|--|
+| [adr/0002-playlist-edge.md](adr/0002-playlist-edge.md) | Edge (не Goal №1) |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Компоненты lab + Goal №1 |
+| [PROXY_ARCHITECTURE.md](PROXY_ARCHITECTURE.md) | Режимы lab |
+| [COEXISTENCE.md](COEXISTENCE.md) | Соседи |
+| [CHANGELOG.md](CHANGELOG.md) | История |
 
-## Сборка и поле
+## Слои (lab code)
 
-| Документ | Содержание |
-|----------|------------|
-| [PACKAGING.md](PACKAGING.md) | Профили Cargo, release IPK |
-| [BUILD_OPENWRT.md](BUILD_OPENWRT.md) | Cross A53, `.ipk` |
-| [PERFORMANCE.md](PERFORMANCE.md) | RSS, чеклист lab Edge |
-
-## Lab Edge (не Цель №1) — 30 секунд
-
-Требует **действия клиента** (открыть URL / companion) → не Goal №1.
-
-1. `GET http://LAN_IP:18080/twitch/<channel>`
-2. Master rewrite → nested media → strip; сегменты с CDN.
-3. Без Public Edge URL / LAN Host rewrite strip media не сработает.
+[HLS](HLS_ARCHITECTURE.md) · [DASH](DASH_ARCHITECTURE.md) · [PLUGIN](PLUGIN_ARCHITECTURE.md) · [SDK](SDK.md) · [PACKAGING](PACKAGING.md) · [BUILD](BUILD_OPENWRT.md) · [PERFORMANCE](PERFORMANCE.md)

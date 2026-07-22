@@ -32,5 +32,6 @@ TLS не позволяет читать/менять HTTPS на роутере 
 ## Ссылки
 
 - [0003-goal1-router-only-tls.md](0003-goal1-router-only-tls.md) — Цель №1
+- [0004-geo-split-egress.md](0004-geo-split-egress.md) — кандидат без MITM
 - [PROXY_ARCHITECTURE.md](../PROXY_ARCHITECTURE.md)
-- [ROADMAP.md](../ROADMAP.md) Stage H `[lab]`
+- [ROADMAP.md](../ROADMAP.md) Stage R / Stage H `[lab]`

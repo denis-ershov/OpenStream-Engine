@@ -17,3 +17,11 @@ scripts/po2lmo/lib/*.o
 scripts/po2lmo/lib/plural_formula.c
 scripts/po2lmo/lib/plural_formula.h
 scripts/po2lmo/contrib/lemon
+
+# OpenTwitch autolab
+research/twitch/results/*/
+research/twitch/autolab/.venv/
+research/twitch/autolab/user_data/
+research/twitch/autolab/__pycache__/
+**/__pycache__/
+*.har

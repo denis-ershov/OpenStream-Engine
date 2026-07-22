@@ -1,40 +1,65 @@
 # OpenStream Engine
 
-Модульная платформа обработки HLS/DASH для OpenWrt. Плагины: Twitch, Kick/Trovo/YouTube (rules), DASH. SDK — статическая линковка (ADR 0001).
+**Исследовательский** проект: путь к пакету **OpenWrt**, который убирает/избегает рекламу стриминга **без действий на клиентах** и покрывает **все** устройства в LAN.
 
-**Цель №1:** только роутер · все клиенты · ноль действий на устройстве → **`[blocked]` TLS** ([ADR 0003](docs/adr/0003-goal1-router-only-tls.md)).  
-Ядро можно менять ради цели — TLS на клиенте это не обходит.
+Статус Цели №1: **`[research]`** — не «уже работает на всех ТВ».
 
-**Lab (не Goal №1):** Playlist Edge · IPK 0.4.2-14 · zapret / podkop / …
+## Цель №1
 
-## Lab-возможности (требуют действия клиента)
+| Требование | |
+|------------|--|
+| Логика на роутере (OpenWrt) | да |
+| ТВ, ПК, телефон, приставки; app и browser | да |
+| Без CA, расширений, смены URL, VPN-профиля на устройстве | да |
+| MITM / подмена сертификатов | **отвергнуто** |
 
-- Edge: `GET /twitch/<channel>` — VLC/companion URL (не стоковое приложение «как есть»).
-- Optional MITM + CA.
-- HLS/DASH strip; hostlists; `/metrics`, `/api/events`; LuCI.
+См. [ADR 0003](docs/adr/0003-goal1-router-only-tls.md).
 
-## Ограничения
+## Почему не MITM и не «Edge URL»
 
-- **Цель №1 не достигнута** — честного пути без клиента нет ([ADR 0003](docs/adr/0003-goal1-router-only-tls.md)).
-- Lab: при рекламе freeze ≈ midroll; seamless — Stage G.
-- Не обход DPI. [COEXISTENCE.md](docs/COEXISTENCE.md).
+- Читать/менять HTTPS m3u8 на роутере без trust на клиенте **нельзя** (TLS).
+- Playlist Edge / companion требуют действия на клиенте → не Цель №1 ([ADR 0002](docs/adr/0002-playlist-edge.md) = lab archive).
 
-## Быстрый старт (lab / разработка)
+## Гипотеза исследования: geo-split
 
-```bash
-cargo build --release -p streamproxyd
-./target/release/streamproxyd --config config.example.yaml
-curl -s "http://127.0.0.1:18080/twitch/CHANNEL" | head
+Не трогать TLS-содержимое. Маршрутизировать на роутере только лёгкие API-запросы (GQL / usher) через VPS в регионе без SSAI-ads; сегменты — напрямую через ISP.
+
+См. [ADR 0004](docs/adr/0004-geo-split-egress.md). Подтверждается gate-тестами E0–E4.
+
+```text
+Client ──► OpenWrt ──gql/usher──► VPS (ad-free region) ──► Twitch
+              └──video-weaver/CDN──► ISP ──► segments
 ```
 
-## OpenWrt
+## Сейчас в репозитории (Stage R)
 
-[`dist/openwrt-24.10-a53/`](dist/openwrt-24.10-a53/) · [BUILD_OPENWRT.md](docs/BUILD_OPENWRT.md)
+| Компонент | Назначение |
+|-----------|------------|
+| [OpenTwitch Lab](docs/research/OPENTWITCH_LAB.md) | Протокол E0–E4, матрица стран |
+| [Traffic Map](docs/research/TWITCH_TRAFFIC_MAP.md) | Что откуда и куда |
+| [`research/twitch/autolab/`](research/twitch/autolab/) | Playwright + PC client: карта трафика и тесты |
+| `streamproxyd` / IPK 0.4.2 | **Lab archive** (Edge/MITM) — не claim Цели №1 |
 
-## Документация
+## Как участвовать
 
-- [Оглавление](docs/INDEX.md) · [Цель №1 / ADR 0003](docs/adr/0003-goal1-router-only-tls.md) · [Roadmap](docs/ROADMAP.md)
-- [Архитектура](docs/ARCHITECTURE.md) · [Proxy](docs/PROXY_ARCHITECTURE.md) · [Changelog](docs/CHANGELOG.md)
+```bash
+cd research/twitch/autolab
+python -m venv .venv
+# Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+playwright install chromium
+python run_lab.py --channel CHANNEL --browser-only
+# с VPS SOCKS:
+python run_lab.py --channel CHANNEL --socks5 socks5://127.0.0.1:1080
+```
+
+Документы: [INDEX](docs/INDEX.md) · [ROADMAP](docs/ROADMAP.md) · [CHANGELOG](docs/CHANGELOG.md).
+
+## Не обещаем сейчас
+
+- Рабочий ads-free на всех клиентах «из коробки» сегодня.
+- Strip/MITM без клиентских действий.
+- Продакшн OpenWrt geo-split до прохождения E0–E4.
 
 ## Лицензия
 

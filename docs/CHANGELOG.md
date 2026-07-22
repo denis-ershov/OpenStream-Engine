@@ -26,11 +26,12 @@
 
 ### Документация
 
-- **[ADR 0003](adr/0003-goal1-router-only-tls.md) — Цель №1** (роутер / все клиенты / ноль действий на устройстве): **`[blocked]` TLS**; ядро можно менять; компромиссы не принимаются.
-- [INDEX.md](INDEX.md), [ROADMAP.md](ROADMAP.md): Goal №1 сверху; Stage H = `[lab]`; H7 не «решение стены».
-- [ARCHITECTURE.md](ARCHITECTURE.md), [PROXY_ARCHITECTURE.md](PROXY_ARCHITECTURE.md), [COEXISTENCE.md](COEXISTENCE.md), [adr/0002-playlist-edge.md](adr/0002-playlist-edge.md), README: Edge/MITM = lab, не Goal №1.
-- Lab sync 0.4.2-14 (rewrite, CryptoProvider) остаётся в коде; не продаётся как покрытие всех девайсов.
-- [PERFORMANCE.md](PERFORMANCE.md): GL-MT6000 idle ~2.8 МБ RSS; чеклист lab Edge.
+- **Research front:** README + Stage R; MITM rejected; кандидат geo-split [ADR 0004](adr/0004-geo-split-egress.md).
+- [ADR 0003](adr/0003-goal1-router-only-tls.md) обновлён: Goal `[research]`; inspect blocked; WG на роутере ≠ VPN на клиенте.
+- [OPENTWITCH_LAB.md](research/OPENTWITCH_LAB.md), [TWITCH_TRAFFIC_MAP.md](research/TWITCH_TRAFFIC_MAP.md), autolab `research/twitch/autolab/`.
+- [INDEX.md](INDEX.md), [ROADMAP.md](ROADMAP.md), [ARCHITECTURE.md](ARCHITECTURE.md): research-first.
+- Lab Edge sync 0.4.2-14 остаётся в коде как archive, не claim Goal №1.
+- [PERFORMANCE.md](PERFORMANCE.md): GL-MT6000 idle ~2.8 МБ RSS (lab).
 
 ### Исправлено
 
