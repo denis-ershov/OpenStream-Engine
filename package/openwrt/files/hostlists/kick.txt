@@ -1,0 +1,4 @@
+# Kick HLS (уточняется полевыми маркерами)
+kick.com
+stream.kick.com
+kickusercontent.com

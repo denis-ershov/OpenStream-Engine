@@ -1,5 +1,7 @@
 # HLS Architecture
 
+Оглавление: [INDEX.md](INDEX.md). Связь с Edge: [PROXY_ARCHITECTURE.md](PROXY_ARCHITECTURE.md).
+
 ## Manifest Engine (`ose-manifest`)
 
 Поддерживаемые теги:
@@ -18,8 +20,18 @@
 
 ## Master vs Media
 
-- **Master** — варианты качества; strip рекламы не применяется; при необходимости rewrite URL вариантов на proxy.
-- **Media** — Segment Stripping.
+| Kind | Strip рекламы | Rewrite |
+|------|---------------|---------|
+| **Master** | Нет | Варианты → `proxy_base/https://…` при заданном `proxy_base` |
+| **Media** | Да (`strip_ad_segments`) | Обычно нет; URI сегментов absolute CDN |
+
+### Playlist Edge
+
+1. `GET /twitch/<channel>` → usher **master**.
+2. Rewrite вариантов на nested Edge URL.
+3. Плеер периодически запрашивает **media** через nested → здесь растут `ads_found` / `segments_removed`.
+
+Без шага 2 метрики: `playlists_total`↑, `ads_found=0`.
 
 ## Segment Engine
 
@@ -27,20 +39,15 @@
 
 ## Cache Engine
 
-Кэширует:
-
-- playlist / last playlist
-- last media sequence
-- last stripped playlist
-
-TTL: 1–5 секунд (конфиг).
+Кэширует playlist / last media sequence / stripped body.  
+TTL: 1–5 с. Ключ: URL + etag или body hash; при rewrite — суффикс `|pb:{proxy_base}`.
 
 ## Segment Stripping (Twitch)
 
-Исходный плейлист с midroll → удаляются пары `#EXTINF` + URI рекламных сегментов и связанные DATERANGE/prefetch.
+Исходный **media** плейлист с midroll → удаляются пары `#EXTINF` + URI рекламных сегментов и связанные DATERANGE/prefetch.
 
-Клиент не получает ссылки на рекламу и ждёт следующий live-сегмент (ожидаемый freeze).
+Клиент не получает ссылки на рекламу и ждёт следующий live-сегмент (ожидаемый freeze). Seamless backup — Stage G (opt-in).
 
 ### Согласование MEDIA-SEQUENCE
 
-При удалении сегментов sequence не «дырявится»: значение `#EXT-X-MEDIA-SEQUENCE` соответствует первому **оставшемуся** сегменту относительно исходной нумерации upstream (сохраняем sequence первого live-сегмента в окне, как в upstream для этого URI).
+При удалении сегментов sequence не «дырявится»: `#EXT-X-MEDIA-SEQUENCE` соответствует первому **оставшемуся** сегменту относительно исходной нумерации upstream.

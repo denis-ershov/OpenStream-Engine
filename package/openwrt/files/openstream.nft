@@ -1,15 +1,19 @@
 # OpenStream Engine — ONLY table inet openstream
 # Не изменяет inet zapret / inet fw4 / podkop.
-# Redirect выключен содержимым: набор openstream_hls пуст до заполнения hostlist.
+# Set openstream_hls наполняется hostlist refresh / dnsmasq nftset.
 
 add table inet openstream
 
-add set inet openstream openstream_hls { type ipv4_addr; flags interval; }
-
-add chain inet openstream prerouting {
-	type nat hook prerouting priority dstnat - 5;
-	policy accept;
+add set inet openstream openstream_hls {
+	type ipv4_addr
+	flags interval
+	comment "Twitch/HLS CDN IPs for transparent divert"
 }
 
-# Пример (закомментирован): redirect только к IP из set, только tcp 443
-# add rule inet openstream prerouting tcp dport 443 ip daddr @openstream_hls redirect to :18080
+add chain inet openstream prerouting {
+	type nat hook prerouting priority dstnat - 5
+	policy accept
+}
+
+# Только HLS CDN IP → local MITM (не весь 443)
+add rule inet openstream prerouting tcp dport 443 ip daddr @openstream_hls redirect to :18080

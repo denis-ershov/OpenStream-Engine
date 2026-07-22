@@ -1,8 +1,10 @@
 # Plugin Architecture
 
+Оглавление: [INDEX.md](INDEX.md). SDK: [SDK.md](SDK.md). ABI: [adr/0001-plugin-abi.md](adr/0001-plugin-abi.md).
+
 ## Интерфейс
 
-Плагины реализуют trait `Plugin` в crate `ose-plugin`:
+Плагины реализуют trait `Plugin` в crate `ose-plugin` (`PLUGIN_ABI_VERSION = 3`):
 
 ```rust
 pub trait Plugin: Send + Sync {
@@ -33,41 +35,42 @@ pub trait Plugin: Send + Sync {
 }
 ```
 
-`RequestMeta` включает опциональный `proxy_base` для rewrite master variants.
+`RequestMeta.proxy_base` — база для rewrite master (из `proxy_public_url` или Host Edge-запроса).
 
 ## Стадии обработки
 
 1. **Parse** — ядро (`ose-manifest`).
-2. **Detect + Filter** — `filter_segments` (общий helper `strip_ad_segments`).
+2. **Detect + Filter** — `filter_segments` (helper `strip_ad_segments`; Twitch — только `PlaylistKind::Media`).
 3. **Rewrite** — `rewrite_urls` / `rewrite_master_variant_urls`.
-4. **Prefetch policy** — ядро (`apply_prefetch_policy`: keep / strip_all / strip_when_ads_removed).
+4. **Prefetch policy** — ядро (`keep` / `strip_all` / `strip_when_ads_removed`).
 
 ## Подключение
 
 - Статическая линковка в `streamproxyd`.
-- Регистрация: Twitch (`ose-plugin-twitch`), Kick/Trovo/generic (`ose-plugin-hls` + `ose-rules`).
-- Hot-reload: `POST /api/reload` (+ SIGHUP на Unix) перечитывает YAML и пересобирает список плагинов.
+- Регистрация: Twitch (`ose-plugin-twitch`), Kick/Trovo/generic (`ose-plugin-hls` + `ose-rules`), DASH (`ose-plugin-dash`).
+- Hot-reload: `POST /api/reload` (+ SIGHUP на Unix).
 
 ## Rule engine (`ose-rules`)
 
-YAML rulesets: `hosts` + detector `rules` (`contains` / `date_range` / `ext_inf_not_live` / `regex`).
+YAML: `hosts` + detector `rules` (`contains` / `date_range` / `ext_inf_not_live` / `regex`).  
 Пресеты: `kick_default()`, `trovo_default()`. Пример: `rules.example.yaml`.
 
 ## Plugin Twitch
 
-- Segment Stripping + master rewrite при заданном `proxy_public_url`.
-- Без GraphQL, token switching, embed player.
-- Host: `ttvnw.net`, `video-weaver`, `video-edge`, …
+- Segment Stripping на **media** + master rewrite при `proxy_base`.
+- Host match: `ttvnw.net`, `twitch.tv`, `video-weaver`, `video-edge`, `playlist.ttvnw`, …
+- Без GraphQL в плагине: token/usher — слой `ose-proxy` Edge.
+- Opt-in scaffold `backup_seamless` (Stage G) — по умолчанию выключен.
 
 ## Plugin HLS (Kick / Trovo / custom)
 
 - `RulesHlsPlugin` поверх `RuleSet`.
-- Включение: `kick.enabled` / `trovo.enabled` / `rules_file` в конфиге.
+- Включение: `kick.enabled` / `trovo.enabled` / `rules_file`.
 
 ## Plugin DASH
 
 - Match: `.mpd` (`ManifestKind::Dash`).
-- Удаление рекламных Period / AdaptationSet по `DashFilterRules`.
-- CMAF сегменты не трогаются (streaming passthrough).
+- Удаление рекламных Period / AdaptationSet.
+- CMAF сегменты не трогаются.
 
 См. [DASH_ARCHITECTURE.md](DASH_ARCHITECTURE.md), [HLS_ARCHITECTURE.md](HLS_ARCHITECTURE.md).

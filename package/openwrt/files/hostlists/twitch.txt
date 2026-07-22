@@ -1,0 +1,4 @@
+# Twitch HLS CDN only (не www/gql — иначе MITM ломает сайт без CA)
+usher.ttvnw.net
+playlist.ttvnw.net
+vod-secure.twitch.tv

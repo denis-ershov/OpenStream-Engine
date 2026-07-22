@@ -1,4 +1,8 @@
-//! HTTP(S) forward proxy: explicit-first, MITM только для `.m3u8`, streaming сегментов.
+//! HTTP(S) proxy: Playlist Edge (default) + optional transparent MITM + explicit CONNECT.
+
+mod edge;
+mod sni;
+mod transparent;
 
 use std::collections::HashMap;
 use std::convert::Infallible;
@@ -32,13 +36,23 @@ use ose_segment::is_media_segment;
 use parking_lot::{Mutex, RwLock};
 use rustls::ServerConfig;
 use rustls_pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer};
-use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::mpsc;
 use tracing::{debug, info, warn};
 
+use transparent::{handle_transparent_tls, spawn_hostlist_refresh, PrefixedStream};
+
 const HEADER_READ_LIMIT: usize = 64 * 1024;
 const STREAM_CHUNK: usize = 16 * 1024;
+
+/// rustls 0.23 требует явный CryptoProvider (иначе panic на первом TLS client).
+pub fn ensure_rustls_crypto_provider() {
+    static ONCE: std::sync::Once = std::sync::Once::new();
+    ONCE.call_once(|| {
+        let _ = rustls::crypto::ring::default_provider().install_default();
+    });
+}
 
 type HttpHeaders = Vec<(String, String)>;
 type SplitHttpResponse = (Vec<u8>, HttpHeaders, Vec<u8>);
@@ -172,7 +186,13 @@ pub fn build_state(
     config_path: Option<std::path::PathBuf>,
     reload_plugins: Option<PluginReloader>,
 ) -> Result<ProxyState> {
-    let mitm = if enable_mitm && config.mitm && !matches!(config.mode, ProxyMode::Off) {
+    ensure_rustls_crypto_provider();
+    let mitm = if enable_mitm
+        && config.mitm
+        && matches!(
+            config.mode,
+            ProxyMode::Transparent | ProxyMode::RedirectWhitelist | ProxyMode::Explicit
+        ) {
         let cert = config.tls.ca_cert.as_ref().map(Path::new);
         let key = config.tls.ca_key.as_ref().map(Path::new);
         Some(Arc::new(MitmAuthority::load_or_generate(cert, key)?))
@@ -194,10 +214,16 @@ pub fn build_state(
 
 pub async fn run(state: Arc<ProxyState>) -> Result<()> {
     apply_mode_side_effects(&state)?;
+    spawn_hostlist_refresh(state.clone());
 
     let mode = state.config.read().mode.clone();
-    if matches!(mode, ProxyMode::Off) {
-        info!("mode=off: only /api/status is served");
+    match mode {
+        ProxyMode::Off => info!("mode=off: only /api/* is served"),
+        ProxyMode::Edge => info!("mode=edge: Playlist Edge (no client CA); GET /twitch/<channel>"),
+        ProxyMode::Transparent | ProxyMode::RedirectWhitelist => {
+            info!("mode=transparent: MITM divert (client CA required)")
+        }
+        ProxyMode::Explicit => info!("mode=explicit: HTTP CONNECT proxy"),
     }
 
     let addr: SocketAddr = state
@@ -209,7 +235,11 @@ pub async fn run(state: Arc<ProxyState>) -> Result<()> {
     let listener = TcpListener::bind(addr).await?;
     info!(%addr, ?mode, "streamproxyd listening");
     if let Some(m) = &state.mitm {
-        info!("MITM CA PEM (install on clients):\n{}", m.ca_pem());
+        info!(
+            ca = %m.ca_pem().lines().next().unwrap_or("PEM"),
+            "MITM CA ready (install /etc/openstream/ca.crt on clients for transparent/explicit)"
+        );
+        debug!("MITM CA PEM:\n{}", m.ca_pem());
     }
 
     loop {
@@ -218,7 +248,7 @@ pub async fn run(state: Arc<ProxyState>) -> Result<()> {
         state.status.bump_streams(1);
         tokio::spawn(async move {
             let status = state.status.clone();
-            let result = serve_http(state, stream).await;
+            let result = serve_client(state, stream).await;
             status.bump_streams(-1);
             if let Err(e) = result {
                 debug!(error = %e, "client error");
@@ -227,36 +257,60 @@ pub async fn run(state: Arc<ProxyState>) -> Result<()> {
     }
 }
 
+/// TLS (0x16) → transparent MITM; иначе HTTP proxy (CONNECT / absolute-URI / API).
+async fn serve_client(state: Arc<ProxyState>, mut stream: TcpStream) -> Result<()> {
+    let mut first = [0u8; 1];
+    let n = stream.read(&mut first).await?;
+    if n == 0 {
+        return Ok(());
+    }
+    if first[0] == 0x16 {
+        handle_transparent_tls(state, stream, first[0]).await
+    } else {
+        let prefixed = PrefixedStream::new(vec![first[0]], stream);
+        serve_http(state, prefixed).await
+    }
+}
+
 fn apply_mode_side_effects(state: &ProxyState) -> Result<()> {
-    let (mode, path) = {
-        let c = state.config.read();
-        (c.mode.clone(), c.nft_file.clone())
-    };
-    match mode {
-        ProxyMode::RedirectWhitelist => {
-            #[cfg(target_os = "linux")]
-            {
-                let status = std::process::Command::new("nft")
-                    .arg("-f")
-                    .arg(&path)
-                    .status();
-                match status {
-                    Ok(s) if s.success() => info!(%path, "applied nft redirect_whitelist"),
-                    Ok(s) => warn!(%path, ?s, "nft apply failed (fail-soft)"),
-                    Err(e) => warn!(%path, error = %e, "nft not available (fail-soft)"),
-                }
-            }
-            #[cfg(not(target_os = "linux"))]
-            {
-                warn!(%path, "redirect_whitelist ignored on non-Linux (nft not applied)");
+    let mode = state.config.read().mode.clone();
+    if !mode.uses_transparent_divert() {
+        return Ok(());
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let (path, hostlist) = {
+            let c = state.config.read();
+            (c.nft_file.clone(), c.hostlist_file.clone())
+        };
+        let status = std::process::Command::new("nft")
+            .arg("-f")
+            .arg(&path)
+            .status();
+        match status {
+            Ok(s) if s.success() => info!(%path, "applied nft transparent divert"),
+            Ok(s) => warn!(%path, ?s, "nft apply failed (fail-soft)"),
+            Err(e) => warn!(%path, error = %e, "nft not available (fail-soft)"),
+        }
+        let hl = Path::new(&hostlist);
+        if hl.exists() {
+            if let Err(e) = transparent::refresh_hls_nft_set(hl) {
+                warn!(error = %e, "initial hostlist refresh failed");
             }
         }
-        ProxyMode::Explicit | ProxyMode::Off => {}
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        let path = state.config.read().nft_file.clone();
+        warn!(%path, "transparent divert nft ignored on non-Linux");
     }
     Ok(())
 }
 
-async fn serve_http(state: Arc<ProxyState>, stream: TcpStream) -> Result<()> {
+async fn serve_http<S>(state: Arc<ProxyState>, stream: S) -> Result<()>
+where
+    S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+{
     let io = TokioIo::new(stream);
     http1::Builder::new()
         .preserve_header_case(true)
@@ -273,9 +327,9 @@ async fn serve_http(state: Arc<ProxyState>, stream: TcpStream) -> Result<()> {
     Ok(())
 }
 
-type RespBody = http_body_util::combinators::UnsyncBoxBody<Bytes, Infallible>;
+pub(crate) type RespBody = http_body_util::combinators::UnsyncBoxBody<Bytes, Infallible>;
 
-fn full_body(b: impl Into<Bytes>) -> RespBody {
+pub(crate) fn full_body(b: impl Into<Bytes>) -> RespBody {
     Full::new(b.into()).map_err(|e| match e {}).boxed_unsync()
 }
 
@@ -351,10 +405,33 @@ async fn dispatch_inner(
         return handle_reload(state).await;
     }
 
+    // Playlist Edge: GET /twitch/<channel> (без CA)
+    if req.method() == Method::GET && req.uri().path().starts_with("/twitch/") {
+        return edge::handle_twitch_edge(state, req).await;
+    }
+
     if matches!(state.config.read().mode, ProxyMode::Off) {
         return Ok(Response::builder()
             .status(StatusCode::SERVICE_UNAVAILABLE)
             .body(full_body("proxy mode is off"))
+            .expect("response"));
+    }
+
+    // Edge: nested absolute + API; CONNECT только для explicit/transparent
+    if matches!(state.config.read().mode, ProxyMode::Edge) {
+        let path_q = req
+            .uri()
+            .path_and_query()
+            .map(|pq| pq.as_str())
+            .unwrap_or("/");
+        if split_nested_absolute(path_q).is_some() {
+            return absolute_http_proxy(state, req).await;
+        }
+        return Ok(Response::builder()
+            .status(StatusCode::NOT_FOUND)
+            .body(full_body(
+                "mode=edge: use GET /twitch/<channel> or /https://… nested playlist URL",
+            ))
             .expect("response"));
     }
 
@@ -580,7 +657,7 @@ async fn mitm_after_connect(
     Ok(())
 }
 
-async fn mitm_forward(
+pub(crate) async fn mitm_forward(
     state: Arc<ProxyState>,
     req: Request<Incoming>,
     host: &str,
@@ -637,7 +714,15 @@ where
             .iter()
             .find(|(k, _)| k.eq_ignore_ascii_case("etag"))
             .map(|(_, v)| v.clone());
-        let out = process_manifest_if_needed(&state, host, path_q, &url, &body, etag.as_deref())
+        let out = process_manifest_if_needed(
+            &state,
+            host,
+            path_q,
+            &url,
+            &body,
+            etag.as_deref(),
+            None,
+        )
             .await?;
         let content_type = if is_mpd_path(path_q) {
             "application/dash+xml"
@@ -753,7 +838,7 @@ impl Stream for ReceiverStream {
     }
 }
 
-async fn read_http_headers<S: AsyncRead + Unpin>(
+pub(crate) async fn read_http_headers<S: AsyncRead + Unpin>(
     upstream: &mut S,
 ) -> Result<SplitHttpResponse> {
     let mut buf = Vec::with_capacity(1024);
@@ -825,16 +910,24 @@ async fn read_body_capped<S: AsyncRead + Unpin>(
     Ok(())
 }
 
-async fn process_manifest_if_needed(
+pub(crate) async fn process_manifest_if_needed(
     state: &ProxyState,
     host: &str,
     path: &str,
     url: &str,
     body: &[u8],
     etag: Option<&str>,
+    // Override proxy_public_url (Edge: Host клиента → rewrite media через nested).
+    proxy_base_override: Option<String>,
 ) -> Result<Vec<u8>> {
     let kind = ManifestKind::from_path(path);
-    let mut cache_key = CacheKey::from_url(url);
+    let proxy_base = proxy_base_override.or_else(|| state.config.read().proxy_public_url.clone());
+    // Rewrite меняет тело → ключ кэша должен учитывать proxy_base.
+    let cache_url = match proxy_base.as_deref() {
+        Some(pb) if !pb.is_empty() => format!("{url}|pb:{pb}"),
+        _ => url.to_string(),
+    };
+    let mut cache_key = CacheKey::from_url(cache_url);
     if let Some(e) = etag {
         cache_key = cache_key.with_etag(e);
     } else {
@@ -858,6 +951,7 @@ async fn process_manifest_if_needed(
             let host_owned = host_owned;
             let path_owned = path_owned;
             let url_owned = url_owned;
+            let proxy_base = proxy_base.clone();
             async move {
                 // Повторная проверка cache после выигрыша singleflight.
                 if let Some((cached, _)) = state.cache.get_key(&cache_key) {
@@ -871,6 +965,7 @@ async fn process_manifest_if_needed(
                     &body_owned,
                     &cache_key,
                     kind,
+                    proxy_base,
                 )
                 .await
                 .map_err(|e| CoalesceError(e.to_string()))
@@ -890,8 +985,8 @@ async fn process_manifest_inner(
     body: &[u8],
     cache_key: &CacheKey,
     kind: ManifestKind,
+    proxy_base: Option<String>,
 ) -> Result<Vec<u8>> {
-    let proxy_base = state.config.read().proxy_public_url.clone();
     let prefetch = state.config.read().prefetch_policy.clone();
     let meta = RequestMeta {
         host: host.to_string(),
@@ -1000,7 +1095,7 @@ pub fn should_inspect_manifest(path: &str) -> bool {
     }
 }
 
-fn parse_status(status_line: &[u8]) -> Option<u16> {
+pub(crate) fn parse_status(status_line: &[u8]) -> Option<u16> {
     let s = std::str::from_utf8(status_line).ok()?;
     s.split_whitespace().nth(1)?.parse().ok()
 }
@@ -1015,16 +1110,20 @@ pub fn is_mpd_path(path: &str) -> bool {
 
 pub fn host_in_whitelist(host: &str) -> bool {
     let h = host.to_ascii_lowercase();
+    // Twitch: только CDN (ttvnw/jtvnw/live-video/weaver). НЕ весь *.twitch.tv —
+    // иначе www/gql уходят в MITM и без CA сайт не открывается.
     h.contains("ttvnw.net")
-        || h.contains("twitch.tv")
+        || h.contains("jtvnw.net")
+        || h.contains("live-video.net")
         || h.contains("video-weaver")
         || h.contains("video-edge")
+        || h == "vod-secure.twitch.tv"
+        || h.ends_with(".vod-secure.twitch.tv")
         || h.contains("kick.com")
         || h.contains("kickusercontent")
         || h.contains("trovo.live")
         || h.contains("trovo.com")
         || h.contains("googlevideo.com")
-        || h.contains("youtube.com")
 }
 
 pub fn split_http_response(buf: &[u8]) -> Result<SplitHttpResponse> {
@@ -1067,10 +1166,13 @@ mod tests {
 
     #[test]
     fn whitelist() {
-        assert!(host_in_whitelist("video-weaver.cloudfront.net")); // contains video-weaver
+        assert!(host_in_whitelist("video-weaver.cloudfront.net"));
         assert!(host_in_whitelist("playlist.ttvnw.net"));
         assert!(host_in_whitelist("stream.kick.com"));
         assert!(host_in_whitelist("live.trovo.live"));
+        assert!(host_in_whitelist("vod-secure.twitch.tv"));
+        assert!(!host_in_whitelist("www.twitch.tv"));
+        assert!(!host_in_whitelist("gql.twitch.tv"));
         assert!(!host_in_whitelist("example.com"));
     }
 

@@ -1,0 +1,24 @@
+#!/bin/sh
+# dnsmasq nftset только для HLS CDN (не *.twitch.tv).
+# MITM/CA — только если mode=transparent (advanced).
+[ -d /etc/dnsmasq.d ] || mkdir -p /etc/dnsmasq.d
+[ -f /etc/dnsmasq.d/openstream.conf ] || \
+	cp -f /usr/share/openstream/dnsmasq-openstream.conf /etc/dnsmasq.d/openstream.conf 2>/dev/null
+
+# Миграция: transparent → edge (Playlist Edge без CA)
+mode="$(uci -q get openstream.proxy.mode 2>/dev/null)"
+case "$mode" in
+	transparent|redirect_whitelist|"")
+		uci -q set openstream.proxy.mode=edge
+		uci -q set openstream.proxy.mitm=0
+		uci -q set openstream.proxy.hostlist_file='/var/run/openstream/hostlist-effective.txt'
+		uci -q del_list openstream.proxy.hostlist_services=twitch 2>/dev/null
+		uci -q add_list openstream.proxy.hostlist_services=twitch
+		uci -q commit openstream
+		;;
+esac
+
+[ -x /usr/libexec/openstream-compose-hostlist ] && \
+	/usr/libexec/openstream-compose-hostlist >/dev/null 2>&1 || true
+
+exit 0

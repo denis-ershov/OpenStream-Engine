@@ -8,12 +8,25 @@ USE_PROCD=1
 NAME=streamproxyd
 PROG=/usr/bin/streamproxyd
 UCI2YAML=/usr/libexec/openstream-uci2yaml
+COMPOSE=/usr/libexec/openstream-compose-hostlist
+UPDATE_HL=/usr/libexec/openstream-update-hostlists
+REFRESH_SET=/usr/libexec/openstream-refresh-hls-set
 CONFIG=/etc/openstream/config.yaml
 NFT_FILE=/usr/share/openstream/nft/openstream.nft
+CRON_FILE=/etc/crontabs/root
+CRON_MARK="# openstream-hostlist-remote"
 
 regen_config() {
 	if [ -x "$UCI2YAML" ]; then
 		"$UCI2YAML" "$CONFIG" >/dev/null || logger -t openstream "uci2yaml failed"
+	fi
+	# Heal known-bad YAML that made r9 crash-loop (null lists)
+	if [ -f "$CONFIG" ]; then
+		sed -i 's/^custom_domains:$/custom_domains: []/' "$CONFIG" 2>/dev/null || true
+		# hostlist_services: без элементов → null; подставим twitch
+		if grep -q '^hostlist_services:$' "$CONFIG" 2>/dev/null; then
+			sed -i '/^hostlist_services:$/a\  - twitch' "$CONFIG" 2>/dev/null || true
+		fi
 	fi
 }
 
@@ -21,30 +34,72 @@ notify_reload() {
 	wget -qO- --post-data='' http://127.0.0.1:18080/api/reload >/dev/null 2>&1 || true
 }
 
+apply_transparent_nft() {
+	local mode
+	config_get mode proxy mode edge
+	case "$mode" in
+		transparent|redirect_whitelist)
+			[ -f "$NFT_FILE" ] || return 0
+			nft -f "$NFT_FILE" 2>/dev/null || logger -t openstream "nft apply failed (fail-soft)"
+			[ -x "$COMPOSE" ] && "$COMPOSE" >/dev/null 2>&1 || true
+			[ -x "$REFRESH_SET" ] && "$REFRESH_SET" >/dev/null 2>&1 || true
+			;;
+		*)
+			# Edge/explicit/off — не держим divert
+			nft delete table inet openstream 2>/dev/null || true
+			;;
+	esac
+}
+
+sync_hostlist_cron() {
+	local remote hours
+	config_get_bool remote proxy hostlist_remote 0
+	config_get hours proxy hostlist_remote_interval_hours 12
+	[ -n "$hours" ] || hours=12
+	mkdir -p /etc/crontabs
+	touch "$CRON_FILE"
+	# убрать старую строку
+	sed -i "\|$CRON_MARK|d" "$CRON_FILE" 2>/dev/null || true
+	if [ "$remote" = "1" ]; then
+		# каждые N часов (приблизительно через hour step)
+		echo "0 */$hours * * * /usr/libexec/openstream-update-hostlists --force $CRON_MARK" >>"$CRON_FILE"
+		/etc/init.d/cron reload >/dev/null 2>&1 || true
+	fi
+}
+
 start_service() {
-	local enabled mode
+	local enabled
 	config_load openstream
 	config_get_bool enabled main enabled 1
 	[ "$enabled" = "1" ] || return 0
 
-	config_get mode proxy mode explicit
+	[ -x /usr/libexec/openstream-refresh-opkg-list ] && \
+		/usr/libexec/openstream-refresh-opkg-list
+
+	[ -x "$UPDATE_HL" ] && "$UPDATE_HL" >/dev/null 2>&1 || true
+	[ -x "$COMPOSE" ] && "$COMPOSE" >/dev/null 2>&1 || true
+
 	regen_config
+	apply_transparent_nft
+	sync_hostlist_cron
 
 	procd_open_instance
 	procd_set_param command "$PROG" --config "$CONFIG"
 	procd_set_param file "$CONFIG"
-	procd_set_param respawn
+	# threshold 0 = never give up; retry every 5s (avoid permanent crash-loop lockout)
+	procd_set_param respawn 3600 5 0
 	procd_set_param stdout 1
 	procd_set_param stderr 1
 	procd_close_instance
-
-	if [ "$mode" = "redirect_whitelist" ] && [ -f "$NFT_FILE" ]; then
-		nft -f "$NFT_FILE" 2>/dev/null || logger -t openstream "nft apply failed (fail-soft)"
-	fi
 }
 
 reload_service() {
+	config_load openstream
+	[ -x "$UPDATE_HL" ] && "$UPDATE_HL" >/dev/null 2>&1 || true
+	[ -x "$COMPOSE" ] && "$COMPOSE" >/dev/null 2>&1 || true
 	regen_config
+	apply_transparent_nft
+	sync_hostlist_cron
 	notify_reload
 }
 
@@ -54,4 +109,8 @@ service_triggers() {
 
 stop_service() {
 	nft delete table inet openstream 2>/dev/null || true
+	if [ -f "$CRON_FILE" ]; then
+		sed -i "\|$CRON_MARK|d" "$CRON_FILE" 2>/dev/null || true
+		/etc/init.d/cron reload >/dev/null 2>&1 || true
+	fi
 }

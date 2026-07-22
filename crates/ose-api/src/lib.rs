@@ -69,9 +69,9 @@ impl StatusHandle {
             neighbors,
             coexistence_ok: ok,
             mode_hint: if ok {
-                "explicit_or_redirect_ok"
+                "transparent_ok"
             } else {
-                "prefer_explicit"
+                "prefer_transparent_check_tpws"
             }
             .into(),
             events_buffered: self.events.len() as u64,

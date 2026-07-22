@@ -70,8 +70,8 @@ msgstr "Перезагружено"
 msgid "No recent log entries."
 msgstr "Нет свежих записей в журнале."
 
-msgid "OpenStream uses only nft table inet openstream and defaults to explicit proxy. It does not modify zapret or podkop."
-msgstr "OpenStream использует только nft-таблицу inet openstream и по умолчанию explicit proxy. Не изменяет zapret и podkop."
+msgid "Transparent MITM: nft diverts Twitch HLS IPs to :18080. Install CA on clients — no HTTP proxy. Neighbors (zapret, podkop/netshift/forkop, SSClash, ByeDPI) handle CDN egress."
+msgstr "Прозрачный MITM: nft направляет IP Twitch HLS на :18080. Установите CA на клиентах — HTTP proxy не нужен. Соседи (zapret, podkop/netshift/forkop, SSClash, ByeDPI) дают доступ к CDN на egress."
 
 msgid "Coexistence"
 msgstr "Сосуществование"

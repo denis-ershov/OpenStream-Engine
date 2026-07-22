@@ -6,3 +6,14 @@
 /config.yaml
 *.pem
 package/openwrt/streamproxyd
+.cargo-docker/
+dist/**/bin/
+dist/**/ipk/
+dist/**/SHA256SUMS
+scripts/bin/
+scripts/po2lmo/po2lmo
+scripts/po2lmo/*.o
+scripts/po2lmo/lib/*.o
+scripts/po2lmo/lib/plural_formula.c
+scripts/po2lmo/lib/plural_formula.h
+scripts/po2lmo/contrib/lemon

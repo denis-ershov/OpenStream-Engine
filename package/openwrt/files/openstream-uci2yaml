@@ -1,14 +1,16 @@
 #!/bin/sh
 # Генерирует /etc/openstream/config.yaml из UCI openstream.
+# Перед записью: compose hostlist + optional remote (если пора).
 
 OUT="${1:-/etc/openstream/config.yaml}"
 TMP="${OUT}.tmp.$$"
+COMPOSE=/usr/libexec/openstream-compose-hostlist
+UPDATE_HL=/usr/libexec/openstream-update-hostlists
 
 uci_get() {
 	uci -q get "openstream.$1" 2>/dev/null
 }
 
-# bool: default $2 (0|1) when empty
 uci_bool_d() {
 	local v d="$2"
 	v="$(uci_get "$1")"
@@ -26,24 +28,84 @@ uci_num() {
 	echo "$v"
 }
 
+yaml_escape() {
+	echo "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+
+# Remote fetch (fail-soft) + compose effective hostlist
+[ -x "$UPDATE_HL" ] && "$UPDATE_HL" >/dev/null 2>&1 || true
+if [ -x "$COMPOSE" ]; then
+	"$COMPOSE" >/dev/null 2>&1 || true
+fi
+
 mkdir -p "$(dirname "$OUT")"
 
 LISTEN="$(uci_get proxy.listen)"; [ -n "$LISTEN" ] || LISTEN="0.0.0.0:18080"
-MODE="$(uci_get proxy.mode)"; [ -n "$MODE" ] || MODE="explicit"
+MODE="$(uci_get proxy.mode)"; [ -n "$MODE" ] || MODE="edge"
 TTL="$(uci_num proxy.cache_ttl_secs 2)"
 MAXM="$(uci_num proxy.max_manifest_bytes 2097152)"
-MITM="$(uci_bool_d proxy.mitm 1)"
+MITM="$(uci_bool_d proxy.mitm 0)"
 PREFETCH="$(uci_get proxy.prefetch_policy)"; [ -n "$PREFETCH" ] || PREFETCH="strip_when_ads_removed"
 PUBLIC="$(uci_get proxy.proxy_public_url)"
 NFT="$(uci_get proxy.nft_file)"; [ -n "$NFT" ] || NFT="/usr/share/openstream/nft/openstream.nft"
+HOSTLIST="$(uci_get proxy.hostlist_file)"; [ -n "$HOSTLIST" ] || HOSTLIST="/var/run/openstream/hostlist-effective.txt"
+HLREFRESH="$(uci_num proxy.hostlist_refresh_secs 300)"
+HLREMOTE="$(uci_bool_d proxy.hostlist_remote 0)"
+HLBASE="$(uci_get proxy.hostlist_remote_base)"
+[ -n "$HLBASE" ] || HLBASE="https://raw.githubusercontent.com/denis-ershov/OpenStream-Engine/main/package/openwrt/files/hostlists"
+HLHOURS="$(uci_num proxy.hostlist_remote_interval_hours 12)"
 
 {
 	echo "listen: \"$LISTEN\""
-	[ -n "$PUBLIC" ] && echo "proxy_public_url: \"$PUBLIC\""
+	[ -n "$PUBLIC" ] && echo "proxy_public_url: \"$(yaml_escape "$PUBLIC")\""
 	echo "mode: $MODE"
 	echo "cache_ttl_secs: $TTL"
 	echo "max_manifest_bytes: $MAXM"
 	echo "nft_file: \"$NFT\""
+	echo "hostlist_file: \"$HOSTLIST\""
+	echo "hostlist_refresh_secs: $HLREFRESH"
+	# Списки: всегда явный [] — иначе YAML `key:` = null и serde падает
+	# dedupe hostlist_services
+	echo "hostlist_services:"
+	_seen=" "
+	_any=0
+	add_svc() {
+		local s="$1"
+		s="$(echo "$s" | tr -d '"' | tr -cd 'a-z0-9_')"
+		[ -n "$s" ] || return 0
+		case "$_seen" in
+			*" $s "*) return 0 ;;
+		esac
+		_seen="$_seen$s "
+		echo "  - \"$s\""
+		_any=1
+	}
+	for s in $(uci -q get openstream.proxy.hostlist_services 2>/dev/null); do
+		add_svc "$s"
+	done
+	if [ "$_any" = "0" ]; then
+		case "$(uci_bool_d twitch.enabled 1)" in true) add_svc twitch ;; esac
+		case "$(uci_bool_d kick.enabled 0)" in true) add_svc kick ;; esac
+		case "$(uci_bool_d trovo.enabled 0)" in true) add_svc trovo ;; esac
+		case "$(uci_bool_d youtube.enabled 0)" in true) add_svc youtube ;; esac
+		[ "$_any" = "1" ] || add_svc twitch
+	fi
+	_cd=0
+	_cd_lines=""
+	for d in $(uci -q get openstream.proxy.custom_domain 2>/dev/null); do
+		_cd_lines="${_cd_lines}  - \"$(yaml_escape "$d")\"
+"
+		_cd=1
+	done
+	if [ "$_cd" = "1" ]; then
+		echo "custom_domains:"
+		printf '%s' "$_cd_lines"
+	else
+		echo "custom_domains: []"
+	fi
+	echo "hostlist_remote: $HLREMOTE"
+	echo "hostlist_remote_base: \"$(yaml_escape "$HLBASE")\""
+	echo "hostlist_remote_interval_hours: $HLHOURS"
 	echo "mitm: $MITM"
 	echo "prefetch_policy: $PREFETCH"
 	echo ""

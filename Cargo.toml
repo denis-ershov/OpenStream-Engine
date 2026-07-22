@@ -60,8 +60,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 async-trait = "0.1"
 parking_lot = "0.12"
 clap = { version = "4", features = ["derive"] }
-rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
-tokio-rustls = "0.26"
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "logging", "tls12"] }
 rustls-pemfile = "2"
 http = "1"
 anyhow = "1"

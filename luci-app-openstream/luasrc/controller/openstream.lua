@@ -5,6 +5,8 @@ local http = require "luci.http"
 module("luci.controller.openstream", package.seeall)
 
 function index()
+	-- Menu primarily from /usr/share/luci/menu.d/luci-app-openstream.json (LuCI 24).
+	-- Keep Lua entries as fallback for older luci-mod-admin without menu.d merge.
 	if not nixio.fs.access("/etc/config/openstream") then
 		return
 	end
@@ -15,7 +17,7 @@ function index()
 		_("OpenStream Engine"),
 		60
 	)
-	page.dependent = true
+	page.dependent = false
 	page.acl_depends = { "luci-app-openstream" }
 
 	entry(

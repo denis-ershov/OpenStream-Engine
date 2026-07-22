@@ -1,5 +1,7 @@
 # DASH Architecture
 
+Оглавление: [INDEX.md](INDEX.md).
+
 ## Manifest Engine (`ose-dash`)
 
 Лёгкий XML-разбор MPD (`quick-xml`) в owned-дерево с round-trip serialize.
@@ -31,10 +33,13 @@ CMAF-сегменты (`.m4s` / init `.mp4`) **не** буферизуются �
 
 ## MediaFilter (`ose-media`)
 
-Общий trait `apply_hls` / `apply_dash` + `ManifestKind` / `FilterOutcome` — единый контракт для HLS Entry и DASH Node.
+Общий trait `apply_hls` / `apply_dash` + `ManifestKind` / `FilterOutcome`.
 
-## Proxy
+## Proxy / Edge
 
-Пути `.mpd` обрабатываются как манифесты (cap `max_manifest_bytes`), content-type `application/dash+xml`. Cache key: URL + ETag или FNV body hash.
+Пути `.mpd` обрабатываются как манифесты (cap `max_manifest_bytes`), content-type `application/dash+xml`.  
+Cache key: URL + ETag или FNV body hash.
 
-См. [PLUGIN_ARCHITECTURE.md](PLUGIN_ARCHITECTURE.md), [HLS_ARCHITECTURE.md](HLS_ARCHITECTURE.md).
+Основной UX 0.4.x — **Twitch HLS Edge**; DASH доступен в transparent/explicit и при nested fetch `.mpd`. Отдельный Edge API вида `/dash/<…>` — вне текущего Stage H.
+
+См. [PLUGIN_ARCHITECTURE.md](PLUGIN_ARCHITECTURE.md), [HLS_ARCHITECTURE.md](HLS_ARCHITECTURE.md), [PROXY_ARCHITECTURE.md](PROXY_ARCHITECTURE.md).

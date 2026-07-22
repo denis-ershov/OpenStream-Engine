@@ -1,0 +1,76 @@
+#!/bin/sh
+# Опционально тянет hostlists/*.txt с remote base (GitHub raw по умолчанию).
+# UCI: proxy.hostlist_remote=1, hostlist_remote_base, hostlist_remote_interval_hours
+
+set -e
+
+REMOTE_DIR=/etc/openstream/hostlists-remote
+STAMP=/etc/openstream/hostlists-remote/.last_fetch
+COMPOSE=/usr/libexec/openstream-compose-hostlist
+REFRESH=/usr/libexec/openstream-refresh-hls-set
+
+uci_get() {
+	uci -q get "openstream.$1" 2>/dev/null
+}
+
+uci_bool() {
+	case "$(uci_get "$1")" in
+		1|on|true|yes|enabled) return 0 ;;
+		*) return 1 ;;
+	esac
+}
+
+FORCE=0
+[ "${1:-}" = "--force" ] && FORCE=1
+
+uci_bool proxy.hostlist_remote || {
+	echo "hostlist_remote disabled"
+	exit 0
+}
+
+BASE="$(uci_get proxy.hostlist_remote_base)"
+[ -n "$BASE" ] || BASE="https://raw.githubusercontent.com/denis-ershov/OpenStream-Engine/main/package/openwrt/files/hostlists"
+INTERVAL="$(uci_get proxy.hostlist_remote_interval_hours)"
+[ -n "$INTERVAL" ] || INTERVAL=12
+# seconds
+INTERVAL_SEC=$((INTERVAL * 3600))
+[ "$INTERVAL_SEC" -gt 0 ] || INTERVAL_SEC=43200
+
+if [ "$FORCE" != "1" ] && [ -f "$STAMP" ]; then
+	now=$(date +%s)
+	last=$(cat "$STAMP" 2>/dev/null || echo 0)
+	age=$((now - last))
+	if [ "$age" -lt "$INTERVAL_SEC" ]; then
+		echo "skip fetch (age=${age}s < ${INTERVAL_SEC}s)"
+		exit 0
+	fi
+fi
+
+mkdir -p "$REMOTE_DIR"
+FETCH=""
+if command -v uclient-fetch >/dev/null 2>&1; then
+	FETCH="uclient-fetch -q -O"
+elif command -v wget >/dev/null 2>&1; then
+	FETCH="wget -q -O"
+else
+	logger -t openstream "hostlist remote: no wget/uclient-fetch"
+	exit 1
+fi
+
+ok=0
+for svc in twitch kick trovo youtube; do
+	url="${BASE%/}/$svc.txt"
+	tmp="$REMOTE_DIR/$svc.txt.tmp"
+	if $FETCH "$tmp" "$url" 2>/dev/null && [ -s "$tmp" ]; then
+		mv "$tmp" "$REMOTE_DIR/$svc.txt"
+		ok=$((ok + 1))
+	else
+		rm -f "$tmp"
+		logger -t openstream "hostlist remote fetch failed: $svc"
+	fi
+done
+
+date +%s >"$STAMP"
+[ -x "$COMPOSE" ] && "$COMPOSE" >/dev/null
+[ -x "$REFRESH" ] && "$REFRESH" >/dev/null 2>&1 || true
+echo "fetched $ok lists"

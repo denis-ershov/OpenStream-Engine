@@ -22,7 +22,7 @@
 		"title": "Twitch",
 		"order": 2,
 		"action": {
-			"type": "view",
+			"type": "cbi",
 			"path": "openstream/twitch"
 		}
 	},
@@ -30,7 +30,7 @@
 		"title": "Services",
 		"order": 3,
 		"action": {
-			"type": "view",
+			"type": "cbi",
 			"path": "openstream/services"
 		}
 	},

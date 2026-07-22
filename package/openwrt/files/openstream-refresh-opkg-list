@@ -1,0 +1,27 @@
+#!/bin/sh
+# Подставляет индекс OpenStream в opkg lists_dir, чтобы LuCI
+# (Software → Installed) показывал Size и Description.
+# LuCI читает list-available = gzip -cd списков; status пакета Description не хранит.
+[ -n "${IPKG_INSTROOT}" ] && exit 0
+
+PKG_INDEX="/usr/share/openstream/opkg/Packages"
+PKG_INDEX_GZ="/usr/share/openstream/opkg/Packages.gz"
+
+[ -f "$PKG_INDEX_GZ" ] || [ -f "$PKG_INDEX" ] || exit 0
+
+LISTS_DIR=$(sed -rne 's#^lists_dir[[:space:]]+\S+[[:space:]]+(\S+)#\1#p' \
+	/etc/opkg.conf /etc/opkg/*.conf 2>/dev/null | tail -n 1)
+LISTS_DIR="${LISTS_DIR:-/usr/lib/opkg/lists}"
+
+mkdir -p "$LISTS_DIR" || exit 0
+
+if [ -f "$PKG_INDEX_GZ" ]; then
+	cp -f "$PKG_INDEX_GZ" "$LISTS_DIR/openstream"
+elif command -v gzip >/dev/null 2>&1; then
+	gzip -c "$PKG_INDEX" > "$LISTS_DIR/openstream"
+else
+	# fallback: busybox иногда принимает «сырой» текст через gzip -cd -f
+	cp -f "$PKG_INDEX" "$LISTS_DIR/openstream"
+fi
+
+exit 0

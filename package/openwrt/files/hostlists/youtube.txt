@@ -1,0 +1,2 @@
+# YouTube Live / googlevideo (осторожно: широкий CDN)
+googlevideo.com

@@ -7,7 +7,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=openstream-engine
 PKG_VERSION:=0.4.2
-PKG_RELEASE:=1
+PKG_RELEASE:=14
 
 PKG_LICENSE:=MIT
 PKG_MAINTAINER:=Denis Ershov
@@ -28,9 +28,8 @@ define Package/openstream-engine
 endef
 
 define Package/openstream-engine/description
-  Modular HLS/DASH manifest processing for OpenWrt.
-  Twitch/Kick/Trovo/YouTube/DASH plugins. Explicit proxy by default.
-  Uses own nft table inet openstream — does not touch zapret/podkop.
+  Playlist Edge HLS/DASH for OpenWrt (no client CA by default).
+  Optional transparent MITM divert. Own nft table inet openstream.
 endef
 
 define Package/openstream-engine/conffiles
@@ -60,6 +59,10 @@ define Package/openstream-engine/install
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/streamproxyd $(1)/usr/bin/streamproxyd
 	$(INSTALL_DIR) $(1)/usr/libexec
 	$(INSTALL_BIN) ./files/openstream-uci2yaml $(1)/usr/libexec/openstream-uci2yaml
+	$(INSTALL_BIN) ./files/openstream-compose-hostlist $(1)/usr/libexec/openstream-compose-hostlist
+	$(INSTALL_BIN) ./files/openstream-update-hostlists $(1)/usr/libexec/openstream-update-hostlists
+	$(INSTALL_BIN) ./files/openstream-refresh-hls-set $(1)/usr/libexec/openstream-refresh-hls-set
+	$(INSTALL_BIN) ./files/openstream-refresh-opkg-list $(1)/usr/libexec/openstream-refresh-opkg-list
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ./files/streamproxyd.init $(1)/etc/init.d/streamproxyd
 	$(INSTALL_DIR) $(1)/etc/config
@@ -68,6 +71,12 @@ define Package/openstream-engine/install
 	$(INSTALL_CONF) ./files/config.yaml $(1)/etc/openstream/config.yaml
 	$(INSTALL_DIR) $(1)/usr/share/openstream/nft
 	$(INSTALL_DATA) ./files/openstream.nft $(1)/usr/share/openstream/nft/openstream.nft
+	$(INSTALL_DATA) ./files/hostlist-hls.txt $(1)/usr/share/openstream/hostlist-hls.txt
+	$(INSTALL_DIR) $(1)/usr/share/openstream/hostlists
+	$(INSTALL_DATA) ./files/hostlists/*.txt $(1)/usr/share/openstream/hostlists/
+	$(INSTALL_DATA) ./files/dnsmasq-openstream.conf $(1)/usr/share/openstream/dnsmasq-openstream.conf
+	$(INSTALL_DIR) $(1)/etc/uci-defaults
+	$(INSTALL_BIN) ./files/uci-defaults-openstream-transparent $(1)/etc/uci-defaults/41_openstream-transparent
 endef
 
 $(eval $(call BuildPackage,openstream-engine))

@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use clap::Parser;
 use ose_config::{Config, ProxyMode};
 use ose_plugin::PluginManager;
@@ -116,26 +116,53 @@ fn build_plugins(config: &Config) -> Result<PluginManager> {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // rustls 0.23: без явного CryptoProvider TLS (Edge GQL/usher) паникует и с panic=abort валит демон
+    let _ = rustls::crypto::ring::default_provider().install_default();
+
     let args = Args::parse();
     let config_path = args.config.clone();
+
+    // Логирование как можно раньше — иначе crash loop без причины в logread
+    let early_filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into());
+    tracing_subscriber::fmt()
+        .with_env_filter(early_filter)
+        .with_writer(std::io::stderr)
+        .try_init()
+        .ok();
+
     let config = if config_path.exists() {
-        Config::load(&config_path).context("load config")?
+        match Config::load(&config_path) {
+            Ok(c) => c,
+            Err(e) => {
+                // Fail-soft: битый YAML не должен ронять procd в crash loop
+                eprintln!("openstream: config load failed: {e}");
+                warn!(
+                    path = %config_path.display(),
+                    error = %e,
+                    "config load failed — using defaults (mode=edge)"
+                );
+                let _ = std::fs::write(
+                    "/tmp/openstream-config-error.txt",
+                    format!("{e}\npath={}\n", config_path.display()),
+                );
+                Config::default()
+            }
+        }
     } else {
         info!("config not found, using defaults");
         Config::default()
     };
 
-    let filter = if config.twitch.debug
+    if config.twitch.debug
         || config.kick.debug
         || config.trovo.debug
         || config.youtube.debug
         || config.dash.debug
     {
-        EnvFilter::try_from_default_env().unwrap_or_else(|_| "debug".into())
-    } else {
-        EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into())
-    };
-    tracing_subscriber::fmt().with_env_filter(filter).init();
+        // already on info; debug via RUST_LOG
+        info!("debug flags enabled — set RUST_LOG=debug for more detail");
+    }
 
     info!(
         features = ?compiled_features(),

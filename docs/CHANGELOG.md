@@ -2,10 +2,34 @@
 
 ## [Unreleased]
 
+### Исправлено
+
+- **r14 — Edge без strip:** master без `proxy_public_url` не rewrite'ился → player брал media с CDN; strip только на media. Auto `proxy_base` из Host + warn.
+- **r13 — Edge TLS panic:** rustls 0.23 без CryptoProvider → panic на GQL/usher (`panic=abort` валит демон). Фикс: `ring::install_default()` в `streamproxyd` + `ose-proxy`.
+- **Permission denied (exit 126):** бинарь без `+x` после pack с Windows — postinst `chmod 0755`, `fix-ipk-exec-bits.py`; старые `.ipk` удаляются при сборке.
+
+### Добавлено
+
+- **Playlist Edge** (`mode: edge`, default): `GET /twitch/<channel>` без CA; сегменты с CDN; ADR [0002](adr/0002-playlist-edge.md).
+- Hostlists: per-service `hostlists/*.txt`, compose, `custom_domain`, optional GitHub remote 12ч; LuCI multi-select.
+- H5: сужен divert/dnsmasq/MITM whitelist (не www/gql/`*.twitch.tv`) — сайт снова открывается.
+- Docs: DoH может быть на клиенте **и** на роутере; nftset работает только через dnsmasq, иначе — hostlist ([COEXISTENCE.md](COEXISTENCE.md)).
+- Fix: `.ipk` — `Packages.gz` / `openstream-refresh-opkg-list` только в `openstream-engine` (не в luci-app), иначе opkg `check_data_file_clashes`.
+- **Transparent Twitch catch** (`mode: transparent`): nft divert — теперь **legacy** (нужен CA).
+- Детект соседей: форки podkop (**netshift**, **forkop**); **SSClash**, OpenClash, Mihomo, ByeDPI (`ciadpi`), PassWall/HomeProxy, redsocks/tun2proxy/hev; модель в [COEXISTENCE.md](COEXISTENCE.md).
+- Первые артефакты Cortex-A53 OpenWrt ≤24.10: `dist/openwrt-24.10-a53/`  
+  (`openstream-engine` / `-slim` `.ipk` + `luci-app-openstream` `.ipk`, бинари aarch64 musl).
+- Скрипт `scripts/pack-ipk-a53.sh` (упаковка opkg `.ipk` без полного SDK).
+- Fix: `.ipk` release **7** — LuCI Installed: Size/Description через встроенный `Packages.gz` + `openstream-refresh-opkg-list` (opkg status не хранит Description; LuCI берёт поля из available lists).
+- Fix: `.ipk` release **6** — убран `Size:` из CONTROL (opkg: Checksum or size mismatch); `Size`/`SHA256sum` только в `ipk/Packages`.
+- Fix: release **5** — `luci-i18n-openstream-ru`; menu.d `cbi`; vendored po2lmo.
+
 ### Документация
 
-- [ROADMAP.md](ROADMAP.md): сверка с 0.4.2; легенда `[x]` / `[~]` / `[ ]` / `[blocked]`; Stage E (поле/perf), F (production plugins), G (opt-in seamless).
-- [BUILD_OPENWRT.md](BUILD_OPENWRT.md): сборка `openstream-engine` + `luci-app-openstream` для Cortex-A53 (`.ipk` / `.apk`); `scripts/build-a53.sh`; Makefile принимает `OPENSTREAM_BIN`.
+- [INDEX.md](INDEX.md) — оглавление docs (sync **0.4.2-14**).
+- [ROADMAP.md](ROADMAP.md): Playlist Edge без CA (default); MITM+CA → legacy; Stage H; r13/r14 в спринте.
+- [ARCHITECTURE.md](ARCHITECTURE.md), [PROXY_ARCHITECTURE.md](PROXY_ARCHITECTURE.md), [COEXISTENCE.md](COEXISTENCE.md), [PACKAGING.md](PACKAGING.md), [HLS_ARCHITECTURE.md](HLS_ARCHITECTURE.md), [PLUGIN_ARCHITECTURE.md](PLUGIN_ARCHITECTURE.md), [SDK.md](SDK.md), [DASH_ARCHITECTURE.md](DASH_ARCHITECTURE.md), [BUILD_OPENWRT.md](BUILD_OPENWRT.md), [PERFORMANCE.md](PERFORMANCE.md), [adr/0002-playlist-edge.md](adr/0002-playlist-edge.md): Edge-first, master→media rewrite, полевые симптомы (CryptoProvider, exec bits, ads_found).
+- [PERFORMANCE.md](PERFORMANCE.md): GL-MT6000 idle — VmRSS **~2.8 МБ**, VmPeak **~13.3 МБ**; чеклист Edge r14.
 
 ### Исправлено
 

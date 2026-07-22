@@ -27,6 +27,7 @@
 - Плюсы: предсказуемый размер, нет JIT/loader, простой audit, работает на musl.
 - Минусы: новый плагин = пересборка пакета (или static feature flags в feed).
 - ABI: константа `ose_plugin::PLUGIN_ABI_VERSION`; breaking change trait → bump major ABI + docs.
+- Документация плагинов: [SDK.md](../SDK.md), [PLUGIN_ARCHITECTURE.md](../PLUGIN_ARCHITECTURE.md), [INDEX.md](../INDEX.md).
 
 ## Alternatives considered
 

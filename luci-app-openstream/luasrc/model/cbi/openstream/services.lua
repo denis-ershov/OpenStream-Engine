@@ -1,6 +1,7 @@
 local m, s, o
 
 local function apply_daemon()
+	luci.sys.call("/usr/libexec/openstream-compose-hostlist >/dev/null 2>&1")
 	luci.sys.call("/usr/libexec/openstream-uci2yaml >/dev/null 2>&1")
 	luci.sys.call(
 		"wget -qO- --post-data='' http://127.0.0.1:18080/api/reload >/dev/null 2>&1 " ..
@@ -8,10 +9,21 @@ local function apply_daemon()
 	)
 end
 
+local function add_hostlist(svc)
+	luci.sys.call(string.format(
+		"uci -q del_list openstream.proxy.hostlist_services='%s'; uci -q add_list openstream.proxy.hostlist_services='%s'; uci -q commit openstream",
+		svc, svc
+	))
+end
+
 m = Map("openstream", translate("Services & observability"),
 	translate("Enable additional HLS/DASH plugins and metrics endpoints."))
 
 m.on_after_commit = function()
+	local c = luci.model.uci.cursor()
+	if c:get("openstream", "kick", "enabled") == "1" then add_hostlist("kick") end
+	if c:get("openstream", "trovo", "enabled") == "1" then add_hostlist("trovo") end
+	if c:get("openstream", "youtube", "enabled") == "1" then add_hostlist("youtube") end
 	apply_daemon()
 end
 

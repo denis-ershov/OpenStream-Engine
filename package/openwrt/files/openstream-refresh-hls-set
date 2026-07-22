@@ -1,0 +1,66 @@
+#!/bin/sh
+# Resolve hostlist → nft set inet openstream openstream_hls
+# Usage: openstream-refresh-hls-set [/path/to/hostlist]
+
+HOSTLIST="${1:-/var/run/openstream/hostlist-effective.txt}"
+SET="inet openstream openstream_hls"
+
+if [ ! -f "$HOSTLIST" ]; then
+	# fallback shipped / compose
+	[ -x /usr/libexec/openstream-compose-hostlist ] && \
+		/usr/libexec/openstream-compose-hostlist >/dev/null 2>&1 || true
+fi
+[ -f "$HOSTLIST" ] || HOSTLIST="/usr/share/openstream/hostlist-hls.txt"
+[ -f "$HOSTLIST" ] || {
+	echo "missing $HOSTLIST" >&2
+	exit 1
+}
+
+command -v nft >/dev/null 2>&1 || {
+	echo "nft not found" >&2
+	exit 1
+}
+
+# Ensure table/set exist (idempotent-ish)
+nft list set $SET >/dev/null 2>&1 || nft -f /usr/share/openstream/nft/openstream.nft 2>/dev/null
+
+IPS=""
+while read -r line; do
+	line="${line%%#*}"
+	line="$(echo "$line" | tr -d ' \t\r')"
+	[ -n "$line" ] || continue
+	case "$line" in
+	*.*.*.*)
+		# rough IPv4
+		IPS="$IPS $line"
+		;;
+	*)
+		# busybox nslookup / resolveip
+		if command -v resolveip >/dev/null 2>&1; then
+			for ip in $(resolveip -4 "$line" 2>/dev/null); do
+				IPS="$IPS $ip"
+			done
+		else
+			for ip in $(nslookup "$line" 2>/dev/null | awk '/^Address: / { print $2 }' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'); do
+				IPS="$IPS $ip"
+			done
+		fi
+		;;
+	esac
+done <"$HOSTLIST"
+
+IPS="$(echo "$IPS" | tr ' ' '\n' | sort -u | tr '\n' ' ')"
+nft flush set $SET 2>/dev/null || true
+
+ELEM=""
+for ip in $IPS; do
+	[ -n "$ELEM" ] && ELEM="$ELEM, "
+	ELEM="$ELEM$ip"
+done
+
+[ -n "$ELEM" ] || {
+	echo "no IPs resolved from $HOSTLIST" >&2
+	exit 0
+}
+
+nft add element $SET "{ $ELEM }" && echo "openstream_hls: $ELEM"

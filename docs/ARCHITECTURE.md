@@ -2,75 +2,71 @@
 
 ## Цель
 
-Модульная система для OpenWrt, прозрачно обрабатывающая HLS- и DASH-манифесты. Логика сервисов инкапсулирована в плагинах; ядро универсально.
+Модульная система для OpenWrt: чистые HLS/DASH-манифесты на роутере. Логика сервисов — в плагинах; ядро универсально.
 
 ## Компоненты
 
 ```text
-                Internet
-                    │
-             nftables (opt-in, inet openstream)
-                    │
-                    ▼
-              streamproxyd
-      ┌─────────────┼─────────────┐
-      │             │             │
- Manifest      Segment       Cache
- (HLS/DASH)    Engine       Engine
-      │             │             │
-      └─────────────┼─────────────┘
-                    │
-              Plugin Manager
-                    │
-        ┌───────────┼───────────┐
-        │           │           │
-   plugin-twitch  plugin-hls  plugin-dash
-                  (Kick/Trovo)  (MPD)
+     Client (VLC / companion / browser)
+              │  GET /twitch/<channel>   (Playlist Edge, без CA)
+              ▼
+         streamproxyd
+              │  GQL + usher master
+              │  rewrite → /https://cdn/…media.m3u8
+              │  (strip только на media)
+              ▼
+         Client ← clean master
+              │  GET nested media через :18080
+              ▼
+         streamproxyd → fetch CDN media → strip → client
+              │
+              └── segments: client → CDN напрямую
+
+   Legacy (opt-in): nft divert + MITM + CA на клиентах
 ```
+
+Default: **Playlist Edge** — CA не нужен. MITM — advanced.  
+См. [adr/0002-playlist-edge.md](adr/0002-playlist-edge.md), [PROXY_ARCHITECTURE.md](PROXY_ARCHITECTURE.md), [COEXISTENCE.md](COEXISTENCE.md).
 
 | Компонент | Crate | Зона ответственности |
 |-----------|-------|----------------------|
-| streamproxyd | `streamproxyd` | Демон, lifecycle, конфиг, reload плагинов |
-| Proxy | `ose-proxy` | Explicit HTTP(S) proxy, MITM whitelist, `/api/reload` |
+| streamproxyd | `streamproxyd` | Демон, lifecycle, конфиг, `CryptoProvider` (rustls), reload |
+| Proxy | `ose-proxy` | Edge API, nested fetch, optional MITM/CONNECT |
 | HLS Manifest | `ose-manifest` | Парсинг/сериализация m3u8 |
-| DASH Manifest | `ose-dash` | Парсинг/сериализация MPD, фильтр Period/AdaptationSet |
+| DASH Manifest | `ose-dash` | Парсинг/сериализация MPD |
 | MediaFilter | `ose-media` | Общий контракт HLS/DASH |
-| Segment Engine | `ose-segment` | Классификация URL (HLS/CMAF); тело не трогаем |
-| Cache Engine | `ose-cache` | TTL-кэш; `CacheKey` = URL + etag/hash |
+| Segment Engine | `ose-segment` | Классификация URL; тело не трогаем |
+| Cache Engine | `ose-cache` | TTL-кэш; ключ = URL + etag/hash (+ `proxy_base` при rewrite) |
 | Ad Detector | `ose-detector` | Rules → Markers → Confidence (HLS) |
-| Plugin API | `ose-plugin` | Trait `Plugin` (HLS + `process_mpd`) |
-| Rules | `ose-rules` | YAML rulesets, host match, Kick/Trovo presets |
+| Plugin API | `ose-plugin` | Trait `Plugin` |
+| Rules | `ose-rules` | YAML rulesets |
 | Twitch | `ose-plugin-twitch` | Segment Stripping + master rewrite |
-| HLS generic | `ose-plugin-hls` | RulesHlsPlugin (Kick/Trovo/custom) |
+| HLS generic | `ose-plugin-hls` | Kick/Trovo/custom |
 | DASH | `ose-plugin-dash` | Strip ad Period/AdaptationSet |
+| Neighbors | `ose-neighbors` | Детект zapret/podkop/… для `/api/status` |
 | API | `ose-api` | `/api/status`, метрики |
-| Config | `ose-config` | YAML / UCI-совместимые настройки |
+| Config | `ose-config` | YAML / UCI |
 
-## Поток данных
+## Поток данных (Edge)
 
-1. Клиент запрашивает `.m3u8` / `.mpd` через explicit proxy (по умолчанию).
-2. Proxy загружает манифест с CDN (egress может идти через zapret/podkop).
-3. Plugin Manager выбирает плагин по `match_request` + `ManifestKind`.
-4. Плагин: parse → detect/filter → serialize.
-5. Клиенту отдаётся очищенный манифест; сегменты `.ts`/`.m4s` остаются на CDN (туннель/streaming без буферизации).
+1. Клиент → `GET http://LAN_IP:18080/twitch/<channel>` (не полагаться на `127.0.0.1` с другого устройства).
+2. Proxy: GQL `PlaybackAccessToken` + usher **master** m3u8.
+3. `proxy_base` = `proxy_public_url` **или** `http://{Host}` запроса (не loopback) → rewrite `#EXT-X-STREAM-INF` URI на nested `http://router:18080/https://…`.
+4. Плеер запрашивает nested media → Proxy fetch + **strip** → ответ; сегменты в media остаются absolute CDN.
+5. Egress к Twitch идёт через соседей (zapret/podkop/sing-box).
+
+Без шага 3 плеер ходит за media на CDN напрямую → `ads_found=0` при растущем `playlists_total` (считаются masters).
 
 ## Ключевые решения
 
-- **Язык: Rust** — предсказуемый RSS на OpenWrt рядом с zapret/podkop.
-- **Explicit proxy по умолчанию** — нулевой конфликт с DPI/PBR-стеком.
-- **Своя nft-таблица `inet openstream`** — чужие таблицы не трогаем.
-- **Плагины compile-time** — без динамической загрузки в v1–v2.
-- **Strip без backup-токена** — клиент ждёт следующий live-сегмент (freeze ≈ длина midroll).
+- **Rust** — предсказуемый RSS на OpenWrt.
+- **Edge-first без CA** — MITM только opt-in ([ADR 0002](adr/0002-playlist-edge.md)).
+- **Strip только на media playlist**; master — rewrite + учёт в метриках.
+- **rustls 0.23**: явный `ring` CryptoProvider при старте (иначе panic на первом TLS).
+- **Своя nft `inet openstream`** — только для legacy transparent.
+- **Плагины compile-time** ([ADR 0001](adr/0001-plugin-abi.md)).
+- **Strip без backup-токена** по умолчанию (seamless — Stage G).
 
 ## Версии
 
-Актуальная сверка с исходным планом, rust-pro ревью и детальный roadmap: **[ROADMAP.md](ROADMAP.md)**.
-
-- **v1.0 / 0.1.x** — каркас Twitch Segment Stripping + proxy + LuCI.
-- **v1.0-hardened** — passthrough сегментов, persistent CA, проводка UCI/режимов.
-- **v1.1 / 0.2.0** — универсальные правила, Kick/Trovo/generic HLS.
-- **v2.0 / 0.3.0** — DASH/MPD + MediaFilter + единый cache keyspace.
-- **v3.0 / 0.4.0** — SDK (static ABI), coalescing, OpenMetrics/events, YouTube scaffold.
-- **Далее** — полевая калибровка маркеров, feature-срез пакетов, seamless backup (opt-in).
-
-См. также [DASH_ARCHITECTURE.md](DASH_ARCHITECTURE.md), [HLS_ARCHITECTURE.md](HLS_ARCHITECTURE.md), [SDK.md](SDK.md), [PACKAGING.md](PACKAGING.md).
+См. **[ROADMAP.md](ROADMAP.md)**, **[INDEX.md](INDEX.md)**. Stage H — Playlist Edge. IPK: **0.4.2-14**.

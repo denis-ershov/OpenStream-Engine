@@ -7,7 +7,9 @@
 | `.ipk` | `opkg` | OpenWrt ≤ 24.10, многие форки |
 | `.apk` | `apk` | OpenWrt **25.12+** (не Android APK) |
 
-Связанные файлы: `package/openwrt/`, `luci-app-openstream/`, [PACKAGING.md](PACKAGING.md), [PERFORMANCE.md](PERFORMANCE.md).
+Связанные файлы: `package/openwrt/`, `luci-app-openstream/`, [PACKAGING.md](PACKAGING.md), [PERFORMANCE.md](PERFORMANCE.md), [INDEX.md](INDEX.md).
+
+Актуальный IPK release: **14** (`OPENSTREAM_RELEASE` / `PKG_RELEASE`).
 
 ---
 
@@ -236,8 +238,9 @@ cat /proc/$(pidof streamproxyd)/status | grep VmRSS
 ## 6. Установка и первый запуск
 
 ```bash
-# ipk
-opkg install openstream-engine luci-app-openstream
+# ipk (пример: 0.4.2-14)
+opkg install --force-reinstall ./openstream-engine_0.4.2-14_aarch64_cortex-a53.ipk
+opkg install ./luci-app-openstream_0.4.2-14_all.ipk
 
 # apk (25.12+)
 apk add openstream-engine luci-app-openstream
@@ -245,27 +248,70 @@ apk add openstream-engine luci-app-openstream
 /etc/init.d/streamproxyd enable
 /etc/init.d/streamproxyd start
 
-# API
 wget -qO- http://127.0.0.1:18080/api/status
 ```
 
-LuCI: **Services → OpenStream**.  
-Клиенты: HTTP(S) proxy `http://<router-ip>:18080`.  
-HTTPS MITM: установить CA с роутера на устройства (см. [PROXY_ARCHITECTURE.md](PROXY_ARCHITECTURE.md)).
+LuCI: **Services → OpenStream**.
 
-Сосуществование с zapret/podkop: [COEXISTENCE.md](COEXISTENCE.md) — режим **explicit** по умолчанию.
+**Default = Playlist Edge (без CA):**
+
+1. Задайте **Public Edge URL** = `http://<LAN_IP>:18080` (например `http://192.168.8.1:18080`).
+2. VLC / mpv: `http://<LAN_IP>:18080/twitch/<channel>`.
+3. В master должны быть nested URL `http://LAN:18080/https://…` — иначе strip media не сработает.
+4. Проверка: [COEXISTENCE.md](COEXISTENCE.md), [PERFORMANCE.md](PERFORMANCE.md).
+
+Legacy MITM (`mode=transparent`): HTTP proxy не нужен; CA с роутера на клиенты; узкий hostlist.  
+Соседи (zapret/podkop): [COEXISTENCE.md](COEXISTENCE.md).
+
+Оглавление документации: [INDEX.md](INDEX.md).
 
 ---
 
-## 7. Скрипт host-сборки A53
+## Формат `.ipk` (OpenWrt 24.10 / opkg)
 
-```bash
-./scripts/build-a53.sh              # full features
-./scripts/build-a53.sh --slim       # slim-twitch
-./scripts/build-a53.sh --copy-pkg   # + скопировать в package/openwrt/streamproxyd
+Официальный `scripts/ipkg-build` (**не** Debian `ar`):
+
+```text
+.ipk = gzip( tar( ./debian-binary, ./data.tar.gz, ./control.tar.gz ) )
 ```
 
-Дальше — сборка пакета в SDK (§3). Скрипт **не** создаёт `.ipk`/`.apk` сам: формат и ABI зависят от ветки OpenWrt.
+- `data.tar.gz` / `control.tar.gz`: `tar --format=gnu`
+- каталог пакета: файлы + подкаталог `CONTROL/` (`control`, `conffiles`, `postinst`, `prerm`)
+- проверка: `file *.ipk` → **`gzip compressed data`**, не `Debian binary package`
+
+У нас: vendored `scripts/ipkg-build` + `scripts/pack-ipk-a53.sh`.
+
+> Release `-1`/`-2` были в формате `ar` → LuCI/opkg 24.x: `Malformed package file`. Нужен **`-3`+**.  
+> **`Size:` в CONTROL** → `Checksum or size mismatch` (нужен **-6+**, Size только в `Packages`).  
+> **LuCI Size/Description = `-`** после локальной установки: opkg `status` не хранит Description; LuCI берёт поля из available lists. Release **-7+** кладёт `Packages.gz` в пакет и пишет список через `openstream-refresh-opkg-list`.
+
+
+```bash
+./scripts/build-a53.sh              # full features (нужен zig / zigbuild)
+./scripts/build-a53.sh --slim
+./scripts/build-a53.sh --copy-pkg   # → package/openwrt/streamproxyd
+
+# Упаковка .ipk без SDK (OpenWrt ≤24.10 / opkg):
+SKIP_BUILD=1 bash scripts/pack-ipk-a53.sh
+bash scripts/pack-ipk-a53.sh --slim
+
+# Артефакты: dist/openwrt-24.10-a53/{bin,ipk}/
+```
+
+На Windows host удобнее Docker `messense/cargo-zigbuild` (см. `dist/openwrt-24.10-a53/README.md`).  
+Скрипт **не** создаёт `.apk`: для OpenWrt 25.12+ используйте SDK (§3.4).
+
+### Готовые артефакты 0.4.2
+
+После сборки (`scripts/pack-ipk-a53.sh`):
+
+| Пакет | Arch |
+|-------|------|
+| `openstream-engine_0.4.2-N_aarch64_cortex-a53.ipk` | aarch64_cortex-a53 |
+| `luci-app-openstream_0.4.2-N_all.ipk` | all (EN) |
+| `luci-i18n-openstream-ru_0.4.2-N_all.ipk` | all (RU `.lmo`) |
+
+В OpenWrt SDK `luci.mk` сам собирает `luci-i18n-openstream-ru` из `po/ru/`.
 
 ---
 
@@ -290,6 +336,12 @@ HTTPS MITM: установить CA с роутера на устройства 
 | Пакет без `streamproxyd` / пустой `/usr/bin` | Не положили prebuilt до `Compile` |
 | LuCI есть, демон нет | Не установлен `openstream-engine` |
 | `Exec format error` | Собран не musl / не aarch64 (например glibc host) |
+| `Permission denied` / exit **126** | Нет `+x` на `/usr/bin/streamproxyd` (pack с Windows); r12+ postinst; `chmod 0755` |
+| Panic `CryptoProvider` / crash loop на `/twitch/` | Бинарь &lt; r13; нужен rustls `ring::install_default` |
+| `playlists&gt;0`, `ads_found=0`, нет nested в master | Нет rewrite — задайте Public Edge URL / откройте с LAN Host (r14+) |
+| `Checksum or size mismatch` | В CONTROL не должно быть `Size:` (только в `Packages`); нужен release ≥6 |
+| LuCI Installed: Size/Description = `-` | Локальный `.ipk` не в opkg lists; нужен release ≥7 + `/usr/libexec/openstream-refresh-opkg-list` |
+| `check_data_file_clashes` Packages.gz | meta только в engine (r8+), не дублировать в luci-app |
 
 ---
 

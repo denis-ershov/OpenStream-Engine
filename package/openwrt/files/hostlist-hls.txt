@@ -1,0 +1,7 @@
+# Legacy single-file hostlist (используйте compose + hostlists/*.txt).
+# По умолчанию эффективный список: /var/run/openstream/hostlist-effective.txt
+# См. openstream-compose-hostlist.
+
+usher.ttvnw.net
+playlist.ttvnw.net
+vod-secure.twitch.tv

@@ -1,12 +1,20 @@
 listen: "0.0.0.0:18080"
-# Для rewrite master playlist укажите LAN-адрес роутера:
-# proxy_public_url: "http://192.168.1.1:18080"
-mode: explicit
+# Playlist Edge (без CA). MITM: mode=transparent + mitm=true + CA на клиентах.
+mode: edge
 cache_ttl_secs: 2
 max_manifest_bytes: 2097152
 nft_file: "/usr/share/openstream/nft/openstream.nft"
-mitm: true
+hostlist_file: "/var/run/openstream/hostlist-effective.txt"
+hostlist_refresh_secs: 300
+hostlist_services:
+  - twitch
+custom_domains: []
+hostlist_remote: false
+hostlist_remote_base: "https://raw.githubusercontent.com/denis-ershov/OpenStream-Engine/main/package/openwrt/files/hostlists"
+hostlist_remote_interval_hours: 12
+mitm: false
 prefetch_policy: strip_when_ads_removed
+# proxy_public_url: "http://192.168.1.1:18080"
 
 twitch:
   enabled: true
@@ -15,7 +23,6 @@ twitch:
   detect_regex: false
   max_wait_secs: 30
   debug: false
-  # Opt-in scaffold (не включает GraphQL/token; default strip):
   backup_seamless: false
 
 kick:
@@ -39,8 +46,6 @@ observability:
   events: true
   event_capacity: 128
 
-# rules_file: "rules.example.yaml"
-
 tls:
-  ca_cert: null
-  ca_key: null
+  ca_cert: "/etc/openstream/ca.crt"
+  ca_key: "/etc/openstream/ca.key"
