@@ -2,88 +2,94 @@
 
 Актуальная база: **0.4.2** (IPK **14**). Оглавление: [INDEX.md](INDEX.md).
 
-Связанные документы: [ARCHITECTURE.md](ARCHITECTURE.md), [PERFORMANCE.md](PERFORMANCE.md), [PLUGIN_ARCHITECTURE.md](PLUGIN_ARCHITECTURE.md), [PROXY_ARCHITECTURE.md](PROXY_ARCHITECTURE.md), [DASH_ARCHITECTURE.md](DASH_ARCHITECTURE.md), [COEXISTENCE.md](COEXISTENCE.md), [SDK.md](SDK.md), [adr/0001-plugin-abi.md](adr/0001-plugin-abi.md), [adr/0002-playlist-edge.md](adr/0002-playlist-edge.md).
+Связанные документы: [ARCHITECTURE.md](ARCHITECTURE.md), [PERFORMANCE.md](PERFORMANCE.md), [PLUGIN_ARCHITECTURE.md](PLUGIN_ARCHITECTURE.md), [PROXY_ARCHITECTURE.md](PROXY_ARCHITECTURE.md), [DASH_ARCHITECTURE.md](DASH_ARCHITECTURE.md), [COEXISTENCE.md](COEXISTENCE.md), [SDK.md](SDK.md), [adr/0001-plugin-abi.md](adr/0001-plugin-abi.md), [adr/0002-playlist-edge.md](adr/0002-playlist-edge.md), [adr/0003-goal1-router-only-tls.md](adr/0003-goal1-router-only-tls.md).
 
 ## Легенда статусов
 
 - `[x]` выполнено и уже отражено в коде.
 - `[~]` частично выполнено; нужен follow-up или проверка на реальной БД / живом CDN / SoC.
 - `[ ]` не сделано.
-- `[blocked]` заблокировано внешним окружением или данными.
-- `[legacy]` оставлено как opt-in / advanced, не основной путь продукта.
+- `[blocked]` заблокировано внешним окружением, данными или **криптографией (TLS)**.
+- `[legacy]` / `[lab]` — opt-in / прототип; **не** закрытие Цели №1.
 
 ---
 
-## Концепция продукта (с 0.4.x → смена фокуса)
+## Цель №1 (строго) — `[blocked]`
 
-### Жёсткий факт TLS
+См. **[ADR 0003](adr/0003-goal1-router-only-tls.md)**.
 
-**Нельзя** прозрачно читать/менять HTTPS (m3u8 Twitch) на роутере без того, чтобы клиент доверял подписи MITM-CA. Это не ограничение OpenWrt — так устроен TLS (mitmproxy/SSLsplit подтверждают то же). «Задействовать все возможности роутера» **не отменяет** этот закон: nft/dnsmasq/TPROXY ловят пакеты, но не расшифровывают их.
+| Требование | |
+|------------|--|
+| Логика на роутере | да |
+| Все клиенты (ТВ / ПК / телефон / приставки; app / browser) | да |
+| Ноль действий на клиенте (ни CA, ни URL, ни companion, ни VPN) | да |
+| Компромиссы по клиенту | **не принимаются** |
 
-Поэтому путь **transparent MITM + установка CA на каждый телефон/ТВ/ПК** снимается с роли default UX: мало кто ставит CA → продукт «не работает».
+**TLS-инвариант:** без trust anchor на устройстве роутер не читает/не меняет HTTPS m3u8. Ядро (`ose-proxy`, nft, …) **можно ломать** ради цели — это **не** обходит проверку сертификата на клиенте.
 
-### Целевая модель: Playlist Edge на роутере (без CA)
-
-Роутер — **единственная точка**, которая ходит за манифестом к Twitch (через egress соседей: zapret/podkop/sing-box), делает strip / opt-in seamless, отдаёт клиенту **уже чистый m3u8**.  
-**Сегменты `.ts` / `.m4s` клиент качает с CDN напрямую** — роутер их не проксирует → минимум задержки и RAM (как у TTV LOL PRO / playlist-proxy: proxy только playlist endpoints, не «весь стрим»).
+**Следствие:** продукт **не обещает** чистый Twitch во всех стоковых клиентах при нулевых действиях на устройстве. Честного пути сейчас нет.
 
 ```mermaid
-flowchart LR
-  client[Client player]
-  ose[OpenStream on router]
-  cdn[Twitch CDN]
-  client -->|"1) playlist URL → router HTTP API"| ose
-  ose -->|"2) GQL/usher + strip"| cdn
-  ose -->|"3) clean m3u8"| client
-  client -->|"4) segments direct"| cdn
+flowchart TB
+  goal[Goal1]
+  core[Core_rewrite_allowed]
+  tls[TLS_on_client]
+  goal --> core
+  goal --> tls
+  core -->|не даёт plaintext| blocked[Goal1_blocked]
+  tls --> blocked
 ```
 
-Как клиент узнаёт URL плейлиста **без MITM**:
-
-| Канал | CA | Задержка медиа | Охват |
-|-------|----|----------------|-------|
-| **A. Companion** (расширение / userscript): usher/playlist → `http(s)://router:18080/...` | Нет | Сегменты с CDN | Браузер |
-| **B. Player URL** (VLC / mpv / streamlink): `http://router/twitch/<channel>` | Нет | Сегменты с CDN | Десктоп / часть TV |
-| **C. MITM + CA** (nft divert HLS) | Да, один раз на устройство | Strip на пути | Нативные приложения без hook |
-
-**Default продукта:** A + B (Playlist Edge). **C — advanced/legacy**, не требование «чтобы Twitch открылся».
-
-### Что роутер делает «на максимум» (без CA)
-
-- Hostlist / dnsmasq nftset — для **legacy divert** и для списка доменов companion (не для подмены TLS без CA).
-- Fetch манифеста на egress через уже поднятый DPI/VPN-стек соседей.
-- GQL `PlaybackAccessToken` / playerType на роутере (бывший Stage G) → **ядро no-CA**, не «опциональный vaft».
-- Segment Stripping на ответе Edge; медиа не буферизуем.
-- Per-service hostlists, custom domains, remote update списков с GitHub.
-
-### Что сознательно не обещаем
-
-- Чистый Twitch **в стоковом приложении** без companion и без CA — физически нет plaintext m3u8 на роутере.
-- Blanket divert всего `*.twitch.tv` — ломает сайт (уже проявилось в поле).
-
 ---
 
-## Принципы (актуальные)
+## Lab-код (не Цель №1)
 
-- Клиентский **Twitch binary / Web Worker не патчим** в ядре; допустим **тонкий companion** (redirect playlist URL на роутер) — это не MITM и не CA.
-- Ядро универсально; сервисная логика только в плагинах.
-- Сосуществование с zapret / podkop / sing-box: своя nft-таблица; DNS роутера не ломаем; DoH на клиенте или роутере учтён в [COEXISTENCE.md](COEXISTENCE.md).
-- Сегменты медиа не держим в RAM; Edge не проксирует media plane.
-- Twitch default на Edge = **Segment Stripping**; seamless (backup encodings) — opt-in на том же Edge.
-- **MITM + CA — не default UX**; режим сохраняется для advanced.
+Инженерный прототип **не** выдавать за Goal №1:
+
+| Lab path | Документ | Клиентское действие |
+|----------|----------|---------------------|
+| Playlist Edge | [ADR 0002](adr/0002-playlist-edge.md) | Другой URL (VLC / companion) |
+| MITM + CA | PROXY transparent | CA в trust store |
+| Companion H7 | Stage H | Расширение / userscript |
+
+### Жёсткий факт TLS (кратко)
+
+nft/dnsmasq/TPROXY ловят пакеты, не plaintext. Passiveive decrypt после TLS 1.3/PFS мёртв. Active MITM без CA на клиенте → handshake fail.
+
+### Lab: Playlist Edge (код 0.4.x)
+
+Роутер ходит за манифестом (GQL/usher), strip, отдаёт clean m3u8; сегменты с CDN. Клиент **сам** открывает `http://router:18080/twitch/<channel>` (или companion). Это **не** Goal №1.
 
 ```mermaid
 flowchart LR
-  done[0.4.x platform]
-  e[Stage E field]
-  h[Stage H Playlist Edge no-CA]
-  f[Stage F production plugins]
-  g[Stage G seamless on Edge]
-  done --> e
-  done --> h
-  h --> f
-  h --> g
-  e --> f
+  client[Client_player]
+  ose[OpenStream]
+  cdn[Twitch_CDN]
+  client -->|"playlist URL на роутер"| ose
+  ose -->|"GQL/usher + strip"| cdn
+  ose -->|"clean m3u8"| client
+  client -->|"segments"| cdn
+```
+
+---
+
+## Принципы
+
+- **Цель №1** выше lab UX; компромиссы Goal №1 не принимаются ([ADR 0003](adr/0003-goal1-router-only-tls.md)).
+- **Ядро можно менять** целиком, если появится Goal1-совместимый механизм; до тех пор — не рефакторить «вслепую».
+- Ядро универсально; сервисная логика в плагинах.
+- Сосуществование с zapret / podkop / sing-box: [COEXISTENCE.md](COEXISTENCE.md).
+- Сегменты медиа не в RAM (lab Edge).
+- Lab Twitch = Segment Stripping; seamless — Stage G (lab).
+- MITM + CA / Edge / companion — **не** решение Goal №1.
+
+```mermaid
+flowchart LR
+  goal1[Goal1_blocked]
+  lab[Lab_Edge_MITM]
+  done[0.4.x_platform]
+  done --> lab
+  goal1 -.->|ожидает честный путь| future[Future_core_redesign]
 ```
 
 ---
@@ -158,31 +164,32 @@ flowchart LR
 | E6 | Kick / Trovo / YouTube маркеры | `[ ]` · `[blocked]` |
 | E7 | DASH ad Period | `[ ]` · `[blocked]` |
 | E8 | Coexist zapret/podkop + hostlists (без требования CA) | `[~]` · полевой Edge smoke TBD |
-| E9 | MITM CA на Android/iOS/TV | `[legacy]` · не блокер релиза Edge |
+| E9 | MITM CA на Android/iOS/TV | `[lab]` · не Goal №1 |
 | E10 | Документация ipk/apk | `[~]` |
 
 **Выход Stage E:** PERFORMANCE + fixtures; smoke без обязательного CA.
 
 ---
 
-## Stage H — Playlist Edge без CA (новый главный фокус)
+## Stage H — Playlist Edge `[lab]` (не Цель №1)
 
-Цель UX: **Twitch открывается как обычно; реклама уходит; CA не ставим; сегменты с CDN.**
+Инженерный прототип: strip без CA **только** если клиент сам ходит на Edge URL / companion. **Не** закрывает Goal №1 ([ADR 0003](adr/0003-goal1-router-only-tls.md)).
 
 | ID | Задача | Статус |
 |----|--------|--------|
-| H0 | ADR: Playlist Edge vs MITM; отказ от CA как default; companion vs player URL | `[x]` [0002](adr/0002-playlist-edge.md) |
-| H1 | API Edge: `GET /twitch/<channel>` / nested usher proxy → clean master/media m3u8; сегменты absolute на CDN | `[x]` channel + nested · `[~]` companion polish |
-| H2 | Роутер сам резолвит PlaybackAccessToken (GQL) на egress; кэш per channel | `[~]` GQL fetch есть · кэш TBD |
-| H3 | Strip на Edge-ответе (существующий Twitch plugin); freeze UX в LuCI | `[x]` strip на media via rewrite (r14) · `[~]` freeze UX |
-| H4 | Default `mode`: Edge / `off` MITM; transparent MITM только opt-in + предупреждение CA | `[x]` |
-| H5 | Срочный фикс: сузить divert/dnsmasq/MITM whitelist (не www/gql/`*.twitch.tv`) — сайт снова открывается | `[x]` |
-| H6 | Per-service hostlists + custom domains + remote GitHub 12ч (LuCI multi-select; auto-add при enable плагина) | `[x]` |
-| H7 | Companion spec (браузер): redirect только playlist/usher/gql-token на роутер; media direct | `[ ]` |
-| H8 | Player/deep-link URL в LuCI Status («Открыть в VLC») | `[~]` URL hint в Status |
-| H9 | Документы: ARCHITECTURE / PROXY / COEXISTENCE / PACKAGING под Edge-first | `[x]` · sync r14 [INDEX.md](INDEX.md) |
+| H0 | ADR Edge vs MITM | `[x]` [0002](adr/0002-playlist-edge.md) · **не Goal №1** |
+| H1 | API Edge + nested | `[x]` · `[lab]` |
+| H2 | GQL token на роутере; кэш | `[~]` |
+| H3 | Strip media via rewrite | `[x]` r14 · `[lab]` |
+| H4 | Default `mode=edge` в пакете (lab default, не Goal №1) | `[x]` |
+| H5 | Сузить divert (сайт жив) | `[x]` |
+| H6 | Hostlists multi-service / remote | `[x]` |
+| H7 | Companion browser | `[ ]` · **не** спринт «решить Goal №1» |
+| H8 | VLC deep-link в LuCI | `[~]` |
+| H9 | Docs Edge lab | `[x]` |
+| H10 | ADR 0003 Goal №1 + TLS blocked | `[x]` |
 
-**Выход Stage H:** полевой прогон без CA: browser+companion или VLC → `playlists_total>0`, реклама strip, сайт Twitch жив.
+**Выход Stage H (lab):** VLC/companion smoke; **не** «все стоковые клиенты без касания устройства».
 
 ---
 
@@ -218,28 +225,26 @@ flowchart LR
 
 ---
 
-## Вне скоупа (пока)
+## Вне скоупа / отвергнуто для Goal №1
 
 | Тема | Статус |
 |------|--------|
-| Transparent HTTPS inspect **без** CA | невозможно по TLS — не цель |
-| Blanket divert всего 443 / всего `*.twitch.tv` | намеренно нет (ломает сайт / соседей) |
+| Transparent HTTPS inspect **без** CA / без клиента | **невозможно (TLS)** — Goal №1 blocked |
+| Edge / companion / MITM+CA как «закрытие Goal №1» | отвергнуто ([ADR 0003](adr/0003-goal1-router-only-tls.md)) |
+| Blanket divert `*.twitch.tv` | нет (ломает сайт) |
 | Динамические `.so` / WASM plugins | отложено ADR 0001 |
-| Патч Twitch app / Worker inject в ядре | вне модели; companion — отдельный тонкий клиент |
+| Патч Twitch app / Worker inject | вне модели |
 | Буферизация медиа в RAM | запрещено |
-| Twitch Turbo | вне продукта |
+| Twitch Turbo / эксплойты TLS / публичный CA abuse | вне продукта |
 
 ---
 
 ## Ближайший спринт
 
-1. `[x]` **H5** — сузить divert (сайт Twitch жив).
-2. `[x]` **H0 / H4 / H9** — ADR Edge; default `mode=edge`; docs.
-3. `[x]` **H1 / H6** — Edge API + hostlists multi-service / custom / GitHub.
-4. `[x]` **r13/r14** — rustls CryptoProvider; master rewrite / Host → nested (strip path).
-5. `[ ]` **H7** — companion browser extension.
-6. `[~]` **H2/H8** — кэш token, VLC deep-link polish; полевой midroll `ads_found≥1`.
-7. `[ ]` **E1–E3** под Edge-нагрузкой; seamless (G) после стабильного H2.
+1. `[x]` **ADR 0003** — Цель №1 + TLS-инвариант; docs sync.
+2. `[ ]` Мониторинг: появится ли **честный** Goal1-совместимый механизм (пока неизвестен).
+3. `[ ]` Рефактор ядра — **только** после п.2; до тех пор lab Edge не расширять как продукт Goal №1.
+4. `[ ]` **Не** делать H7 companion как «решение стены Goal №1».
+5. `[lab]` Поддержка lab Edge (r14+) для разработчиков/VLC — без обещания всем клиентам.
 
-Актуальный пакет: **0.4.2-14** (`dist/openwrt-24.10-a53/ipk/`).  
-Проверка: [COEXISTENCE.md](COEXISTENCE.md), [PERFORMANCE.md](PERFORMANCE.md).
+Пакет lab: **0.4.2-14**. Goal №1: **blocked**.

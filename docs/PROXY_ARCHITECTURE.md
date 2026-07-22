@@ -1,25 +1,31 @@
 # Proxy Architecture
 
-## Место в стеке роутера
+## Цель №1
 
-OpenStream — **Playlist Edge** на роутере (не замена zapret/podkop):
+Читать/менять HTTPS m3u8 на роутере **без** действий на клиенте — **невозможно (TLS)**.  
+См. [ADR 0003](adr/0003-goal1-router-only-tls.md). Ядро можно менять — TLS на устройстве не обходится.
+
+Ниже — **lab** режимы текущего пакета (**не** Goal №1).
+
+## Lab: место в стеке
+
+OpenStream lab Edge (не замена zapret/podkop):
 
 ```text
-клиент → GET :18080/twitch/<channel>
+клиент → GET :18080/twitch/<channel>   ← клиент сам открыл URL
   → GQL + usher master
-  → rewrite variants → http://router:18080/https://cdn/…media.m3u8
-  → клиент тянет media через nested
-  → strip на media; сегменты → CDN напрямую
+  → rewrite → http://router:18080/https://cdn/…media.m3u8
+  → strip на media; сегменты → CDN
 ```
 
-CA **не** нужен. Legacy MITM: [COEXISTENCE.md](COEXISTENCE.md), [adr/0002-playlist-edge.md](adr/0002-playlist-edge.md).
+Lab MITM: [COEXISTENCE.md](COEXISTENCE.md), [adr/0002-playlist-edge.md](adr/0002-playlist-edge.md).
 
-## Режимы (UCI / конфиг)
+## Режимы (UCI / конфиг) — lab
 
-| Mode | Описание | По умолчанию |
-|------|----------|--------------|
-| `edge` | Playlist Edge API + nested `/https://…` | **Да** |
-| `transparent` | nft divert + SNI MITM (нужен CA) | Legacy |
+| Mode | Описание | Примечание |
+|------|----------|------------|
+| `edge` | Playlist Edge API + nested | Lab default пакета; **не** Goal №1 |
+| `transparent` | nft divert + SNI MITM (нужен CA) | Lab / legacy |
 | `redirect_whitelist` | Алиас `transparent` | — |
 | `explicit` | HTTP CONNECT proxy | Отладка |
 | `off` | Только `/api/*` | Нет |

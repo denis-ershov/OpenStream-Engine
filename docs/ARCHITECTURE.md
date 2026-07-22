@@ -1,14 +1,19 @@
 # Архитектура OpenStream Engine
 
-## Цель
+## Цель №1 vs lab
 
-Модульная система для OpenWrt: чистые HLS/DASH-манифесты на роутере. Логика сервисов — в плагинах; ядро универсально.
+**Цель №1** (строго): вся логика на роутере; все клиенты; **ноль** действий на устройстве.  
+Статус: **`[blocked]` TLS** — [ADR 0003](adr/0003-goal1-router-only-tls.md).
 
-## Компоненты
+Ядро (`ose-proxy`, `streamproxyd`, nft, ABI) **можно переписывать** ради Goal №1; смена ядра **не** обходит проверку сертификата на клиенте.
+
+Ниже — **lab**-архитектура текущего пакета (Edge/MITM). Она **не** обещает Goal №1.
+
+## Lab-компоненты
 
 ```text
-     Client (VLC / companion / browser)
-              │  GET /twitch/<channel>   (Playlist Edge, без CA)
+     Client (VLC / companion)     ← действие на клиенте = не Goal №1
+              │  GET /twitch/<channel>
               ▼
          streamproxyd
               │  GQL + usher master
@@ -22,10 +27,9 @@
               │
               └── segments: client → CDN напрямую
 
-   Legacy (opt-in): nft divert + MITM + CA на клиентах
+   Lab MITM (opt-in): nft divert + CA на клиентах  ← тоже не Goal №1
 ```
 
-Default: **Playlist Edge** — CA не нужен. MITM — advanced.  
 См. [adr/0002-playlist-edge.md](adr/0002-playlist-edge.md), [PROXY_ARCHITECTURE.md](PROXY_ARCHITECTURE.md), [COEXISTENCE.md](COEXISTENCE.md).
 
 | Компонент | Crate | Зона ответственности |
@@ -36,37 +40,35 @@ Default: **Playlist Edge** — CA не нужен. MITM — advanced.
 | DASH Manifest | `ose-dash` | Парсинг/сериализация MPD |
 | MediaFilter | `ose-media` | Общий контракт HLS/DASH |
 | Segment Engine | `ose-segment` | Классификация URL; тело не трогаем |
-| Cache Engine | `ose-cache` | TTL-кэш; ключ = URL + etag/hash (+ `proxy_base` при rewrite) |
-| Ad Detector | `ose-detector` | Rules → Markers → Confidence (HLS) |
+| Cache Engine | `ose-cache` | TTL-кэш; ключ = URL + etag/hash (+ `proxy_base`) |
+| Ad Detector | `ose-detector` | Rules → Markers (HLS) |
 | Plugin API | `ose-plugin` | Trait `Plugin` |
 | Rules | `ose-rules` | YAML rulesets |
 | Twitch | `ose-plugin-twitch` | Segment Stripping + master rewrite |
 | HLS generic | `ose-plugin-hls` | Kick/Trovo/custom |
 | DASH | `ose-plugin-dash` | Strip ad Period/AdaptationSet |
-| Neighbors | `ose-neighbors` | Детект zapret/podkop/… для `/api/status` |
+| Neighbors | `ose-neighbors` | Детект zapret/podkop/… |
 | API | `ose-api` | `/api/status`, метрики |
 | Config | `ose-config` | YAML / UCI |
 
-## Поток данных (Edge)
+## Поток данных (lab Edge)
 
-1. Клиент → `GET http://LAN_IP:18080/twitch/<channel>` (не полагаться на `127.0.0.1` с другого устройства).
-2. Proxy: GQL `PlaybackAccessToken` + usher **master** m3u8.
-3. `proxy_base` = `proxy_public_url` **или** `http://{Host}` запроса (не loopback) → rewrite `#EXT-X-STREAM-INF` URI на nested `http://router:18080/https://…`.
-4. Плеер запрашивает nested media → Proxy fetch + **strip** → ответ; сегменты в media остаются absolute CDN.
-5. Egress к Twitch идёт через соседей (zapret/podkop/sing-box).
+1. Клиент **сам** → `GET http://LAN_IP:18080/twitch/<channel>`.
+2. GQL + usher **master**; `proxy_base` → rewrite на nested.
+3. Media через nested → strip; сегменты absolute CDN.
+4. Egress через соседей (zapret/podkop/…).
 
-Без шага 3 плеер ходит за media на CDN напрямую → `ads_found=0` при растущем `playlists_total` (считаются masters).
+Без шага 1 (клиентский URL) стоковое приложение Goal №1 не покрывается.
 
 ## Ключевые решения
 
+- **Цель №1 + TLS blocked** — [ADR 0003](adr/0003-goal1-router-only-tls.md).
 - **Rust** — предсказуемый RSS на OpenWrt.
-- **Edge-first без CA** — MITM только opt-in ([ADR 0002](adr/0002-playlist-edge.md)).
-- **Strip только на media playlist**; master — rewrite + учёт в метриках.
-- **rustls 0.23**: явный `ring` CryptoProvider при старте (иначе panic на первом TLS).
-- **Своя nft `inet openstream`** — только для legacy transparent.
-- **Плагины compile-time** ([ADR 0001](adr/0001-plugin-abi.md)).
-- **Strip без backup-токена** по умолчанию (seamless — Stage G).
+- **Lab Edge** — [ADR 0002](adr/0002-playlist-edge.md); не Goal №1.
+- **Strip только на media**; master — rewrite.
+- **rustls 0.23**: явный `ring` CryptoProvider.
+- **Плагины compile-time** — [ADR 0001](adr/0001-plugin-abi.md).
 
 ## Версии
 
-См. **[ROADMAP.md](ROADMAP.md)**, **[INDEX.md](INDEX.md)**. Stage H — Playlist Edge. IPK: **0.4.2-14**.
+[ROADMAP.md](ROADMAP.md), [INDEX.md](INDEX.md). IPK lab: **0.4.2-14**. Goal №1: blocked.

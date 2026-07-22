@@ -2,52 +2,39 @@
 
 Модульная платформа обработки HLS/DASH для OpenWrt. Плагины: Twitch, Kick/Trovo/YouTube (rules), DASH. SDK — статическая линковка (ADR 0001).
 
-**Язык:** Rust · **Default:** Playlist Edge (без CA) · **IPK:** 0.4.2-14 · **Совместимость:** zapret / ByeDPI / podkop·netshift·forkop / SSClash / …
+**Цель №1:** только роутер · все клиенты · ноль действий на устройстве → **`[blocked]` TLS** ([ADR 0003](docs/adr/0003-goal1-router-only-tls.md)).  
+Ядро можно менять ради цели — TLS на клиенте это не обходит.
 
-Twitch: Segment Stripping из media `m3u8` (freeze ≈ midroll). Сегменты — с CDN напрямую.
+**Lab (не Goal №1):** Playlist Edge · IPK 0.4.2-14 · zapret / podkop / …
 
-## Возможности
+## Lab-возможности (требуют действия клиента)
 
-- **Playlist Edge:** `GET /twitch/<channel>` на роутере — чистый m3u8 без установки CA.
-- Master rewrite → nested media (Public Edge URL / LAN Host) — иначе strip не видит midroll.
-- Optional transparent MITM (nft + CA) для нативных приложений.
-- HLS/DASH strip; hostlists per-service + custom + remote GitHub.
-- Observability: `GET /metrics`, `GET /api/events`.
-- OpenWrt package + LuCI.
+- Edge: `GET /twitch/<channel>` — VLC/companion URL (не стоковое приложение «как есть»).
+- Optional MITM + CA.
+- HLS/DASH strip; hostlists; `/metrics`, `/api/events`; LuCI.
 
 ## Ограничения
 
-- При рекламе плеер **ждёт** следующий live-сегмент (freeze ≈ midroll). Seamless — opt-in (Stage G).
-- Стоковое Twitch-приложение без companion и без CA не получит strip.
-- Не обход DPI — доступ через zapret/podkop. См. [docs/COEXISTENCE.md](docs/COEXISTENCE.md), [docs/adr/0002-playlist-edge.md](docs/adr/0002-playlist-edge.md).
+- **Цель №1 не достигнута** — честного пути без клиента нет ([ADR 0003](docs/adr/0003-goal1-router-only-tls.md)).
+- Lab: при рекламе freeze ≈ midroll; seamless — Stage G.
+- Не обход DPI. [COEXISTENCE.md](docs/COEXISTENCE.md).
 
-## Быстрый старт (разработка)
+## Быстрый старт (lab / разработка)
 
 ```bash
 cargo build --release -p streamproxyd
 ./target/release/streamproxyd --config config.example.yaml
-# Edge (для rewrite задайте proxy_public_url в конфиге):
 curl -s "http://127.0.0.1:18080/twitch/CHANNEL" | head
 ```
 
-API: `/api/status` · Events: `/api/events` · Metrics: `/metrics` · Edge: `/twitch/<channel>`
+## OpenWrt
 
-## OpenWrt (Cortex-A53 → ipk)
-
-Каталог [`dist/openwrt-24.10-a53/`](dist/openwrt-24.10-a53/).
-
-```bash
-./scripts/build-a53.sh --copy-pkg
-FORCE_BUILD=1 bash scripts/pack-ipk-a53.sh   # или SKIP_BUILD=1 если бинарь уже есть
-```
-
-Подробно: [Сборка OpenWrt / LuCI](docs/BUILD_OPENWRT.md).
+[`dist/openwrt-24.10-a53/`](dist/openwrt-24.10-a53/) · [BUILD_OPENWRT.md](docs/BUILD_OPENWRT.md)
 
 ## Документация
 
-- [Оглавление docs](docs/INDEX.md) · [Архитектура](docs/ARCHITECTURE.md) · [Roadmap](docs/ROADMAP.md)
-- [Proxy](docs/PROXY_ARCHITECTURE.md) · [Совместимость](docs/COEXISTENCE.md) · [ADR 0002 Edge](docs/adr/0002-playlist-edge.md)
-- [Changelog](docs/CHANGELOG.md) · [Performance](docs/PERFORMANCE.md)
+- [Оглавление](docs/INDEX.md) · [Цель №1 / ADR 0003](docs/adr/0003-goal1-router-only-tls.md) · [Roadmap](docs/ROADMAP.md)
+- [Архитектура](docs/ARCHITECTURE.md) · [Proxy](docs/PROXY_ARCHITECTURE.md) · [Changelog](docs/CHANGELOG.md)
 
 ## Лицензия
 

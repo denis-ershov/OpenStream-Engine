@@ -1,14 +1,16 @@
-# Совместимость: Playlist Edge + соседи
+# Совместимость: lab Edge + соседи
 
-OpenStream **не** обходит DPI. Default — **Playlist Edge** (без CA): роутер отдаёт чистый m3u8, сегменты с CDN.  
-Соседи на **egress** Edge/GQL/usher. Legacy MITM — отдельно ниже.
+OpenStream **не** обходит DPI.
 
-Оглавление docs: [INDEX.md](INDEX.md).
+**Цель №1** (все клиенты, ноль действий на устройстве): **`[blocked]` TLS** — [ADR 0003](adr/0003-goal1-router-only-tls.md).  
+Этот документ описывает **lab** Edge/MITM и соседей — **не** закрытие Goal №1.
 
-## Целевая цепочка (Edge)
+Оглавление: [INDEX.md](INDEX.md).
+
+## Lab-цепочка (Edge)
 
 ```text
-Клиент (VLC / companion)
+Клиент (VLC / companion)          ← действие на клиенте
   │  GET http://LAN_IP:18080/twitch/<channel>
   ▼
 streamproxyd  (GQL + usher master + rewrite)
@@ -21,22 +23,16 @@ zapret / podkop* / ByeDPI / sing-box → Twitch
 клиент → CDN сегменты напрямую
 ```
 
-**CA не требуется.**
+Для lab strip нужен rewrite master → nested (Public Edge URL / LAN Host).
 
-Для strip обязателен rewrite master → nested:
+## UX lab (не Goal №1)
 
-- LuCI **Public Edge URL** = `http://LAN_IP:18080`, или
-- запрос с Host = LAN (не `127.0.0.1` с другого хоста).
-
-## UX: как клиент открывает стрим
-
-| Канал | Нужен CA | Когда |
-|-------|----------|--------|
-| VLC / mpv URL `http://LAN:18080/twitch/channel` | Нет | Сейчас (H1) |
-| Companion (браузер) — redirect playlist | Нет | Stage H7 |
-| Transparent MITM | Да | Legacy |
-
-Стоковое Twitch-приложение без companion и без CA **не** получит strip.
+| Канал | Действие на клиенте | Goal №1? |
+|-------|---------------------|----------|
+| VLC / mpv URL | Открыть URL роутера | Нет |
+| Companion | Расширение | Нет |
+| Transparent MITM | CA в trust store | Нет |
+| Стоковое приложение, ноль действий | — | **Goal №1 blocked** |
 
 ## Legacy: transparent MITM
 
@@ -49,8 +45,8 @@ Divert только HLS CDN (не `www`/`gql` / не весь `*.twitch.tv`).
 
 | Mode | Назначение |
 |------|------------|
-| `edge` (default) | Playlist Edge, без CA |
-| `transparent` | nft + MITM (CA) |
+| `edge` (lab default пакета) | Playlist Edge; **не** Goal №1 |
+| `transparent` | nft + MITM (CA); **не** Goal №1 |
 | `redirect_whitelist` | алиас transparent |
 | `explicit` | HTTP CONNECT |
 | `off` | API only |
@@ -97,4 +93,4 @@ wget -qO- http://127.0.0.1:18080/metrics | grep -E 'playlists|ads_found|segments
 | `ads_found_total` | ≥1 при midroll |
 | Nested URL в master | да |
 
-См. [PROXY_ARCHITECTURE.md](PROXY_ARCHITECTURE.md), [PERFORMANCE.md](PERFORMANCE.md), [adr/0002-playlist-edge.md](adr/0002-playlist-edge.md).
+См. [PROXY_ARCHITECTURE.md](PROXY_ARCHITECTURE.md), [PERFORMANCE.md](PERFORMANCE.md), [adr/0002-playlist-edge.md](adr/0002-playlist-edge.md), [adr/0003-goal1-router-only-tls.md](adr/0003-goal1-router-only-tls.md).

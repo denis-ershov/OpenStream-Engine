@@ -26,10 +26,11 @@
 
 ### Документация
 
-- [INDEX.md](INDEX.md) — оглавление docs (sync **0.4.2-14**).
-- [ROADMAP.md](ROADMAP.md): Playlist Edge без CA (default); MITM+CA → legacy; Stage H; r13/r14 в спринте.
-- [ARCHITECTURE.md](ARCHITECTURE.md), [PROXY_ARCHITECTURE.md](PROXY_ARCHITECTURE.md), [COEXISTENCE.md](COEXISTENCE.md), [PACKAGING.md](PACKAGING.md), [HLS_ARCHITECTURE.md](HLS_ARCHITECTURE.md), [PLUGIN_ARCHITECTURE.md](PLUGIN_ARCHITECTURE.md), [SDK.md](SDK.md), [DASH_ARCHITECTURE.md](DASH_ARCHITECTURE.md), [BUILD_OPENWRT.md](BUILD_OPENWRT.md), [PERFORMANCE.md](PERFORMANCE.md), [adr/0002-playlist-edge.md](adr/0002-playlist-edge.md): Edge-first, master→media rewrite, полевые симптомы (CryptoProvider, exec bits, ads_found).
-- [PERFORMANCE.md](PERFORMANCE.md): GL-MT6000 idle — VmRSS **~2.8 МБ**, VmPeak **~13.3 МБ**; чеклист Edge r14.
+- **[ADR 0003](adr/0003-goal1-router-only-tls.md) — Цель №1** (роутер / все клиенты / ноль действий на устройстве): **`[blocked]` TLS**; ядро можно менять; компромиссы не принимаются.
+- [INDEX.md](INDEX.md), [ROADMAP.md](ROADMAP.md): Goal №1 сверху; Stage H = `[lab]`; H7 не «решение стены».
+- [ARCHITECTURE.md](ARCHITECTURE.md), [PROXY_ARCHITECTURE.md](PROXY_ARCHITECTURE.md), [COEXISTENCE.md](COEXISTENCE.md), [adr/0002-playlist-edge.md](adr/0002-playlist-edge.md), README: Edge/MITM = lab, не Goal №1.
+- Lab sync 0.4.2-14 (rewrite, CryptoProvider) остаётся в коде; не продаётся как покрытие всех девайсов.
+- [PERFORMANCE.md](PERFORMANCE.md): GL-MT6000 idle ~2.8 МБ RSS; чеклист lab Edge.
 
 ### Исправлено
 

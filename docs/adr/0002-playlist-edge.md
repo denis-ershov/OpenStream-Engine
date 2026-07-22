@@ -1,39 +1,36 @@
 # ADR 0002 — Playlist Edge без клиентского CA
 
-- **Статус:** Accepted
+- **Статус:** Accepted — **`[lab]`**, не закрывает Цель №1
 - **Дата:** 2026-07-22
-- **Обновлено:** 2026-07-22 (r14: rewrite / Host)
+- **Обновлено:** 2026-07-22 (Goal №1 → [ADR 0003](0003-goal1-router-only-tls.md))
 
 ## Контекст
 
-Transparent MITM (nft divert HLS → `:18080`) требует установки CA роутера на каждый клиент. На практике почти никто этого не делает; широкий divert `*.twitch.tv` ломал открытие сайта без CA.
+Transparent MITM требует CA на каждом клиенте. Широкий divert `*.twitch.tv` ломал сайт.
 
-TLS не позволяет читать/менять HTTPS на роутере без доверия клиента к MITM-CA (mitmproxy/SSLsplit).
+TLS не позволяет читать/менять HTTPS на роутере без trust на клиенте.
 
-## Решение
+## Решение (lab)
 
-**Default = Playlist Edge (`mode: edge`):**
+**Lab default пакета = Playlist Edge (`mode: edge`):**
 
-1. Клиент (VLC / companion / nested URL) запрашивает `GET http://router:18080/twitch/<channel>`.
-2. Роутер резолвит GQL PlaybackAccessToken + usher, отдаёт **master** m3u8.
-3. Варианты в master переписываются на `http://router:18080/https://cdn/…`  
-   (`proxy_public_url` **или** `http://{Host}` запроса, если Host не loopback),  
-   чтобы **media** m3u8 тоже шли через Edge (**strip только на media**).
-4. Сегменты в media playlist остаются absolute CDN URL — медиа не через роутер.
-5. Transparent MITM + CA — **opt-in advanced** (`mode: transparent`, `mitm=1`).
+1. Клиент **сам** запрашивает `GET http://router:18080/twitch/<channel>` (VLC / companion / nested).
+2. Роутер: GQL + usher **master**.
+3. Rewrite вариантов на nested `http://router:18080/https://…` (`proxy_public_url` или Host).
+4. Strip на **media**; сегменты absolute CDN.
+5. MITM + CA — lab opt-in (`mode: transparent`).
 
-Hostlists (per-service + custom + optional GitHub) обслуживают companion redirect targets и legacy divert, не заменяют Edge.
+Это **требует действия на клиенте** → **не** Цель №1 ([ADR 0003](0003-goal1-router-only-tls.md)).
 
 ## Последствия
 
-- Стоковое Twitch-приложение без companion и без CA **не** получит strip (нет plaintext).
-- Без rewrite master → nested strip на midroll не сработает (`ads_found=0` при растущих playlists).
-- Запрос через `127.0.0.1` без заданного `proxy_public_url` не даёт LAN-совместимого rewrite — задайте Public Edge URL в LuCI.
-- GQL Client-ID / schema могут меняться у Twitch — Edge API потребует сопровождения (см. Stage G seamless).
-- rustls 0.23 требует явный CryptoProvider (`ring`) в процессе (иначе panic на GQL/usher).
+- Не обещать покрытие стоковых приложений/ТВ без касания устройства.
+- Без rewrite — `ads_found=0` при растущих playlists.
+- GQL schema / Client-ID могут меняться.
+- rustls CryptoProvider обязателен (r13+).
 
 ## Ссылки
 
+- [0003-goal1-router-only-tls.md](0003-goal1-router-only-tls.md) — Цель №1
 - [PROXY_ARCHITECTURE.md](../PROXY_ARCHITECTURE.md)
-- [COEXISTENCE.md](../COEXISTENCE.md)
-- [ROADMAP.md](../ROADMAP.md) Stage H
+- [ROADMAP.md](../ROADMAP.md) Stage H `[lab]`

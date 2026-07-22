@@ -11,7 +11,8 @@
 | `luci-app-openstream/` | `luci-app-openstream` | `all` (Lua) |
 | `luci-app-openstream` i18n | `luci-i18n-openstream-ru` | `all` |
 
-Версия пакета = workspace (`0.4.2`), release IPK сейчас **14**.
+Версия пакета = workspace (`0.4.2`), release IPK сейчас **14**.  
+**Цель №1:** `[blocked]` TLS — [ADR 0003](adr/0003-goal1-router-only-tls.md). Пакет = lab Edge, не обещание Goal №1.
 
 ### Значимые release IPK (0.4.2)
 
