@@ -4,6 +4,7 @@
 
 ### Исправлено
 
+- **Rust Toolchain CI Fix:** Исправлена конфигурация [`rust-toolchain.toml`](file:///e:/DEV/Project/OpenStream%20Engine/rust-toolchain.toml): параметр `channel` изменен с `stable-x86_64-pc-windows-gnu` на `stable`. Это устраняет ошибку `target tuple in channel name` при запуске тестов и сборке в Linux-окружении GitHub Actions CI.
 - **Autolab GQL & Classification:** Исправлен GQL-запрос токена Twitch (удалены неиспользуемые переменные `$vodID` и `$isVod`, вызывавшие ошибку валидации схемы на стороне Twitch). Исправлена классификация трафика: сегменты видео (`.ts` на хостах `live-video.net`) теперь корректно детектируются как `segment`, а не `playlist`.
 - **r14 — Edge без strip:** master без `proxy_public_url` не rewrite'ился → player брал media с CDN; strip только на media. Auto `proxy_base` из Host + warn.
 - **r13 — Edge TLS panic:** rustls 0.23 без CryptoProvider → panic на GQL/usher (`panic=abort` валит демон). Фикс: `ring::install_default()` в `streamproxyd` + `ose-proxy`.
