@@ -54,6 +54,9 @@ HLREMOTE="$(uci_bool_d proxy.hostlist_remote 0)"
 HLBASE="$(uci_get proxy.hostlist_remote_base)"
 [ -n "$HLBASE" ] || HLBASE="https://raw.githubusercontent.com/denis-ershov/OpenStream-Engine/main/package/openwrt/files/hostlists"
 HLHOURS="$(uci_num proxy.hostlist_remote_interval_hours 12)"
+VPNSET="$(uci_get proxy.geo_split_vpn_set)"
+[ -n "$VPNSET" ] || VPNSET="4#inet#fw4#vpn_domains"
+VPNSET="$(echo "$VPNSET" | tr -cd 'a-zA-Z0-9#_-')"
 
 {
 	echo "listen: \"$LISTEN\""
@@ -64,6 +67,7 @@ HLHOURS="$(uci_num proxy.hostlist_remote_interval_hours 12)"
 	echo "nft_file: \"$NFT\""
 	echo "hostlist_file: \"$HOSTLIST\""
 	echo "hostlist_refresh_secs: $HLREFRESH"
+	[ -n "$VPNSET" ] && echo "geo_split_vpn_set: \"$VPNSET\""
 	# Списки: всегда явный [] — иначе YAML `key:` = null и serde падает
 	# dedupe hostlist_services
 	echo "hostlist_services:"

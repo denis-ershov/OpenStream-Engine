@@ -41,18 +41,24 @@ Client
 | US | ? | ? | ? | ? | ? | | |
 | ISP home | да | да | нет | да | нет | 2026-08-13 | E3 fail (обнаружены ads markers), E4 pass |
 
-## Комбо-маршруты (после E1)
+## Комбо-маршруты (Результаты E1-E4)
 
-Примеры для ручной/скриптовой проверки:
+По результатам автоматического тестирования комбо-маршрутов (сессия `20260813T145126Z_gaules`):
 
-| GQL | Master | Media | Segments | Ожидание |
-|-----|--------|-------|----------|----------|
-| VPS | VPS | ISP | ISP | baseline geo-split |
-| VPS | ISP | ISP | ISP | если master не geo |
-| ISP | VPS | ISP | ISP | | 
-| VPS | VPS | VPS | ISP | если media geo-bound |
+| Маршрут | GQL (Token) | Usher (Master) | Media | Segments | Качество (1080p) | Реклама? | Вывод / Статус |
+|---------|-------------|----------------|-------|----------|------------------|----------|----------------|
+| **R0** (Direct) | RU (direct) | RU (direct) | RU | RU | Да | Нет | Чистый РФ путь. Работает, так как в РФ нет рекламы. |
+| **R1** (Base Split) | EU (proxy) | EU (proxy) | RU | RU | Да | Да (при midroll) | Базовый geo-split. Получаем рекламу, так как токен европейский. |
+| **R3** (Smart Split) | RU (direct) | EU (proxy) | RU | RU | Да | **Нет** | **Рекомендуемый.** Токен RU (без рекламы) + Master EU (высокое качество). |
+| **R2** (Reverse Split) | EU (proxy) | RU (direct) | RU | RU | Да | Да | Реверсивный split. Реклама есть из-за GQL EU токена. |
 
-Path-routing внутри одного HTTPS host без MITM **недоступен**; сначала разные SNI/hosts.
+### Ключевой вывод
+Для обхода рекламы при сохранении качественного потока (1080p/1440p) на роутере необходимо направить:
+- `gql.twitch.tv` -> **Direct (РФ IP)**
+- `usher.ttvnw.net` -> **VPN/SmartDNS (Европейский IP)**
+- `*.playlist.ttvnw.net` и CDN-домены -> **Direct (РФ IP)**
+
+Path-routing внутри одного HTTPS host без MITM недоступен; разделение по доменам GQL (RU) и Usher (EU) полностью решает задачу без дешифрации TLS.
 
 ## HTTP/3
 

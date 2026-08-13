@@ -50,27 +50,34 @@ o = s:option(Flag, "backup_seamless", translate("Backup seamless (opt-in scaffol
 o.default = "0"
 o.description = translate("Does not enable GraphQL/token by default. Strip remains the primary mode.")
 
-s = m:section(NamedSection, "proxy", "proxy", translate("Proxy / Edge"))
+s = m:section(NamedSection, "proxy", "proxy", translate("Proxy / Routing"))
 s.anonymous = true
 
 o = s:option(ListValue, "mode", translate("Mode"))
-o:value("edge", translate("Playlist Edge (recommended, no CA)"))
-o:value("transparent", translate("Transparent MITM (needs CA on clients)"))
-o:value("explicit", translate("Explicit HTTP proxy (debug)"))
-o:value("redirect_whitelist", translate("Redirect whitelist (alias of transparent)"))
+o:value("edge", translate("Playlist Edge (no client CA)"))
+o:value("geo_split", translate("Smart Geo-Split (R3, Recommended, no CA)"))
 o:value("off", translate("Off"))
 o.default = "edge"
-o.description = translate("Edge: GET /twitch/<channel> on the router; segments from CDN. Transparent MITM requires installing the router CA on every client.")
+o.description = translate("Smart Geo-Split: routes only usher.ttvnw.net to VPN, bypassing ads and keeping quality without CA. Edge: local HLS rewrite on the router.")
+
+o = s:option(Value, "geo_split_vpn_set", translate("Smart Geo-Split VPN Set"))
+o:depends("mode", "geo_split")
+o.default = "4#inet#fw4#vpn_domains"
+o.placeholder = "4#inet#fw4#vpn_domains"
+o.description = translate("Name of the nftset/ipset for VPN policy routing (e.g. 4#inet#fw4#vpn_domains or vpn_domains).")
 
 o = s:option(Value, "listen", translate("Listen"))
 o.default = "0.0.0.0:18080"
+o:depends("mode", "edge")
 
 o = s:option(Value, "proxy_public_url", translate("Public Edge URL"))
 o.placeholder = "http://192.168.8.1:18080"
 o.description = translate("Required for ad strip: master variants rewrite to nested /https://… on the router. If empty, Edge uses the request Host (LAN IP). Set explicitly if you open Edge via 127.0.0.1.")
+o:depends("mode", "edge")
 
 o = s:option(Flag, "mitm", translate("MITM for HLS hosts (transparent/explicit only)"))
 o.default = "0"
+o:depends("mode", "edge")
 
 s = m:section(NamedSection, "proxy", "proxy", translate("Hostlists"))
 s.anonymous = true

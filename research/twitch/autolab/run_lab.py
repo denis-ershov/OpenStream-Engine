@@ -39,6 +39,37 @@ def _write_report(out: Path, payload: dict) -> None:
         st = (gates.get(g) or {}).get("status", "?")
         lines.append(f"| {g} | **{st}** |")
     lines.append("")
+
+    combo = payload.get("gates", {}).get("combo_routes") or payload.get("combo_routes") or {}
+    if combo:
+        lines.extend([
+            "## Combo Routes (Split Analysis)",
+            "",
+            "| Route ID | GQL | Usher | Status | Resolutions | Ads? | Token IP | Note |",
+            "|----------|-----|-------|--------|-------------|------|----------|------|"
+        ])
+        route_defs = {
+            "R0_direct_all": ("RU (direct)", "RU (direct)", "Чистый РФ путь"),
+            "R1_base_geo_split": ("EU (proxy)", "EU (proxy)", "Базовый geo-split"),
+            "R3_smart_geo_split": ("RU (direct)", "EU (proxy)", "Оптимальный (Токен RU + Master EU)"),
+            "R2_smart_geo_split_reverse": ("EU (proxy)", "RU (direct)", "Реверсивный split")
+        }
+        for r_id, (gql_loc, usher_loc, note) in route_defs.items():
+            res = combo.get(r_id) or {}
+            if not res:
+                lines.append(f"| `{r_id}` | {gql_loc} | {usher_loc} | *not tested* | | | | {note} |")
+                continue
+            if not res.get("ok"):
+                lines.append(f"| `{r_id}` | {gql_loc} | {usher_loc} | **fail** | - | - | - | {res.get('error', 'Unknown error')} |")
+                continue
+            resolutions = ", ".join(res.get("resolutions") or [])
+            has_ads = "YES" if res.get("has_ads") else "NO"
+            ads_str = f"{has_ads} ({', '.join(res.get('ads_markers') or [])})" if res.get("has_ads") else "NO"
+            lines.append(
+                f"| `{r_id}` | {gql_loc} | {usher_loc} | **ok** | {resolutions} | {ads_str} | `{res.get('token_ip')}` | {note} |"
+            )
+        lines.append("")
+
     if payload.get("flow_markdown"):
         lines.append("## Flow map")
         lines.append("")
@@ -131,6 +162,7 @@ def main() -> int:
     else:
         gates["E0"] = {"status": "skipped", "reason": "--skip-browser"}
 
+    combo_routes = {}
     if not args.browser_only:
         print("[autolab] client gates E1–E4", flush=True)
         client = run_client_gates(
@@ -139,6 +171,7 @@ def main() -> int:
             browser_only=False,
         )
         gates.update(client.get("gates") or {})
+        combo_routes = client.get("combo_routes") or {}
     else:
         for g in ("E1", "E2", "E3", "E4"):
             gates.setdefault(g, {"status": "skipped", "reason": "browser-only"})
@@ -152,6 +185,7 @@ def main() -> int:
         "hosts_order": hosts_order,
         "flow_markdown": flow_md,
         "gates": gates,
+        "combo_routes": combo_routes,
     }
     _write_report(out, payload)
 

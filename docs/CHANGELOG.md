@@ -11,6 +11,9 @@
 
 ### Добавлено
 
+- **Documentation & Localization:** Полностью переписан [`README.md`](file:///e:/DEV/Project/OpenStream%20Engine/README.md) с подробным описанием концепции Smart Geo-Split (R3), преимуществ производительности, структуры проекта и руководства по быстрой установке. Создана полноценная английская версия документации — [`README_EN.md`](file:///e:/DEV/Project/OpenStream%20Engine/README_EN.md).
+- **OpenWrt Smart Geo-Split Integration:** Добавлена встроенная поддержка режима маршрутизации `geo_split` (Smart Geo-Split R3) в пакет OpenWrt. При включении режима служба автоматически переопределяет настройки `dnsmasq` для направления `usher.ttvnw.net` в специальный nftset/ipset VPN-интерфейса, а остальные домены и видеотрафик пускает напрямую. Изменены файлы: [`openstream.config`](file:///e:/DEV/Project/OpenStream%20Engine/package/openwrt/files/openstream.config), [`openstream-uci2yaml`](file:///e:/DEV/Project/OpenStream%20Engine/package/openwrt/files/openstream-uci2yaml), [`streamproxyd.init`](file:///e:/DEV/Project/OpenStream%20Engine/package/openwrt/files/streamproxyd.init).
+- **Combo Routes & Smart Geo-Split:** В autolab добавлена поддержка одновременного тестирования 4 схем маршрутизации (R0–R3). Эмпирически доказана эффективность **R3 (Smart Geo-Split)**: запрос `gql.twitch.tv` идет напрямую (RU ISP) для получения токена без рекламы, а `usher.ttvnw.net` — через европейский прокси/SmartDNS для обхода ограничений на 1080p/1440p/Source качество.
 - **Playlist Edge** (`mode: edge`, default): `GET /twitch/<channel>` без CA; сегменты с CDN; ADR [0002](adr/0002-playlist-edge.md).
 - Hostlists: per-service `hostlists/*.txt`, compose, `custom_domain`, optional GitHub remote 12ч; LuCI multi-select.
 - H5: сужен divert/dnsmasq/MITM whitelist (не www/gql/`*.twitch.tv`) — сайт снова открывается.

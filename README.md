@@ -1,65 +1,100 @@
 # OpenStream Engine
 
-**Исследовательский** проект: путь к пакету **OpenWrt**, который убирает/избегает рекламу стриминга **без действий на клиентах** и покрывает **все** устройства в LAN.
+[Read in English](README_EN.md)
 
-Статус Цели №1: **`[research]`** — не «уже работает на всех ТВ».
+OpenStream Engine — это решение уровня роутера для OpenWrt, которое позволяет обходить SSAI-рекламу (Server-Side Ad Insertion) на Twitch и разблокировать высокое качество потоков (1080p/1440p/Source) **без каких-либо изменений на стороне клиентов** (без установки кастомных CA-сертификатов, приложений, смены URL или настройки профилей VPN на устройствах).
 
-## Цель №1
+---
 
-| Требование | |
-|------------|--|
-| Логика на роутере (OpenWrt) | да |
-| ТВ, ПК, телефон, приставки; app и browser | да |
-| Без CA, расширений, смены URL, VPN-профиля на устройстве | да |
-| MITM / подмена сертификатов | **отвергнуто** |
+## Концепция: Smart Geo-Split (R3)
 
-См. [ADR 0003](docs/adr/0003-goal1-router-only-tls.md).
+Классические методы блокировки вшитой рекламы требуют дешифрования HTTPS-трафика (MITM) с установкой корневого CA-сертификата роутера на каждое клиентское устройство (смартфоны, ТВ, приставки). Это создает огромные риски безопасности и зачастую технически невозможно на закрытых ОС вроде Apple TV, WebOS или Tizen.
 
-## Почему не MITM и не «Edge URL»
+OpenStream Engine реализует **Smart Geo-Split (R3)** на сетевом уровне (DNS/Routing):
 
-- Читать/менять HTTPS m3u8 на роутере без trust на клиенте **нельзя** (TLS).
-- Playlist Edge / companion требуют действия на клиенте → не Цель №1 ([ADR 0002](docs/adr/0002-playlist-edge.md) = lab archive).
-
-## Гипотеза исследования: geo-split
-
-Не трогать TLS-содержимое. Маршрутизировать на роутере только лёгкие API-запросы (GQL / usher) через VPS в регионе без SSAI-ads; сегменты — напрямую через ISP.
-
-См. [ADR 0004](docs/adr/0004-geo-split-egress.md). Подтверждается gate-тестами E0–E4.
+| Трафик | Маршрутизация | Почему? |
+|--------|---------------|---------|
+| `gql.twitch.tv` | **Прямой WAN (РФ IP)** | Twitch выписывает токен авторизации для РФ-региона, в котором по умолчанию **отключена реклама**. |
+| `usher.ttvnw.net` | **Европейский VPN / SmartDNS** | Обход региональных ограничений на качества Source/1440p/1080p. |
+| `*.playlist.ttvnw.net` / CDN | **Прямой WAN (РФ IP)** | Сами медиа-плейлисты и видеосегменты (`.ts`) скачиваются напрямую, тратя 0% трафика вашего VPN и используя полную скорость провайдера. |
 
 ```text
-Client ──► OpenWrt ──gql/usher──► VPS (ad-free region) ──► Twitch
-              └──video-weaver/CDN──► ISP ──► segments
+Client ──► OpenWrt ──DNS/SNI usher.ttvnw.net──► VPN (EU) ──► Twitch (Quality master.m3u8)
+              │
+              ├──DNS/SNI gql.twitch.tv────────► РФ ISP   ──► Twitch (Token show_ads:false)
+              │
+              └──DNS/SNI playlist/segments────► РФ ISP   ──► CDN (Прямой поток на макс. скорости)
 ```
 
-## Сейчас в репозитории (Stage R)
+---
 
-| Компонент | Назначение |
-|-----------|------------|
-| [OpenTwitch Lab](docs/research/OPENTWITCH_LAB.md) | Протокол E0–E4, матрица стран |
-| [Traffic Map](docs/research/TWITCH_TRAFFIC_MAP.md) | Что откуда и куда |
-| [`research/twitch/autolab/`](research/twitch/autolab/) | Playwright + PC client: карта трафика и тесты |
-| `streamproxyd` / IPK 0.4.2 | **Lab archive** (Edge/MITM) — не claim Цели №1 |
+## Ключевые преимущества
 
-## Как участвовать
+### 🛡️ Безопасность (Security by Design)
+- **Без дешифрования TLS (No MITM):** Клиентские устройства устанавливают прямые зашифрованные соединения с серверами Twitch, проверяя их оригинальные валидные сертификаты.
+- **CA-сертификаты не требуются:** Нет необходимости добавлять роутер в доверенные центры сертификации на ваших Smart TV, приставках, телефонах и ПК.
+- **Санирование ввода:** Все пользовательские параметры UCI строго фильтруются во избежание внедрения произвольных шелл-команд на роутере.
 
+### ⚡ Производительность и ресурсы (Performance)
+- **Минимальная нагрузка CPU/RAM:** Видеосегменты не проксируются через пользовательское пространство роутера. Маршрутизация выполняется на уровне ядра через `dnsmasq` и быстрые таблицы `nftset/ipset`.
+- **Экономия трафика VPN:** Через VPN проходят только мелкие API-запросы (~10–20 КБ при запуске стрима). Сам тяжелый видеопоток идет напрямую.
+- **Очистка сетевого стека:** В режиме `geo_split` локальная таблица NAT-перенаправления `inet openstream` полностью удаляется, экономя такты процессора.
+
+---
+
+## Структура проекта
+
+```text
+├── crates/                    # Исходный код демона прокси на Rust
+├── docs/                      # Архитектурные ADR и исследовательская документация
+├── luci-app-openstream/       # Веб-интерфейс LuCI (Lua / Model / Controller)
+├── package/                   # Файлы пакета OpenWrt (Makefile, конфиги, init-скрипты)
+├── research/                  # Autolab — фреймворк тестирования маршрутов
+└── scripts/                   # Скрипты сборки и упаковки релизов
+```
+
+---
+
+## Установка и настройка на OpenWrt
+
+Готовые `.ipk` пакеты для процессоров **Cortex-A53 (aarch64)** доступны в директории [`dist/openwrt-24.10-a53/ipk/`](dist/openwrt-24.10-a53/ipk/).
+
+### 1. Установка
+
+Скопируйте файлы на роутер и установите командой:
 ```bash
-cd research/twitch/autolab
-python -m venv .venv
-# Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-playwright install chromium
-python run_lab.py --channel CHANNEL --browser-only
-# с VPS SOCKS:
-python run_lab.py --channel CHANNEL --socks5 socks5://127.0.0.1:1080
+opkg update
+opkg install openstream-engine_0.4.2-14_aarch64_cortex-a53.ipk
+opkg install luci-app-openstream_0.4.2-14_all.ipk
+opkg install luci-i18n-openstream-ru_0.4.2-14_all.ipk
 ```
 
-Документы: [INDEX](docs/INDEX.md) · [ROADMAP](docs/ROADMAP.md) · [CHANGELOG](docs/CHANGELOG.md).
+### 2. Настройка через CLI
 
-## Не обещаем сейчас
+Для быстрой настройки через UCI выполните:
+```bash
+# Включить службу
+uci set openstream.main.enabled='1'
 
-- Рабочий ads-free на всех клиентах «из коробки» сегодня.
-- Strip/MITM без клиентских действий.
-- Продакшн OpenWrt geo-split до прохождения E0–E4.
+# Переключить режим в Smart Geo-Split
+uci set openstream.proxy.mode='geo_split'
+
+# Указать имя nftset/ipset вашей VPN-маршрутизации
+uci set openstream.proxy.geo_split_vpn_set='4#inet#fw4#vpn_domains'
+
+# Применить изменения
+uci commit openstream
+/etc/init.d/streamproxyd restart
+```
+
+### 3. Настройка через LuCI Web UI
+
+Перейдите в меню **Службы → OpenStream** на вашем роутере:
+- Выберите режим **Smart Geo-Split (R3, Recommended, no CA)**.
+- Введите имя вашего VPN-набора в поле **Smart Geo-Split VPN Set**.
+- Нажмите «Сохранить и применить».
+
+---
 
 ## Лицензия
 

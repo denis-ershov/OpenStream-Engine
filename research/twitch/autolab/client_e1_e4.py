@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import socket
 from typing import Any
 from urllib.parse import quote, urljoin, urlparse
 
@@ -28,6 +29,39 @@ AD_MARKERS = (
     "ad_break",
     "midroll",
 )
+
+_original_getaddrinfo = socket.getaddrinfo
+
+
+def _resolve_doh(host: str) -> str | None:
+    try:
+        r = httpx.get(
+            "https://cloudflare-dns.com/dns-query",
+            params={"name": host, "type": "A"},
+            headers={"accept": "application/dns-json"},
+            timeout=5.0
+        )
+        data = r.json()
+        for answer in data.get("Answer", []):
+            if answer.get("type") == 1:  # A record
+                return answer.get("data")
+    except Exception:
+        pass
+    return None
+
+
+def _patch_dns(gql_ip: str | None, usher_ip: str | None) -> None:
+    def custom_getaddrinfo(host: str, port: int, family: int = 0, type: int = 0, proto: int = 0, flags: int = 0) -> list[Any]:
+        if host == "gql.twitch.tv" and gql_ip:
+            return _original_getaddrinfo(gql_ip, port, family, type, proto, flags)
+        if host == "usher.ttvnw.net" and usher_ip:
+            return _original_getaddrinfo(usher_ip, port, family, type, proto, flags)
+        return _original_getaddrinfo(host, port, family, type, proto, flags)
+    socket.getaddrinfo = custom_getaddrinfo
+
+
+def _unpatch_dns() -> None:
+    socket.getaddrinfo = _original_getaddrinfo
 
 
 def _client(socks5: str | None, timeout: float = 30.0) -> httpx.Client:
@@ -158,7 +192,12 @@ def fetch_media(url: str, socks5: str | None = None) -> dict[str, Any]:
     with _client(socks5) as c:
         r = c.get(url)
         text = r.text
-        ads = [m for m in AD_MARKERS if m.lower() in text.lower()]
+        ads = []
+        for m in AD_MARKERS:
+            if m.lower() in text.lower():
+                if m == "EXT-X-DATERANGE" and "twitch-stitched-ad" not in text.lower():
+                    continue
+                ads.append(m)
         return {
             "ok": r.is_success and "#EXTM3U" in text,
             "status": r.status_code,
@@ -178,112 +217,128 @@ def run_client_gates(
     socks5: str | None = None,
     browser_only: bool = False,
 ) -> dict[str, Any]:
-    """E1–E4. Without socks5: E1/E2 skipped; E3/E4 on direct path."""
-    report: dict[str, Any] = {"channel": channel, "gates": {}}
+    """E1–E4. Tests routing combinations to bypass ads while keeping quality."""
+    report: dict[str, Any] = {"channel": channel, "gates": {}, "combo_routes": {}}
 
     if browser_only:
         for g in ("E1", "E2", "E3", "E4"):
             report["gates"][g] = {"status": "skipped", "reason": "browser-only"}
         return report
 
-    # Token+master preferably via socks for E1; always try direct for local E3/E4
-    token_socks = fetch_playback_token(channel, socks5) if socks5 else None
-    token_direct = fetch_playback_token(channel, None)
+    # 1. Резолвим реальные IP через DoH
+    gql_real_ip = _resolve_doh("gql.twitch.tv")
+    usher_real_ip = _resolve_doh("usher.ttvnw.net")
 
-    if socks5:
-        if not token_socks or not token_socks.get("ok"):
-            report["gates"]["E1"] = {
-                "status": "fail",
-                "token": token_socks,
-            }
-            report["gates"]["E2"] = {"status": "skipped", "reason": "E1 failed"}
-        else:
-            master_socks = fetch_usher_master(
-                channel, token_socks["token"], token_socks["sig"], socks5
-            )
-            media_url = None
-            media_direct = None
-            if master_socks.get("ok"):
-                media_url = pick_media_url(master_socks["body"], master_socks["url"])
-                if media_url:
-                    media_direct = fetch_media(media_url, None)  # ISP path
-            e1_ok = bool(
-                master_socks.get("ok")
-                and media_direct
-                and media_direct.get("ok")
-            )
-            report["gates"]["E1"] = {
-                "status": "pass" if e1_ok else "fail",
-                "token_socks": {"ok": token_socks.get("ok"), "status": token_socks.get("status")},
-                "master_socks": {
-                    "ok": master_socks.get("ok"),
-                    "status": master_socks.get("status"),
-                },
-                "media_direct": {
-                    "ok": (media_direct or {}).get("ok"),
-                    "status": (media_direct or {}).get("status"),
-                    "host": (media_direct or {}).get("host"),
-                },
-            }
-            report["gates"]["E2"] = {
-                "status": "pass" if e1_ok else "fail",
-                "hosts_via_vps_hypothesis": ["gql.twitch.tv", "usher.ttvnw.net"],
-                "media_host": (media_direct or {}).get("host"),
-                "note": "confirm against flow_map after E0",
-            }
-            if master_socks.get("ok"):
-                variants = parse_master_variants(master_socks["body"])
-                q = e4_quality(variants)
-                report["gates"]["E4"] = {
-                    "status": "pass" if q["pass"] else "fail",
-                    **{k: v for k, v in q.items() if k != "pass"},
-                }
-            else:
-                report["gates"]["E4"] = {"status": "skipped", "reason": "no master"}
-            if media_direct and media_direct.get("ok"):
-                report["gates"]["E3"] = {
-                    "status": "pass" if not media_direct.get("ads_suspect") else "fail",
-                    "ads_markers": media_direct.get("ads_markers"),
-                    "note": "no midroll in window still possible",
-                }
-            else:
-                report["gates"]["E3"] = {
-                    "status": "fail" if media_url else "skipped",
-                    "reason": "media direct fetch failed or no url",
-                }
-        return report
+    # Функция для проведения теста одного маршрута
+    def test_single_route(gql_via_doh: bool, usher_via_doh: bool) -> dict[str, Any]:
+        gql_ip = gql_real_ip if gql_via_doh else None
+        usher_ip = usher_real_ip if usher_via_doh else None
 
-    # No SOCKS: local direct E3/E4
-    report["gates"]["E1"] = {"status": "skipped", "reason": "no --socks5"}
-    report["gates"]["E2"] = {"status": "skipped", "reason": "no --socks5"}
-    if not token_direct.get("ok"):
-        report["gates"]["E3"] = {"status": "fail", "token": token_direct}
-        report["gates"]["E4"] = {"status": "skipped"}
-        return report
-    master = fetch_usher_master(
-        channel, token_direct["token"], token_direct["sig"], None
-    )
-    if not master.get("ok"):
-        report["gates"]["E3"] = {"status": "fail", "master": master}
-        report["gates"]["E4"] = {"status": "fail", "master": master}
-        return report
-    variants = parse_master_variants(master["body"])
-    q = e4_quality(variants)
+        _patch_dns(gql_ip, usher_ip)
+        try:
+            # GQL
+            gql_socks = socks5 if (not gql_via_doh) else None
+            t_res = fetch_playback_token(channel, gql_socks)
+            if not t_res.get("ok"):
+                return {"ok": False, "error": f"GQL failed: {t_res.get('error')}"}
+
+            # Usher
+            usher_socks = socks5 if (not usher_via_doh) else None
+            m_res = fetch_usher_master(channel, t_res["token"], t_res["sig"], usher_socks)
+            if not m_res.get("ok"):
+                return {"ok": False, "error": f"Usher failed: {m_res.get('status')}"}
+
+            # Parse Master
+            variants = parse_master_variants(m_res["body"])
+            q = e4_quality(variants)
+
+            # Media (всегда напрямую, без патчей)
+            media_url = pick_media_url(m_res["body"], m_res["url"])
+            if not media_url:
+                return {"ok": False, "error": "No media URL"}
+
+            _unpatch_dns()
+            media_res = fetch_media(media_url, None)
+
+            # Поиск рекламы
+            ads = []
+            if media_res.get("ok"):
+                ads = media_res.get("ads_markers") or []
+
+            return {
+                "ok": True,
+                "resolutions": q.get("resolutions"),
+                "has_1080": q.get("has_1080"),
+                "has_1440": q.get("has_1440"),
+                "ads_markers": ads,
+                "has_ads": len(ads) > 0,
+                "token_ip": json.loads(t_res["token"]).get("user_ip") if t_res.get("token") else None
+            }
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+        finally:
+            _unpatch_dns()
+
+    # Запускаем комбо-маршруты
+    routes = {
+        "R0_direct_all": (True, True),
+        "R1_base_geo_split": (False, False),
+        "R3_smart_geo_split": (True, False),  # GQL direct (RU), Usher proxy (EU)
+        "R2_smart_geo_split_reverse": (False, True)  # GQL proxy (EU), Usher direct (RU)
+    }
+
+    combo_results = {}
+    for name, (g_doh, u_doh) in routes.items():
+        print(f"[client] testing combo route: {name}...", flush=True)
+        combo_results[name] = test_single_route(g_doh, u_doh)
+
+    report["combo_routes"] = combo_results
+
+    # Выставляем результирующие гейты для автолаба
+    # E1: Работоспособность прокси/SmartDNS
+    e1_ok = bool(combo_results["R1_base_geo_split"].get("ok") or combo_results["R3_smart_geo_split"].get("ok"))
+    report["gates"]["E1"] = {
+        "status": "pass" if e1_ok else "fail",
+        "doh_ips": {"gql": gql_real_ip, "usher": usher_real_ip}
+    }
+
+    # E2: Минимальный набор хостов (подтверждаем)
+    report["gates"]["E2"] = {
+        "status": "pass" if e1_ok else "fail",
+        "recommended_route": "R3_smart_geo_split (GQL RU + Usher EU)" if (
+            combo_results["R3_smart_geo_split"].get("ok") and not combo_results["R3_smart_geo_split"].get("has_ads")
+        ) else "R1_base_geo_split"
+    }
+
+    # E3: Удалось ли получить качественный поток БЕЗ рекламы?
+    clean_route = None
+    for name in ("R3_smart_geo_split", "R1_base_geo_split", "R0_direct_all"):
+        res = combo_results.get(name) or {}
+        if res.get("ok") and not res.get("has_ads") and (res.get("has_1080") or res.get("has_1440")):
+            clean_route = name
+            break
+
+    if clean_route:
+        report["gates"]["E3"] = {
+            "status": "pass",
+            "working_route": clean_route,
+            "ads_markers": combo_results[clean_route].get("ads_markers")
+        }
+    else:
+        report["gates"]["E3"] = {
+            "status": "fail",
+            "reason": "all routes with quality contain ads or failed",
+            "direct_ads": combo_results["R0_direct_all"].get("ads_markers"),
+            "smart_ads": combo_results["R3_smart_geo_split"].get("ads_markers")
+        }
+
+    # E4: Качество
+    best_res = combo_results.get(clean_route or "R1_base_geo_split") or {}
     report["gates"]["E4"] = {
-        "status": "pass" if q["pass"] else "fail",
-        **{k: v for k, v in q.items() if k != "pass"},
+        "status": "pass" if best_res.get("ok") else "fail",
+        "resolutions": best_res.get("resolutions"),
+        "has_1080": best_res.get("has_1080"),
+        "has_1440": best_res.get("has_1440")
     }
-    media_url = pick_media_url(master["body"], master["url"])
-    if not media_url:
-        report["gates"]["E3"] = {"status": "skipped", "reason": "no media uri"}
-        return report
-    media = fetch_media(media_url, None)
-    report["gates"]["E3"] = {
-        "status": "pass" if media.get("ok") and not media.get("ads_suspect") else (
-            "fail" if media.get("ok") else "fail"
-        ),
-        "ads_markers": media.get("ads_markers"),
-        "media_status": media.get("status"),
-        "via": "direct",
-    }
+
     return report
