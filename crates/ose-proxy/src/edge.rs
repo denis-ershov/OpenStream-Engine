@@ -116,7 +116,7 @@ pub async fn handle_twitch_edge(
         "twitch-edge",
         "usher.ttvnw.net",
         &usher_path,
-        &format!("edge channel={channel}"),
+        format!("edge channel={channel}"),
         0,
     ));
 

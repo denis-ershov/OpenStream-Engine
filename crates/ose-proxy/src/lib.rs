@@ -977,6 +977,7 @@ pub(crate) async fn process_manifest_if_needed(
     Ok(out.to_vec())
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn process_manifest_inner(
     state: &ProxyState,
     host: &str,
