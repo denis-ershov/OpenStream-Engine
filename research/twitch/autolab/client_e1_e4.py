@@ -12,7 +12,7 @@ import httpx
 TWITCH_CLIENT_ID = "kimne78kx3ncx6brgo4mv6wki5h1ko"
 
 GQL_QUERY = """
-query PlaybackAccessToken_Template($login: String!, $isLive: Boolean!, $vodID: ID!, $isVod: Boolean!, $playerType: String!) {
+query PlaybackAccessToken_Template($login: String!, $isLive: Boolean!, $playerType: String!) {
   streamPlaybackAccessToken(channelName: $login, params: {platform: "web", playerBackend: "mediaplayer", playerType: $playerType}) @include(if: $isLive) {
     value
     signature
@@ -47,8 +47,6 @@ def fetch_playback_token(channel: str, socks5: str | None = None) -> dict[str, A
         "variables": {
             "isLive": True,
             "login": channel.lower(),
-            "isVod": False,
-            "vodID": "",
             "playerType": "site",
         },
     }

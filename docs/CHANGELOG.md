@@ -4,6 +4,7 @@
 
 ### Исправлено
 
+- **Autolab GQL & Classification:** Исправлен GQL-запрос токена Twitch (удалены неиспользуемые переменные `$vodID` и `$isVod`, вызывавшие ошибку валидации схемы на стороне Twitch). Исправлена классификация трафика: сегменты видео (`.ts` на хостах `live-video.net`) теперь корректно детектируются как `segment`, а не `playlist`.
 - **r14 — Edge без strip:** master без `proxy_public_url` не rewrite'ился → player брал media с CDN; strip только на media. Auto `proxy_base` из Host + warn.
 - **r13 — Edge TLS panic:** rustls 0.23 без CryptoProvider → panic на GQL/usher (`panic=abort` валит демон). Фикс: `ring::install_default()` в `streamproxyd` + `ose-proxy`.
 - **Permission denied (exit 126):** бинарь без `+x` после pack с Windows — postinst `chmod 0755`, `fix-ipk-exec-bits.py`; старые `.ipk` удаляются при сборке.

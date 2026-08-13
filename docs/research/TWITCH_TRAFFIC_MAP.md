@@ -3,7 +3,7 @@
 Живая карта: **что откуда и куда** в цепочке стрима.  
 Заполняется вручную (ниже) или автолабом → `flow_map.json` ([autolab](../../research/twitch/autolab/)).
 
-Статус ячеек: `TBD` до первого успешного E0.
+Статус ячеек: **заполнено по результатам успешного E0** (сессия 20260813T143118Z_gaules).
 
 ## Эталонная цепочка
 
@@ -22,11 +22,11 @@ Browser / App
 
 | # | Когда | DNS/SNI host | Method/path | Размер порядка | Geo? | VPS? | Примечание |
 |---|--------|--------------|-------------|----------------|------|------|------------|
-| 1 | pre-play | TBD | TBD | TBD | ? | ? | |
-| 2 | token | gql.twitch.tv | POST /gql | ~KB | ? | hypot. yes | PlaybackAccessToken |
-| 3 | master | usher.ttvnw.net | GET …m3u8 | ~KB | ? | hypot. yes | |
-| 4 | media | TBD | GET …m3u8 | ~KB | ? | ? | SSAI markers? |
-| 5 | segment | TBD | GET …ts/m4s | MB/s | ? | no (goal) | |
+| 1 | pre-play | `www.twitch.tv`, `assets.twitch.tv` | `GET /<channel>` | ~MB (HTML/JS) | да | нет | Загрузка основного приложения |
+| 2 | token | `gql.twitch.tv` | `POST /gql` | ~KB | да | hypot. yes | PlaybackAccessToken |
+| 3 | master | `usher.ttvnw.net` | `GET /api/v2/channel/hls/…m3u8` | ~KB | да | hypot. yes | Мастер-плейлист с вариантами качеств |
+| 4 | media | `*.playlist.ttvnw.net` | `GET /v1/playlist/…m3u8` | ~KB | да | hypot. yes | Медиа-плейлист конкретного качества (SSAI маркеры) |
+| 5 | segment | `*.live-video.net`, `*.cloudfront.hls.ttvnw.net` | `GET /v1/segment/…ts` | MB/s | да | no (goal) | Видеосегменты (.ts / .m4s) |
 
 Порядок во времени: timeline из HAR / `network.json`. Учитывать poll media и prefetch.
 

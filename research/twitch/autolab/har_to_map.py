@@ -15,14 +15,12 @@ def _classify(host: str, path: str) -> str:
         return "gql"
     if "usher.ttvnw.net" in h:
         return "usher"
+    if p.endswith((".ts", ".m4s", ".mp4")) or "segment" in p:
+        return "segment"
     if "playlist" in h or "live-video.net" in h:
         return "playlist"
     if "video-weaver" in h or "video-edge" in h:
         return "weaver"
-    if p.endswith((".ts", ".m4s", ".mp4")):
-        return "segment"
-    if ".m3u8" in p:
-        return "m3u8"
     if "ttvnw" in h or "twitch.tv" in h:
         return "twitch_other"
     return "other"
