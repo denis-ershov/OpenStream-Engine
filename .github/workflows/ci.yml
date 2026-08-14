@@ -34,13 +34,12 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-unknown-linux-musl
+      - uses: goto-bus-stop/setup-zig@v2
       - uses: Swatinem/rust-cache@v2
-      - name: Install musl linker
-        run: sudo apt-get update && sudo apt-get install -y musl-tools
+      - name: Install cargo-zigbuild
+        run: cargo install cargo-zigbuild --locked
       - name: Build streamproxyd (size profile)
-        run: |
-          rustup target add aarch64-unknown-linux-musl
-          cargo build --release -p streamproxyd --target aarch64-unknown-linux-musl
+        run: cargo zigbuild --release -p streamproxyd --target aarch64-unknown-linux-musl
       - name: Size report
         run: ls -lh target/aarch64-unknown-linux-musl/release/streamproxyd
       - uses: actions/upload-artifact@v4
@@ -58,11 +57,12 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: armv7-unknown-linux-musleabihf
+      - uses: goto-bus-stop/setup-zig@v2
       - uses: Swatinem/rust-cache@v2
+      - name: Install cargo-zigbuild
+        run: cargo install cargo-zigbuild --locked
       - name: Cross build via cargo-zigbuild
-        run: |
-          cargo install cargo-zigbuild --locked
-          cargo zigbuild --release -p streamproxyd --target armv7-unknown-linux-musleabihf
+        run: cargo zigbuild --release -p streamproxyd --target armv7-unknown-linux-musleabihf
       - name: Size report
         run: ls -lh target/armv7-unknown-linux-musleabihf/release/streamproxyd || true
       - uses: actions/upload-artifact@v4
