@@ -54,9 +54,9 @@ Client ──► OpenWrt ──DNS/SNI usher.ttvnw.net──► VPN (EU) ──�
 Скопируйте файлы на роутер и установите командой:
 ```bash
 opkg update
-opkg install openstream-engine_0.4.2-30_aarch64_cortex-a53.ipk
-opkg install luci-app-openstream_0.4.2-30_all.ipk
-opkg install luci-i18n-openstream-ru_0.4.2-30_all.ipk
+opkg install openstream-engine_0.4.2-31_aarch64_cortex-a53.ipk
+opkg install luci-app-openstream_0.4.2-31_all.ipk
+opkg install luci-i18n-openstream-ru_0.4.2-31_all.ipk
 ```
 
 ### 2. Настройка через LuCI Web UI

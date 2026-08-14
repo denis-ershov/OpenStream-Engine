@@ -245,21 +245,37 @@ apply_dnsmasq() {
 					emit_rule "gql.twitch.tv" "dns_yandex" "$has_nft"
 					emit_rule "usher.ttvnw.net" "smartdns_comss" "$has_nft"
 					emit_rule "edge.ads.twitch.tv" "block" "$has_nft"
+					emit_rule "countess.twitch.tv" "block" "$has_nft"
+					emit_rule "imasdk.googleapis.com" "block" "$has_nft"
+					emit_rule "amazon-adsystem.com" "block" "$has_nft"
+					emit_rule "use-application-dns.net" "block" "$has_nft"
 					;;
 				smartdns_quality_unlock|quality_unlock)
 					# Разблокировка качеств 1080p/1440p/Source через SmartDNS (БЕЗ VPN)
 					emit_rule "usher.ttvnw.net" "smartdns_comss" "$has_nft"
 					emit_rule "edge.ads.twitch.tv" "block" "$has_nft"
+					emit_rule "countess.twitch.tv" "block" "$has_nft"
+					emit_rule "imasdk.googleapis.com" "block" "$has_nft"
+					emit_rule "amazon-adsystem.com" "block" "$has_nft"
+					emit_rule "use-application-dns.net" "block" "$has_nft"
 					;;
 				ru_vpn_noads_quality)
 					# Сплит через VPN-туннель (для тех у кого настроен VPN-интерфейс)
 					emit_rule "usher.ttvnw.net" "vpn_eu" "$has_nft"
 					emit_rule "edge.ads.twitch.tv" "block" "$has_nft"
+					emit_rule "countess.twitch.tv" "block" "$has_nft"
+					emit_rule "imasdk.googleapis.com" "block" "$has_nft"
+					emit_rule "amazon-adsystem.com" "block" "$has_nft"
+					emit_rule "use-application-dns.net" "block" "$has_nft"
 					;;
 				eu_bypass_ads)
 					# Европа/США: Обход рекламы через RU DNS
 					emit_rule "gql.twitch.tv" "dns_yandex" "$has_nft"
 					emit_rule "edge.ads.twitch.tv" "block" "$has_nft"
+					emit_rule "countess.twitch.tv" "block" "$has_nft"
+					emit_rule "imasdk.googleapis.com" "block" "$has_nft"
+					emit_rule "amazon-adsystem.com" "block" "$has_nft"
+					emit_rule "use-application-dns.net" "block" "$has_nft"
 					;;
 				full_bypass)
 					# Полный VPN обход
@@ -269,6 +285,10 @@ apply_dnsmasq() {
 					emit_rule "live-video.net" "vpn_eu" "$has_nft"
 					emit_rule "jtvnw.net" "vpn_eu" "$has_nft"
 					emit_rule "edge.ads.twitch.tv" "block" "$has_nft"
+					emit_rule "countess.twitch.tv" "block" "$has_nft"
+					emit_rule "imasdk.googleapis.com" "block" "$has_nft"
+					emit_rule "amazon-adsystem.com" "block" "$has_nft"
+					emit_rule "use-application-dns.net" "block" "$has_nft"
 					;;
 				custom)
 					local r_token r_master r_media r_segments r_ads

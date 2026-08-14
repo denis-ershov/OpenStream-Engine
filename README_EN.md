@@ -54,9 +54,9 @@ Pre-built `.ipk` packages for **Cortex-A53 (aarch64)** are available in [`dist/o
 Copy the packages to your router and install them:
 ```bash
 opkg update
-opkg install openstream-engine_0.4.2-30_aarch64_cortex-a53.ipk
-opkg install luci-app-openstream_0.4.2-30_all.ipk
-opkg install luci-i18n-openstream-ru_0.4.2-30_all.ipk
+opkg install openstream-engine_0.4.2-31_aarch64_cortex-a53.ipk
+opkg install luci-app-openstream_0.4.2-31_all.ipk
+opkg install luci-i18n-openstream-ru_0.4.2-31_all.ipk
 ```
 
 ### 2. Configuration via LuCI Web UI
