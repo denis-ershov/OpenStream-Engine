@@ -20,15 +20,15 @@ o.default = "1"
 o.rmempty = false
 
 o = s:option(ListValue, "preset", translate("Routing Preset"))
-o:value("ru_smartdns_noads_quality", translate("🇷🇺 Russia / CIS: No ads + 1440p (SmartDNS — No VPN needed) [Recommended]"))
-o:value("smartdns_quality_unlock", translate("🌍 Quality Unlock: 1440p/Source (SmartDNS — No VPN needed)"))
-o:value("ru_vpn_noads_quality", translate("🛡️ Russia: No ads + 1440p (via Router VPN)"))
-o:value("eu_bypass_ads", translate("🇪🇺 Europe / US: Bypass ads via RU DNS"))
+o:value("ru_smartdns_noads_quality", translate("🌟 🇷🇺 Russia / CIS: Max 1440p Quality + Ad-Trackers Block (SmartDNS — No VPN) [Recommended]"))
+o:value("manifest_strip_edge", translate("⚡ Playlist Edge: Local Stripping for SmartTV/MPV/Streamlink (Port 18080)"))
+o:value("ru_vpn_noads_quality", translate("🛡️ Router VPN Split: 100% Ad-Free for All Devices (via UA/GE/RS VPN)"))
+o:value("smartdns_quality_unlock", translate("🌍 Quality Unlock: 1440p/Source (SmartDNS — No VPN)"))
 o:value("full_bypass", translate("🔒 Full Bypass: Route entire Twitch via VPN"))
 o:value("custom", translate("⚙️ Custom: Fine-grained matrix routing"))
 o:value("off", translate("⏹️ Disabled"))
 o.default = "ru_smartdns_noads_quality"
-o.description = translate("Select an automated routing strategy. SmartDNS presets work out-of-the-box without requiring any VPN tunnels.")
+o.description = translate("Select an automated routing strategy. SmartDNS unlocks 1080p/1440p and blocks banner trackers. For browser ad-free playback, use VPN Split or browser adblock.")
 
 -- Custom matrix options (visible only when preset == 'custom')
 o = s:option(ListValue, "route_token", translate("Playback Token (gql.twitch.tv)"))
@@ -117,5 +117,10 @@ o = s:option(Flag, "ignore_coexistence_warnings", translate("Ignore Coexistence 
 o.default = "0"
 o.rmempty = false
 o.description = translate("Check this if twitch.tv is already placed in Exclude / Bypass list of Forkop, Podkop or PassWall.")
+
+function m.on_after_commit(self)
+	luci.sys.call("/usr/libexec/openstream-uci2yaml >/dev/null 2>&1")
+	luci.sys.call("/etc/init.d/streamproxyd restart >/dev/null 2>&1")
+end
 
 return m

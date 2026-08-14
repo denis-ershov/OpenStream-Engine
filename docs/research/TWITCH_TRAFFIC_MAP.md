@@ -3,7 +3,9 @@
 Живая карта: **что откуда и куда** в цепочке стрима.  
 Заполняется вручную (ниже) или автолабом → `flow_map.json` ([autolab](../../research/twitch/autolab/)).
 
-Статус ячеек: **заполнено по результатам успешного E0** (сессия 20260813T143118Z_gaules).
+Статус ячеек: **топология подтверждена только E0** (сессия 20260813T143118Z_gaules).
+Она не подтверждает отсутствие SSAI-рекламы. Итоги повторной проверки и ограничения
+автолаба приведены в [TWITCH_AD_BLOCK_AUDIT.md](TWITCH_AD_BLOCK_AUDIT.md).
 
 ## Эталонная цепочка
 
@@ -24,11 +26,11 @@ Browser / App
 | # | Когда | DNS/SNI host | Method/path | Размер порядка | Geo? | Egress / Route | Примечание |
 |---|--------|--------------|-------------|----------------|------|----------------|------------|
 | 1 | pre-play | `www.twitch.tv`, `assets.twitch.tv` | `GET /<channel>` | ~MB (HTML/JS) | да | Direct (WAN) | Загрузка основного приложения |
-| 2 | token | `gql.twitch.tv` | `POST /gql` | ~KB | да | **Direct (RU WAN)** | PlaybackAccessToken (RU IP = no SSAI ads) |
-| 3 | master | `usher.ttvnw.net` | `GET /api/v2/channel/hls/…m3u8` | ~KB | да | **VPN (EU)** | Мастер-плейлист с вариантами качеств (1080p/1440p/Source) |
-| 4 | media | `*.playlist.ttvnw.net` | `GET /v1/playlist/…m3u8` | ~KB | да | Direct (WAN) | Медиа-плейлист конкретного качества |
-| 5 | segment | `*.live-video.net`, `*.cloudfront.hls.ttvnw.net` | `GET /v1/segment/…ts` | MB/s | да | Direct (WAN) | Видеосегменты (.ts / .m4s) |
-| 6 | ads/tracking | `edge.ads.twitch.tv` | `*` | ~KB | нет | **DNS BLOCK** | Баннеры, ad-сервер и трекеры (Sinkhole `0.0.0.0` на роутере) |
+| 2 | token | `gql.twitch.tv` | `POST /gql` | ~KB | да | **Direct (RU WAN)** | PlaybackAccessToken. На глобальных/монетизируемых каналах (`show_ads: true`) не защищает от SSAI |
+| 3 | master | `usher.ttvnw.net` | `GET /api/v2/channel/hls/…m3u8` | ~KB | да | **SmartDNS / VPN (EU)** | Мастер-плейлист (разблокировка 1080p/1440p/Source). В ЕС вставляет SSAI |
+| 4 | media | `*.playlist.ttvnw.net` | `GET /v1/playlist/…m3u8` | ~KB | да | Direct (WAN) | Медиа-плейлист качества со вшитыми тегами `twitch-stitched-ad` |
+| 5 | segment | `*.live-video.net`, `*.cloudfront.hls.ttvnw.net` | `GET /v1/segment/…ts` | MB/s | да | Direct (WAN) | Видеосегменты стрима и рекламы (раздаются с одних CDN) |
+| 6 | ads/tracking | `edge.ads.twitch.tv`, `countess.twitch.tv` | `*` | ~KB | нет | **DNS BLOCK** | Баннеры и ad-трекеры (Sinkhole `0.0.0.0`). Не влияет на серверные HLS-сегменты (SSAI) |
 
 Порядок во времени: timeline из HAR / `network.json`. Учитывать poll media и prefetch.
 

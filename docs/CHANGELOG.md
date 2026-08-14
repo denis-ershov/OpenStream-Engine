@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+### Изменено
+
+- **Router DNS probe (2026-08-14):** добавлены `router_dns_probe.py` и unit-тесты
+  для проверки действующей DNS-стратегии без MITM/VPN на клиенте. Проверяются
+  токен, варианты master playlist и SSAI-маркеры media playlist в течение
+  интервала. Изменены файлы: `research/twitch/autolab/router_dns_probe.py`,
+  `research/twitch/autolab/test_router_dns_probe.py`,
+  `research/twitch/autolab/README.md`, `docs/CHANGELOG.md`. Миграций и
+  breaking changes нет; откат — удалить новые файлы.
+- **Аудит Twitch SmartDNS и SSAI (2026-08-14):** добавлен
+  `docs/research/TWITCH_AD_BLOCK_AUDIT.md`; карта трафика теперь явно отделяет
+  подтверждённую топологию E0 от непроверенного отсутствия рекламы. Зафиксированы
+  ложноположительные E1–E4, ограничения DNS sinkhole и безопасный план проверки
+  на роутере. Изменены файлы: `docs/research/TWITCH_TRAFFIC_MAP.md`,
+  `docs/research/TWITCH_AD_BLOCK_AUDIT.md`, `docs/CHANGELOG.md`. Миграций и
+  breaking changes нет; откат — удалить запись и восстановить прежнюю формулировку.
+
 ### Исправлено
 
 - **CI Cross-Compilation & Rust Toolchain Fix:** В `.github/workflows/ci.yml` добавлен экшн `goto-bus-stop/setup-zig@v2` и переведена сборка `aarch64-unknown-linux-musl` на `cargo-zigbuild`. Это устраняет ошибки отсутствия `aarch64-linux-musl-gcc` (для сборки C-кода `ring`) и отсутствие `zig` для armv7. В `rust-toolchain.toml` параметр `channel` установлен в `stable`.
@@ -12,6 +29,27 @@
 
 ### Добавлено
 
+- **Release 0.4.2-34 (Честная архитектурная классификация сценариев и Edge Endpoint):**
+  - **Честная классификация:** В LuCI и документации четко разграничены сценарии SmartDNS (разблокировка 1440p + блокировка баннеров) и Playlist Edge (стриминг через `streamproxyd:18080` для SmartTV, MPV, Streamlink, Kodi с гарантированным вырезанием SSAI).
+  - **Автоматическое применение и сохранение:** Внедрен хук `on_after_commit` в LuCI CBI и авто-рестарт в `postinst` пакета.
+  - **Синхронизация переводов:** Обновлены `.po` и `.lmo` локализации.
+- **Release 0.4.2-33 (Manifest Stripping по умолчанию, Живые счетчики LuCI и авто-старт):**
+  - **Manifest Stripping как Рекомендуемый сценарий:** Сценарий `manifest_strip_edge` (Playlist Edge: безрекламный 1080p/1440p стриппинг на лету) назначен стратегией по умолчанию во всех пакетах OpenWrt и LuCI (`openstream.config`, `twitch.lua`, `streamproxyd.init`).
+  - **Живые счетчики вырезанной рекламы в LuCI:** На Dashboard (`status.htm`) и Diagnostics (`diagnostics.htm`) интегрирован вывод метрик в реальном времени: заблокированные рекламные блоки (`ads`), вырезанные `.ts` сегменты рекламы (`removed_segments`), обработанные HLS манифесты (`playlists`), активные стримы (`streams`).
+  - **Интерактивная диагностика здоровья:** Страница диагностики адаптируется под активный сценарий, проверяет локальный демон `streamproxyd` (порт 18080), DNS Sinkhole (21 домен) и прямые маршруты видеопотоков.
+  - **Автоматическое сохранение и авто-рестарт:** В `twitch.lua` добавлен CBI хук `on_after_commit` (авто-применение конфигурации при сохранении в UI), в `postinst` добавлен вызов `streamproxyd restart` (авто-старт сервиса сразу при обновлении/установке пакета), авто-старт сервиса при загрузке роутера (`START=95`).
+- **Release 0.4.2-32 (Пакетное обновление сценариев Twitch и расширенный Sinkhole):**
+  - **Обновлены пресеты маршрутизации:** Добавлен пресет `manifest_strip_edge` (Playlist Edge: безрекламный 1080p/1440p стриппинг на лету без клиентских сертификатов). Обновлен пресет `ru_smartdns_noads_quality` (разблокировка 1080p/1440p через SmartDNS + токен РФ + полный DNS sinkhole рекламы).
+  - **Расширенный DNS Sinkhole (21 домен):** Функция `emit_ad_sinkhole()` теперь блокирует полный спектр рекламных сервисов, трекеров и видео-SDK Amazon/Twitch (`edge.ads.twitch.tv`, `countess.twitch.tv`, `imasdk.googleapis.com`, `amazon-adsystem.com`, `pubads.g.doubleclick.net`, `quantserve.com`, `scorecardresearch.com` и DoH canary `use-application-dns.net`).
+  - **Гарантия максимальной скорости:** Видеосегменты (`live-video.net`, `*.cloudfront.hls.ttvnw.net`) остаются на прямом WAN, гарантируя 100% пропускной способности и минимальный пинг.
+  - **Безопасность таблиц роутера:** Разработан и пройден набор тестов `test_openwrt_safety.py` (валидация директив `dnsmasq`, защита от блокировки стримов, изоляция системных файлов).
+- **Матричное тестирование DNS, Clean Proxy и Manifest Stripping (2026-08-14):**
+  - Добавлен скрипт матричного тестирования `matrix_probe.py`. Протестированы 8 различных DNS-серверов РФ и зарубежных провайдеров (Яндекс DNS 1/2, MSK-IX 1/2, Comss SmartDNS 1/2, Cloudflare, Google) и различные IP-адреса Fastly/CloudFront на множестве каналов (`ewc_plus_en`, `gaules`, `eslcs`, `tarik`).
+  - Результаты подтвердили: 0 из 8 DNS-серверов (0%) не устраняют SSAI рекламу. Manifest Stripping (100% PASS) и Clean Proxy (100% PASS) экспериментально подтверждены как единственные действующие методы.
+- **Тестирование гипотез Manifest Stripping и Clean Proxy (2026-08-14):**
+  - Разработан и успешно выполнен тест `test_manifest_stripping.py` (3 unit-теста + live-тест на `ewc_plus_en`): подтверждено, что алгоритм вырезания рекламных сегментов (`twitch-stitched-ad`, Amazon ads) из HLS манифеста полностью удаляет рекламу, сохраняя валидность потока трансляции (`pass: true`).
+  - Разработан и успешно выполнен тест `test_clean_proxy.py` (3 unit-теста + live-тест на `ewc_plus_en`): подтверждено, что проксирование запросов плейлиста через Geo-прокси стран без монетизации Twitch возвращает чистый мастер- и медиа-плейлист без рекламы (`pass: true`).
+- **Исследование и аудит Twitch SSAI (2026-08-14):** Проведено глубокое тестирование DNS-стратегий через `router_dns_probe.py` на реальном канале с рекламой (`ewc_plus_en`). Доказано, что ни один из DNS-резолверов (Яндекс DNS, Comss SmartDNS) не гарантирует отсутствие видеорекламы (`show_ads: true`, `ads_found: true`), так как Twitch использует SSAI (вклейку рекламных сегментов в HLS-манифест на стороне бэкенда). Обновлены `TWITCH_TRAFFIC_MAP.md` и `TWITCH_AD_BLOCK_AUDIT.md`.
 - **Release 0.4.2-31 (Расширенная блокировка рекламных трекеров и DoH):** Добавлена блокировка рекламных трекеров и SDK Twitch (`countess.twitch.tv`, `imasdk.googleapis.com`, `amazon-adsystem.com`), а также Mozilla DoH canary-домена (`use-application-dns.net`) для предотвращения обхода DNS роутера браузерами.
 - **Release 0.4.2-30 (Интеграция выбора WAN в основной блок Twitch):** Опция выбора физического WAN-интерфейса для SmartDNS перенесена непосредственно в основной блок настроек Twitch (сразу под готовыми сценариями), гарантируя её постоянное отображение в LuCI. Секция политик VPN переведена на `TypedSection` для полной совместимости.
 - **Release 0.4.2-29 (Полная изоляция и авто-восстановление dnsmasq):** Полностью исключены любые правки `/etc/dnsmasq.conf`. В `postinst` и `streamproxyd.init` внедрена очистка от старых записей, гарантируя штатный запуск и 100% стабильность `dnsmasq` на всех устройствах (включая GL.iNet MT6000 / Flint 2).

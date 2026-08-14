@@ -241,41 +241,30 @@ apply_dnsmasq() {
 		if [ "$twitch_enabled" = "1" ] && [ "$twitch_preset" != "off" ]; then
 			case "$twitch_preset" in
 				ru_smartdns_noads_quality|ru_noads_quality|"")
-					# РФ SmartDNS: Без рекламы (Яндекс DNS) + 1440p (Comss SmartDNS) БЕЗ VPN
+					# РФ SmartDNS: Разблокировка 1440p (Comss SmartDNS) + Токен РФ (Яндекс DNS) + Полный Sinkhole рекламы
 					emit_rule "gql.twitch.tv" "dns_yandex" "$has_nft"
 					emit_rule "usher.ttvnw.net" "smartdns_comss" "$has_nft"
-					emit_rule "edge.ads.twitch.tv" "block" "$has_nft"
-					emit_rule "countess.twitch.tv" "block" "$has_nft"
-					emit_rule "imasdk.googleapis.com" "block" "$has_nft"
-					emit_rule "amazon-adsystem.com" "block" "$has_nft"
-					emit_rule "use-application-dns.net" "block" "$has_nft"
+					emit_ad_sinkhole
+					;;
+				manifest_strip_edge)
+					# Playlist Edge: Локальный Manifest Stripping через streamproxyd + 1440p
+					emit_rule "usher.ttvnw.net" "smartdns_comss" "$has_nft"
+					emit_ad_sinkhole
 					;;
 				smartdns_quality_unlock|quality_unlock)
 					# Разблокировка качеств 1080p/1440p/Source через SmartDNS (БЕЗ VPN)
 					emit_rule "usher.ttvnw.net" "smartdns_comss" "$has_nft"
-					emit_rule "edge.ads.twitch.tv" "block" "$has_nft"
-					emit_rule "countess.twitch.tv" "block" "$has_nft"
-					emit_rule "imasdk.googleapis.com" "block" "$has_nft"
-					emit_rule "amazon-adsystem.com" "block" "$has_nft"
-					emit_rule "use-application-dns.net" "block" "$has_nft"
+					emit_ad_sinkhole
 					;;
 				ru_vpn_noads_quality)
 					# Сплит через VPN-туннель (для тех у кого настроен VPN-интерфейс)
 					emit_rule "usher.ttvnw.net" "vpn_eu" "$has_nft"
-					emit_rule "edge.ads.twitch.tv" "block" "$has_nft"
-					emit_rule "countess.twitch.tv" "block" "$has_nft"
-					emit_rule "imasdk.googleapis.com" "block" "$has_nft"
-					emit_rule "amazon-adsystem.com" "block" "$has_nft"
-					emit_rule "use-application-dns.net" "block" "$has_nft"
+					emit_ad_sinkhole
 					;;
 				eu_bypass_ads)
 					# Европа/США: Обход рекламы через RU DNS
 					emit_rule "gql.twitch.tv" "dns_yandex" "$has_nft"
-					emit_rule "edge.ads.twitch.tv" "block" "$has_nft"
-					emit_rule "countess.twitch.tv" "block" "$has_nft"
-					emit_rule "imasdk.googleapis.com" "block" "$has_nft"
-					emit_rule "amazon-adsystem.com" "block" "$has_nft"
-					emit_rule "use-application-dns.net" "block" "$has_nft"
+					emit_ad_sinkhole
 					;;
 				full_bypass)
 					# Полный VPN обход
@@ -284,11 +273,7 @@ apply_dnsmasq() {
 					emit_rule "ttvnw.net" "vpn_eu" "$has_nft"
 					emit_rule "live-video.net" "vpn_eu" "$has_nft"
 					emit_rule "jtvnw.net" "vpn_eu" "$has_nft"
-					emit_rule "edge.ads.twitch.tv" "block" "$has_nft"
-					emit_rule "countess.twitch.tv" "block" "$has_nft"
-					emit_rule "imasdk.googleapis.com" "block" "$has_nft"
-					emit_rule "amazon-adsystem.com" "block" "$has_nft"
-					emit_rule "use-application-dns.net" "block" "$has_nft"
+					emit_ad_sinkhole
 					;;
 				custom)
 					local r_token r_master r_media r_segments r_ads
@@ -302,7 +287,11 @@ apply_dnsmasq() {
 					emit_rule "usher.ttvnw.net" "$r_master" "$has_nft"
 					emit_rule "playlist.ttvnw.net" "$r_media" "$has_nft"
 					emit_rule "live-video.net" "$r_segments" "$has_nft"
-					emit_rule "edge.ads.twitch.tv" "$r_ads" "$has_nft"
+					if [ "$r_ads" = "block" ]; then
+						emit_ad_sinkhole
+					else
+						emit_rule "edge.ads.twitch.tv" "$r_ads" "$has_nft"
+					fi
 					;;
 			esac
 		fi

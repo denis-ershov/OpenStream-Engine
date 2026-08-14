@@ -79,6 +79,99 @@ msgstr "🌍 Разблокировка 1440p/Source (Прямой токен)"
 msgid "🛡️ Full Bypass: Route entire Twitch via VPN"
 msgstr "🛡️ Полный обход: Весь Twitch через VPN"
 
+msgid "🌟 🇷🇺 Russia / CIS: Max 1440p Quality + Ad-Trackers Block (SmartDNS — No VPN) [Recommended]"
+msgstr "🌟 🇷🇺 Россия / СНГ: 1440p + Блок трекеров и баннеров (SmartDNS — Без VPN) [Рекомендуется]"
+
+msgid "⚡ Playlist Edge: Local Stripping for SmartTV/MPV/Streamlink (Port 18080)"
+msgstr "⚡ Playlist Edge: Локальный стриппинг для SmartTV/MPV/Streamlink (Порт 18080)"
+
+msgid "🛡️ Router VPN Split: 100% Ad-Free for All Devices (via UA/GE/RS VPN)"
+msgstr "🛡️ VPN Сплит: 100% Без рекламы для всех устройств (через VPN UA/GE/RS)"
+
+msgid "🌍 Quality Unlock: 1440p/Source (SmartDNS — No VPN)"
+msgstr "🌍 Разблокировка качеств: 1440p/Source (SmartDNS — Без VPN)"
+
+msgid "🌍 Quality Unlock: 1440p/Source (SmartDNS)"
+msgstr "🌍 Разблокировка качеств: 1440p/Source (SmartDNS)"
+
+msgid "🛡️ VPN Split: 1440p + No Ads (via Router VPN)"
+msgstr "🛡️ VPN Сплит: 1440p + Без рекламы (через роутерный VPN)"
+
+msgid "Live Streaming Traffic Optimizer & Ad-Free Edge Accelerator."
+msgstr "Оптимизатор потокового трафика и акселератор без рекламы."
+
+msgid "Live Manifest Stripping & Ad-Block Statistics"
+msgstr "Статистика Manifest Stripping и блокировки рекламы в реальном времени"
+
+msgid "Ads Detected"
+msgstr "Рекламы обнаружено"
+
+msgid "Total ad blocks caught"
+msgstr "Всего пойманных рекламных блоков"
+
+msgid "Segments Stripped"
+msgstr "Сегментов вырезано"
+
+msgid "Ad video chunks removed"
+msgstr "Вырезанных видеосегментов рекламы"
+
+msgid "Playlists Processed"
+msgstr "Манифестов обработано"
+
+msgid "HLS manifests served"
+msgstr "Обработанных HLS-плейлистов"
+
+msgid "Active Streams"
+msgstr "Активных стримов"
+
+msgid "Current live streams"
+msgstr "Текущих активных трансляций"
+
+msgid "Running (18080)"
+msgstr "Работает (порт 18080)"
+
+msgid "Playlist Edge"
+msgstr "Playlist Edge"
+
+msgid "Scenario Diagnostics & Health Check"
+msgstr "Диагностика сценария и проверка здоровья"
+
+msgid "Active Strategy Health Status"
+msgstr "Состояние активной стратегии"
+
+msgid "streamproxyd Engine"
+msgstr "Движок streamproxyd"
+
+msgid "Stripped Ad Segments"
+msgstr "Вырезанные видеосегменты"
+
+msgid "Clean video chunks"
+msgstr "Чистые чанки видео"
+
+msgid "Ad Sinkhole Domains"
+msgstr "Sinkhole доменов рекламы"
+
+msgid "0.0.0.0 (Null routed)"
+msgstr "0.0.0.0 (Заблокировано)"
+
+msgid "Network & DNS Route Verification"
+msgstr "Проверка сети и DNS маршрутов"
+
+msgid "Run Full Health Check"
+msgstr "Запустить полную проверку"
+
+msgid "Token Server"
+msgstr "Сервер токенов"
+
+msgid "Ad Beacon & Trigger"
+msgstr "Рекламный маяк и триггер"
+
+msgid "Video Stream CDN"
+msgstr "CDN видеопотоков"
+
+msgid "All Tests Passed"
+msgstr "Все тесты успешно пройдены"
+
 msgid "⚙️ Custom: Fine-grained matrix routing"
 msgstr "⚙️ Пользовательский: Точечная матрица маршрутов"
 

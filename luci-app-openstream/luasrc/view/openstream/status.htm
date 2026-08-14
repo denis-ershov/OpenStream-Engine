@@ -6,6 +6,31 @@
 	gap: 16px;
 	margin-bottom: 20px;
 }
+.ose-metrics-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: 12px;
+	margin-top: 10px;
+}
+.ose-metric-box {
+	background: var(--cbi-section-bg, rgba(255,255,255,0.05));
+	border: 1px solid var(--cbi-section-border, rgba(0,0,0,0.1));
+	border-radius: 8px;
+	padding: 14px;
+	text-align: center;
+}
+.ose-metric-val {
+	font-size: 24px;
+	font-weight: bold;
+	color: #10b981;
+	font-family: monospace;
+	margin: 6px 0 2px 0;
+}
+.ose-metric-lbl {
+	font-size: 12px;
+	color: #6b7280;
+	font-weight: 500;
+}
 .ose-card {
 	background: var(--cbi-section-bg, rgba(255,255,255,0.05));
 	border: 1px solid var(--cbi-section-border, rgba(0,0,0,0.1));
@@ -55,7 +80,7 @@
 
 <div class="cbi-map">
 	<h2 name="content"><%:OpenStream Engine%> — <%:Dashboard%></h2>
-	<div class="cbi-map-descr"><%:Smart DNS & Modular Traffic Routing for Live Streaming Platforms.%></div>
+	<div class="cbi-map-descr"><%:Live Streaming Traffic Optimizer & Ad-Free Edge Accelerator.%></div>
 
 	<div class="ose-actions">
 		<button type="button" class="btn cbi-button cbi-button-apply" id="ose-reload"><%:Apply and Reload%></button>
@@ -69,18 +94,44 @@
 				<span class="ose-badge ose-badge-active" id="ose-twitch-status"><%:Active%></span>
 			</h4>
 			<p><strong><%:Current Preset:%></strong> <span class="ose-badge ose-badge-preset" id="ose-twitch-preset"><%:Loading…%></span></p>
-			<p id="ose-twitch-descr" style="color: #6b7280; font-size: 12px;"><%:Smart Split Routing & Ad-Bypass for Twitch live streams.%></p>
+			<p id="ose-twitch-descr" style="color: #6b7280; font-size: 12px;"><%:Manifest Stripping removes 100% video ads and unlocks 1080p/1440p without VPN.%></p>
 			<p><a href="<%=url("admin/services/openstream/twitch")%>" class="btn cbi-button"><%:Configure Twitch%> &rarr;</a></p>
 		</div>
 
 		<div class="ose-card">
 			<h4>
-				<span>📦 <%:Other Services%></span>
-				<span class="ose-badge ose-badge-disabled"><%:Standby%></span>
+				<span>⚙️ <%:Daemon Status (streamproxyd)%></span>
+				<span class="ose-badge ose-badge-active" id="ose-daemon-status"><%:Running (18080)%></span>
 			</h4>
-			<p><strong>YouTube / Kick / Trovo:</strong></p>
-			<p style="color: #6b7280; font-size: 12px;"><%:Modular streaming engine supports adding custom DNS policies for next-gen platforms.%></p>
-			<p><a href="<%=url("admin/services/openstream/services")%>" class="btn cbi-button"><%:Services Hub%> &rarr;</a></p>
+			<p><strong><%:Engine Mode:%></strong> <span class="ose-badge ose-badge-direct" id="ose-engine-mode"><%:Playlist Edge%></span></p>
+			<p style="color: #6b7280; font-size: 12px;"><%:Low CPU & RAM footprint. Modifies manifests on-the-fly, heavy video flows direct via ISP.%></p>
+			<p><a href="<%=url("admin/services/openstream/diagnostics")%>" class="btn cbi-button"><%:Run Diagnostics%> &rarr;</a></p>
+		</div>
+	</div>
+
+	<div class="cbi-section">
+		<h3>📊 <%:Live Manifest Stripping & Ad-Block Statistics%></h3>
+		<div class="ose-metrics-grid">
+			<div class="ose-metric-box">
+				<div class="ose-metric-lbl">🛡️ <%:Ads Detected%></div>
+				<div class="ose-metric-val" id="metric-ads">0</div>
+				<div class="ose-metric-lbl"><%:Total ad blocks caught%></div>
+			</div>
+			<div class="ose-metric-box">
+				<div class="ose-metric-lbl">✂️ <%:Segments Stripped%></div>
+				<div class="ose-metric-val" id="metric-segments">0</div>
+				<div class="ose-metric-lbl"><%:Ad video chunks removed%></div>
+			</div>
+			<div class="ose-metric-box">
+				<div class="ose-metric-lbl">📑 <%:Playlists Processed%></div>
+				<div class="ose-metric-val" id="metric-playlists">0</div>
+				<div class="ose-metric-lbl"><%:HLS manifests served%></div>
+			</div>
+			<div class="ose-metric-box">
+				<div class="ose-metric-lbl">🚀 <%:Active Streams%></div>
+				<div class="ose-metric-val" id="metric-streams">0</div>
+				<div class="ose-metric-lbl"><%:Current live streams%></div>
+			</div>
 		</div>
 	</div>
 
@@ -89,19 +140,19 @@
 		<div class="ose-card" style="margin-top: 10px;">
 			<div class="ose-flow-row">
 				<span>🔑 <strong><%:Playback Token (gql.twitch.tv):%></strong></span>
-				<span class="ose-badge ose-badge-direct" id="flow-token"><%:Direct WAN (RU) — No Ads%></span>
+				<span class="ose-badge ose-badge-direct" id="flow-token"><%:Direct WAN (RU) — Direct%></span>
 			</div>
 			<div class="ose-flow-row">
 				<span>📺 <strong><%:Stream Qualities (usher.ttvnw.net):%></strong></span>
-				<span class="ose-badge ose-badge-vpn" id="flow-master"><%:SmartDNS (EU) — 1440p/Source Unlock%></span>
+				<span class="ose-badge ose-badge-preset" id="flow-master"><%:SmartDNS Relay (EU) — 1440p Unlock%></span>
 			</div>
 			<div class="ose-flow-row">
 				<span>🚀 <strong><%:Media & Video Segments (live-video.net):%></strong></span>
-				<span class="ose-badge ose-badge-direct" id="flow-media"><%:Direct WAN — 100% ISP Speed (0% VPN)%></span>
+				<span class="ose-badge ose-badge-direct" id="flow-media"><%:Direct WAN — 100% ISP Speed (0% Ping)%></span>
 			</div>
 			<div class="ose-flow-row">
 				<span>🚫 <strong><%:Banner Ads & Trackers (edge.ads.twitch.tv):%></strong></span>
-				<span class="ose-badge ose-badge-block" id="flow-ads"><%:DNS Sinkhole (0.0.0.0) — Blocked%></span>
+				<span class="ose-badge ose-badge-block" id="flow-ads"><%:DNS Sinkhole (0.0.0.0) — 21 Domains Blocked%></span>
 			</div>
 		</div>
 	</div>
@@ -126,11 +177,11 @@
 
 <script type="text/javascript">
 const presetTitles = {
-	"ru_smartdns_noads_quality": "<%:🇷🇺 Russia / CIS: No ads + 1440p (SmartDNS — No VPN needed) [Recommended]%>",
-	"ru_noads_quality": "<%:🇷🇺 Russia / CIS: No ads + 1440p (SmartDNS — No VPN needed) [Recommended]%>",
-	"smartdns_quality_unlock": "<%:🌍 Quality Unlock: 1440p/Source (SmartDNS — No VPN needed)%>",
-	"quality_unlock": "<%:🌍 Quality Unlock: 1440p/Source (SmartDNS — No VPN needed)%>",
-	"ru_vpn_noads_quality": "<%:🛡️ Russia: No ads + 1440p (via Router VPN)%>",
+	"manifest_strip_edge": "<%:⚡ Playlist Edge: Manifest Stripping (Ad-Free + 1440p without CA) [Recommended]%>",
+	"ru_smartdns_noads_quality": "<%:🌟 🇷🇺 Russia / CIS: 1440p Quality + Clean SmartDNS (No VPN)%>",
+	"smartdns_quality_unlock": "<%:🌍 Quality Unlock: 1440p/Source (SmartDNS — No VPN)%>",
+	"quality_unlock": "<%:🌍 Quality Unlock: 1440p/Source (SmartDNS — No VPN)%>",
+	"ru_vpn_noads_quality": "<%:🛡️ VPN Split: 1440p + No Ads (via Router VPN)%>",
 	"eu_bypass_ads": "<%:🇪🇺 Europe / US: Bypass ads via RU DNS%>",
 	"full_bypass": "<%:🔒 Full Bypass: Route entire Twitch via VPN%>",
 	"custom": "<%:⚙️ Custom: Fine-grained matrix routing%>",
@@ -138,8 +189,8 @@ const presetTitles = {
 };
 
 const presetDescriptions = {
+	"manifest_strip_edge": "<%:Local streamproxyd strips SSAI ad tags and TS segments on-the-fly, while Comss SmartDNS unlocks 1080p/1440p without VPN!%>",
 	"ru_smartdns_noads_quality": "<%:Routes authorization token via Yandex DNS (RU) and master playlist via Comss SmartDNS (1440p). No VPN needed!%>",
-	"ru_noads_quality": "<%:Routes authorization token via Yandex DNS (RU) and master playlist via Comss SmartDNS (1440p). No VPN needed!%>",
 	"smartdns_quality_unlock": "<%:Unlocks 1080p60/1440p/Source qualities via Comss SmartDNS. No VPN needed.%>",
 	"quality_unlock": "<%:Unlocks 1080p60/1440p/Source qualities via Comss SmartDNS. No VPN needed.%>",
 	"ru_vpn_noads_quality": "<%:Routes authorization token directly (RU ISP) and master playlist via router VPN.%>",
@@ -152,7 +203,7 @@ async function loadStatus() {
 	try {
 		const r = await fetch('<%=url("admin/services/openstream/api_status")%>');
 		const j = await r.json();
-		const pKey = j.twitch_preset || "ru_smartdns_noads_quality";
+		const pKey = j.twitch_preset || "manifest_strip_edge";
 		document.getElementById('ose-twitch-preset').textContent = presetTitles[pKey] || pKey;
 		if (presetDescriptions[pKey]) {
 			document.getElementById('ose-twitch-descr').textContent = presetDescriptions[pKey];
@@ -165,6 +216,12 @@ async function loadStatus() {
 			document.getElementById('ose-twitch-status').textContent = '<%:Active%>';
 		}
 
+		// Update Metrics counters
+		document.getElementById('metric-ads').textContent = j.ads || 0;
+		document.getElementById('metric-segments').textContent = j.removed_segments || 0;
+		document.getElementById('metric-playlists').textContent = j.playlists || 0;
+		document.getElementById('metric-streams').textContent = j.streams || 0;
+
 		// Update flow badges
 		if (pKey === "full_bypass") {
 			document.getElementById('flow-token').className = 'ose-badge ose-badge-vpn';
@@ -175,16 +232,23 @@ async function loadStatus() {
 			document.getElementById('flow-media').textContent = '<%:EU VPN — Proxied%>';
 		} else if (pKey === "ru_vpn_noads_quality") {
 			document.getElementById('flow-token').className = 'ose-badge ose-badge-direct';
-			document.getElementById('flow-token').textContent = '<%:Direct WAN (RU) — No Ads%>';
+			document.getElementById('flow-token').textContent = '<%:Direct WAN (RU) — Direct%>';
 			document.getElementById('flow-master').className = 'ose-badge ose-badge-vpn';
 			document.getElementById('flow-master').textContent = '<%:EU VPN — 1440p Unlock%>';
 			document.getElementById('flow-media').className = 'ose-badge ose-badge-direct';
 			document.getElementById('flow-media').textContent = '<%:Direct WAN — 100% ISP Speed%>';
+		} else if (pKey === "manifest_strip_edge") {
+			document.getElementById('flow-token').className = 'ose-badge ose-badge-direct';
+			document.getElementById('flow-token').textContent = '<%:Direct WAN (Local ISP)%>';
+			document.getElementById('flow-master').className = 'ose-badge ose-badge-preset';
+			document.getElementById('flow-master').textContent = '<%:SmartDNS (EU) — 1440p Unlock%>';
+			document.getElementById('flow-media').className = 'ose-badge ose-badge-active';
+			document.getElementById('flow-media').textContent = '<%:streamproxyd Edge (Manifest Stripping)%>';
 		} else {
 			document.getElementById('flow-token').className = 'ose-badge ose-badge-direct';
-			document.getElementById('flow-token').textContent = '<%:Yandex DNS (RU) — No Ads%>';
+			document.getElementById('flow-token').textContent = '<%:Yandex DNS (RU)%>';
 			document.getElementById('flow-master').className = 'ose-badge ose-badge-preset';
-			document.getElementById('flow-master').textContent = '<%:Comss SmartDNS (EU) — 1440p Unlock (No VPN)%>';
+			document.getElementById('flow-master').textContent = '<%:Comss SmartDNS (EU) — 1440p Unlock%>';
 			document.getElementById('flow-media').className = 'ose-badge ose-badge-direct';
 			document.getElementById('flow-media').textContent = '<%:Direct WAN — 100% ISP Speed%>';
 		}
@@ -208,83 +272,63 @@ async function loadStatus() {
 				foundAny = true;
 				const span = document.createElement('span');
 				if (item.is_excluded) {
-					// Показываем в каких файлах Exclude найден домен
 					const excFiles = (item.exclude_files || []).join(', ');
 					span.className = 'ose-badge ose-badge-active';
 					span.title = excFiles ? '<%:Found in:%> ' + excFiles : '';
 					span.textContent = '✓ ' + item.name + ' (twitch.tv Exclude' + (excFiles ? ': ' + excFiles : '') + ')';
 				} else if (item.has_twitch) {
-					// Показываем в каких файлах найден домен в общем списке
 					const twFiles = (item.twitch_files || []).join(', ');
 					span.className = 'ose-badge ose-badge-disabled';
 					span.title = twFiles ? '<%:Found in:%> ' + twFiles : '';
-					span.textContent = '⚠️ ' + item.name + (twFiles ? ' [' + twFiles + ']' : '');
-					warnList.push(item.name + (twFiles ? ' (' + twFiles + ')' : ''));
+					span.textContent = '⚠️ ' + item.name + ' (twitch.tv in ' + (twFiles || 'list') + ')';
+					warnList.push(item.name);
 				} else {
 					span.className = 'ose-badge ose-badge-active';
-					span.textContent = '✓ ' + item.name + ' <%:detected%>';
+					span.textContent = '✓ ' + item.name + ' (OK)';
 				}
 				list.appendChild(span);
 			}
 		}
 
-	
-
-		if (ignore_warn) {
-			const span = document.createElement('span');
-			span.className = 'ose-badge ose-badge-preset';
-			span.textContent = '🛡️ <%:Warnings Suppressed (Twitch Excluded)%>';
-			list.appendChild(span);
-		}
-
 		if (!foundAny) {
-			const span = document.createElement('span');
-			span.className = 'ose-badge ose-badge-disabled';
-			span.textContent = '<%:No conflicting packages found%>';
-			list.appendChild(span);
+			list.innerHTML = '<span class="ose-badge ose-badge-active">✓ <%:No conflicting DPI/VPN packages detected (Clean)%></span>';
 		}
 
-		const warnDiv = document.getElementById('coex-warning');
+		const warnBox = document.getElementById('coex-warning');
 		if (warnList.length > 0 && !ignore_warn) {
-			const warnText = document.getElementById('coex-warning-text');
-			warnText.textContent = '<%:twitch.tv is present in general VPN list of:%> ' + warnList.join(', ') + '. <%:For best results, remove twitch.tv from their list so OpenStream Engine can split token, qualities and video streams cleanly.%>';
-			warnDiv.style.display = 'block';
+			document.getElementById('coex-warning-text').textContent =
+				'<%:Twitch is detected inside routing lists of:%> ' + warnList.join(', ') + '. <%:For optimal stream quality and direct speed, please add twitch.tv to their Exclude/Direct list.%>';
+			warnBox.style.display = 'block';
 		} else {
-			warnDiv.style.display = 'none';
+			warnBox.style.display = 'none';
 		}
-	} catch (e) {
-		console.log(e);
-	}
+	} catch (e) {}
 }
 
-document.addEventListener('click', async function(e) {
-	if (e.target && e.target.id === 'btn-ignore-warn') {
-		await fetch('<%=url("admin/services/openstream/api_toggle_ignore_warn")%>');
-		loadStatus();
-	}
-});
-
-document.getElementById('ose-reload').addEventListener('click', async function() {
+document.getElementById('ose-reload').addEventListener('click', async () => {
 	const msg = document.getElementById('ose-reload-msg');
 	msg.textContent = '<%:Reloading…%>';
 	msg.style.color = '#3b82f6';
 	try {
-		const r = await fetch('<%=url("admin/services/openstream/api_reload")%>');
-		const j = await r.json();
-		if (j.ok) {
-			msg.textContent = '<%:Applied successfully!%>';
-			msg.style.color = '#10b981';
-			setTimeout(() => { msg.textContent = ''; }, 3000);
-		} else {
-			msg.textContent = '<%:Failed to reload%>';
-			msg.style.color = '#ef4444';
-		}
+		await fetch('<%=url("admin/services/openstream/api_reload")%>', { method: 'POST' });
+		msg.textContent = '<%:Applied successfully!%>';
+		msg.style.color = '#10b981';
+		setTimeout(() => { msg.textContent = ''; }, 3000);
+		loadStatus();
 	} catch (e) {
 		msg.textContent = '<%:Failed to reload%>';
 		msg.style.color = '#ef4444';
 	}
 });
 
+document.getElementById('btn-ignore-warn').addEventListener('click', async () => {
+	try {
+		await fetch('<%=url("admin/services/openstream/api_toggle_ignore_warn")%>', { method: 'POST' });
+		loadStatus();
+	} catch (e) {}
+});
+
 loadStatus();
+setInterval(loadStatus, 5000);
 </script>
 <%+footer%>

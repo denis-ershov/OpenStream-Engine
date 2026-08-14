@@ -11,7 +11,7 @@ export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-0}"
 export PKG_SOURCE_DATE_EPOCH="${PKG_SOURCE_DATE_EPOCH:-$SOURCE_DATE_EPOCH}"
 
 VERSION="${OPENSTREAM_VERSION:-0.4.2}"
-RELEASE="${OPENSTREAM_RELEASE:-31}"
+RELEASE="${OPENSTREAM_RELEASE:-34}"
 ARCH="${OPENSTREAM_IPK_ARCH:-aarch64_cortex-a53}"
 TARGET="aarch64-unknown-linux-musl"
 IPKG_BUILD="$ROOT/scripts/ipkg-build"
@@ -102,7 +102,10 @@ chmod 0755 /etc/init.d/streamproxyd 2>/dev/null || true
 rm -f /tmp/luci-indexcache* /tmp/luci-modulecache/* 2>/dev/null
 [ -x /usr/libexec/openstream-refresh-opkg-list ] && /usr/libexec/openstream-refresh-opkg-list
 [ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd reload >/dev/null 2>&1
-[ -x /etc/init.d/streamproxyd ] && /etc/init.d/streamproxyd enable 2>/dev/null || true
+[ -x /etc/init.d/streamproxyd ] && {
+  /etc/init.d/streamproxyd enable 2>/dev/null || true
+  /etc/init.d/streamproxyd restart >/dev/null 2>&1 || true
+}
 # Очищаем /etc/dnsmasq.conf от любых старых строк OpenStream
 if [ -f /etc/dnsmasq.conf ]; then
   sed -i '/openstream/d' /etc/dnsmasq.conf 2>/dev/null || true

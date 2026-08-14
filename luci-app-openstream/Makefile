@@ -12,7 +12,7 @@ LUCI_PKGARCH:=all
 
 PKG_LICENSE:=MIT
 PKG_VERSION:=0.4.2
-PKG_RELEASE:=5
+PKG_RELEASE:=8
 
 include $(TOPDIR)/feeds/luci/luci.mk
 

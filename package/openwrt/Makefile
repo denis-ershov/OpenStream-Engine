@@ -7,7 +7,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=openstream-engine
 PKG_VERSION:=0.4.2
-PKG_RELEASE:=31
+PKG_RELEASE:=34
 
 PKG_LICENSE:=MIT
 PKG_MAINTAINER:=Denis Ershov

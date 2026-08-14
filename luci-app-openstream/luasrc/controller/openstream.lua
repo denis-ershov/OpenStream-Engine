@@ -305,6 +305,7 @@ function action_api_dns_test()
 		"gql.twitch.tv",
 		"usher.ttvnw.net",
 		"edge.ads.twitch.tv",
+		"countess.twitch.tv",
 		"video-weaver.fra02.hls.ttvnw.net"
 	}
 

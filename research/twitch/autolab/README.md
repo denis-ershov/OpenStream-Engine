@@ -41,3 +41,17 @@ python run_lab.py --channel gohamedia --headed --browser-only
 - Age-gate / login могут потребовать `--headed` и ручной клик; профиль: `user_data/`.
 - Не ставит ничего на ТВ/телефон — только lab на ПК.
 - Без `--socks5` гейты E1–E2 = `skipped`.
+
+## Проверка действующей DNS-стратегии роутера
+
+```bash
+# ПК подключён к LAN роутера; 192.168.1.1 — локальный dnsmasq.
+python router_dns_probe.py --channel gohamedia --resolver 192.168.1.1 --duration 600 --output router-report.json
+```
+
+`router_dns_probe.py` не использует DoH, системный DNS, VPN, proxy или MITM.
+Он получает A-записи только от заданного DNS роутера и закрепляет их за TLS с
+исходным SNI. Поэтому проверяется реальная связка dnsmasq/OpenStream/Forkop.
+`pass` означает `show_ads=false` у токена и отсутствие SSAI-маркеров во всех
+опрошенных media playlist. Запускайте отдельно после применения каждого пресета;
+не меняйте Forkop в ходе одного прогона.
