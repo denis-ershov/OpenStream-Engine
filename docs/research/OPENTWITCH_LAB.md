@@ -54,9 +54,10 @@ Client
 
 ### Ключевой вывод
 Для обхода рекламы при сохранении качественного потока (1080p/1440p) на роутере необходимо направить:
-- `gql.twitch.tv` -> **Direct (РФ IP)**
-- `usher.ttvnw.net` -> **VPN/SmartDNS (Европейский IP)**
-- `*.playlist.ttvnw.net` и CDN-домены -> **Direct (РФ IP)**
+- `gql.twitch.tv` -> **Direct (РФ IP)** (получение токена без SSAI видеорекламы)
+- `usher.ttvnw.net` -> **VPN/SmartDNS (Европейский IP)** (разблокировка 1080p/1440p/Source качеств)
+- `*.playlist.ttvnw.net` и CDN-домены -> **Direct (РФ IP)** (прямой поток на максимальной скорости)
+- `edge.ads.twitch.tv` -> **DNS Block / 0.0.0.0** (блокировка баннеров и ad-трекеров)
 
 Path-routing внутри одного HTTPS host без MITM недоступен; разделение по доменам GQL (RU) и Usher (EU) полностью решает задачу без дешифрации TLS.
 

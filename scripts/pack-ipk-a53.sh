@@ -11,7 +11,7 @@ export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-0}"
 export PKG_SOURCE_DATE_EPOCH="${PKG_SOURCE_DATE_EPOCH:-$SOURCE_DATE_EPOCH}"
 
 VERSION="${OPENSTREAM_VERSION:-0.4.2}"
-RELEASE="${OPENSTREAM_RELEASE:-14}"
+RELEASE="${OPENSTREAM_RELEASE:-30}"
 ARCH="${OPENSTREAM_IPK_ARCH:-aarch64_cortex-a53}"
 TARGET="aarch64-unknown-linux-musl"
 IPKG_BUILD="$ROOT/scripts/ipkg-build"
@@ -103,6 +103,17 @@ rm -f /tmp/luci-indexcache* /tmp/luci-modulecache/* 2>/dev/null
 [ -x /usr/libexec/openstream-refresh-opkg-list ] && /usr/libexec/openstream-refresh-opkg-list
 [ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd reload >/dev/null 2>&1
 [ -x /etc/init.d/streamproxyd ] && /etc/init.d/streamproxyd enable 2>/dev/null || true
+# Очищаем /etc/dnsmasq.conf от любых старых строк OpenStream
+if [ -f /etc/dnsmasq.conf ]; then
+  sed -i '/openstream/d' /etc/dnsmasq.conf 2>/dev/null || true
+fi
+# Исправляем сломанный confdir если он был добавлен предыдущими версиями OpenStream
+if uci -q get dhcp.@dnsmasq[0].confdir | grep -q "dnsmasq.d" 2>/dev/null; then
+  logger -t openstream-postinst "Removing broken confdir entries from dhcp config"
+  uci -q delete dhcp.@dnsmasq[0].confdir 2>/dev/null
+  uci -q commit dhcp 2>/dev/null
+fi
+/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
 exit 0
 EOF
   cat > "$ctrl/prerm" <<'EOF'
@@ -110,6 +121,11 @@ EOF
 [ -s "${IPKG_INSTROOT}/lib/functions.sh" ] || exit 0
 . "${IPKG_INSTROOT}/lib/functions.sh"
 default_prerm "$0" "$@"
+# Очищаем точечные записи OpenStream из /etc/hosts без затрагивания остального файла
+if [ -f /etc/hosts ] && grep -q "# openstream" /etc/hosts 2>/dev/null; then
+  sed -i '/# openstream/d' /etc/hosts 2>/dev/null || true
+  killall -HUP dnsmasq 2>/dev/null || true
+fi
 EOF
   chmod 0755 "$ctrl/postinst" "$ctrl/prerm"
 }
@@ -226,6 +242,12 @@ ensure_po2lmo() {
     return 1
   }
 
+  if [[ -f "$ROOT/scripts/po2lmo.py" ]]; then
+    python3 "$ROOT/scripts/po2lmo.py" "$ROOT/luci-app-openstream/po/ru/openstream.po" "$LMO_CACHE" 2>/dev/null \
+      || python "$ROOT/scripts/po2lmo.py" "$ROOT/luci-app-openstream/po/ru/openstream.po" "$LMO_CACHE" 2>/dev/null \
+      || true
+  fi
+
   # Git Bash on Windows cannot run Linux ELF po2lmo
   case "$(uname -s 2>/dev/null || echo unknown)" in
     MINGW*|MSYS*|CYGWIN*)
@@ -273,6 +295,7 @@ pack_engine() {
   install -m 0755 "$ROOT/package/openwrt/files/openstream-update-hostlists" "$ENGINE_PKG/usr/libexec/openstream-update-hostlists"
   install -m 0755 "$ROOT/package/openwrt/files/openstream-refresh-hls-set" "$ENGINE_PKG/usr/libexec/openstream-refresh-hls-set"
   install -m 0755 "$ROOT/package/openwrt/files/openstream-refresh-opkg-list" "$ENGINE_PKG/usr/libexec/openstream-refresh-opkg-list"
+  install -m 0755 "$ROOT/package/openwrt/files/openstream-resolve-smartdns" "$ENGINE_PKG/usr/libexec/openstream-resolve-smartdns"
   install -m 0755 "$ROOT/package/openwrt/files/streamproxyd.init" "$ENGINE_PKG/etc/init.d/streamproxyd"
   install -m 0644 "$ROOT/package/openwrt/files/openstream.config" "$ENGINE_PKG/etc/config/openstream"
   install -m 0644 "$ROOT/package/openwrt/files/config.yaml" "$ENGINE_PKG/etc/openstream/config.yaml"

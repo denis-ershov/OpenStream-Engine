@@ -1,6 +1,6 @@
 listen: "0.0.0.0:18080"
-# Playlist Edge (default). Legacy MITM: mode=transparent + mitm=true + CA on clients.
-mode: edge
+# OpenStream Engine daemon configuration (API & Observability)
+mode: split_routing
 # proxy_public_url: "http://192.168.1.1:18080"
 cache_ttl_secs: 2
 max_manifest_bytes: 2097152

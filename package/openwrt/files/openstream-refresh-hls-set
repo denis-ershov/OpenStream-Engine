@@ -35,13 +35,13 @@ while read -r line; do
 		IPS="$IPS $line"
 		;;
 	*)
-		# busybox nslookup / resolveip
-		if command -v resolveip >/dev/null 2>&1; then
-			for ip in $(resolveip -4 "$line" 2>/dev/null); do
+		# busybox nslookup / resolveip — с таймаутом чтобы не зависать при недоступном DNS
+		if command -v resolveip > /dev/null 2>&1; then
+			for ip in $(timeout 3 resolveip -4 "$line" 2>/dev/null); do
 				IPS="$IPS $ip"
 			done
 		else
-			for ip in $(nslookup "$line" 2>/dev/null | awk '/^Address: / { print $2 }' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'); do
+			for ip in $(timeout 3 nslookup "$line" 2>/dev/null | awk '/^Address: / { print $2 }' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'); do
 				IPS="$IPS $ip"
 			done
 		fi

@@ -1,0 +1,180 @@
+#!/bin/sh
+# OpenStream Engine — Dynamic SmartDNS Auto-Resolver
+# Resolves streaming and API domains dynamically via upstream SmartDNS/RU DNS servers
+# without hardcoded IPs.
+
+HOSTS_FILE=/etc/hosts
+HOSTS_MARK="# openstream-smartdns"
+SMARTDNS_DIR=/var/run/openstream
+SMARTDNS_CACHE="$SMARTDNS_DIR/smartdns_hosts"
+
+mkdir -p "$SMARTDNS_DIR"
+
+detect_wan_device() {
+	local user_wan
+	user_wan="$(uci -q get openstream.twitch.wan_interface 2>/dev/null)"
+	[ -n "$user_wan" ] || user_wan="$(uci -q get openstream.routing.wan_interface 2>/dev/null)"
+	if [ -n "$user_wan" ] && [ "$user_wan" != "auto" ]; then
+		echo "$user_wan"
+		return 0
+	fi
+
+	# 1. Попытка через default route на 77.88.8.8
+	local dev
+	dev="$(ip -4 route get 77.88.8.8 2>/dev/null | grep -o 'dev [^ ]*' | head -1 | awk '{print $2}')"
+	if [ -n "$dev" ]; then
+		echo "$dev"
+		return 0
+	fi
+
+	# 2. Попытка через UCI network.wan.device / ifname
+	dev="$(uci -q get network.wan.device 2>/dev/null)"
+	[ -n "$dev" ] || dev="$(uci -q get network.wan.ifname 2>/dev/null)"
+	if [ -n "$dev" ]; then
+		echo "$dev"
+		return 0
+	fi
+
+	# 3. Fallback
+	echo "wan"
+}
+
+# Резолвит домен через конкретный DNS сервер
+query_upstream_dns() {
+	local domain="$1" dns_ip="$2"
+	[ -n "$domain" ] && [ -n "$dns_ip" ] || return 1
+
+	local out
+	out="$(nslookup "$domain" "$dns_ip" 2>/dev/null)"
+	[ -n "$out" ] || return 1
+
+	local found_ips=""
+	# Извлекаем все IPv4 из секции ответа (после Name:)
+	local ans_part
+	ans_part="$(echo "$out" | awk '/Name:/{flag=1} flag{print}')"
+	[ -n "$ans_part" ] || ans_part="$out"
+
+	for ip in $(echo "$ans_part" | grep "Address" | awk '{print $NF}' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'); do
+		if [ "$ip" != "$dns_ip" ] && [ "$ip" != "127.0.0.1" ] && [ "$ip" != "0.0.0.0" ]; then
+			found_ips="$found_ips $ip"
+		fi
+	done
+
+	echo "$found_ips"
+}
+
+# Главный процесс динамического разрешения
+refresh_smartdns() {
+	local enabled preset
+	enabled="$(uci -q get openstream.twitch.enabled 2>/dev/null)"
+	[ -n "$enabled" ] || enabled="1"
+	preset="$(uci -q get openstream.twitch.preset 2>/dev/null)"
+	[ -n "$preset" ] || preset="ru_smartdns_noads_quality"
+
+	[ "$enabled" = "1" ] && [ "$preset" != "off" ] || {
+		# Очищаем кэш если отключено
+		if [ -f "$HOSTS_FILE" ] && grep -q "$HOSTS_MARK" "$HOSTS_FILE" 2>/dev/null; then
+			sed -i "\|$HOSTS_MARK|d" "$HOSTS_FILE" 2>/dev/null || true
+			killall -HUP dnsmasq 2>/dev/null || true
+		fi
+		return 0
+	}
+
+	local WAN_DEV
+	WAN_DEV="$(detect_wan_device)"
+	logger -t openstream-smartdns "Resolving SmartDNS routes (WAN dev: $WAN_DEV, preset: $preset)..."
+
+	local TMP_HOSTS="$SMARTDNS_DIR/smartdns_hosts.tmp"
+	> "$TMP_HOSTS"
+
+	# Блокировка рекламы
+	echo "0.0.0.0 edge.ads.twitch.tv $HOSTS_MARK" >> "$TMP_HOSTS"
+	echo ":: edge.ads.twitch.tv $HOSTS_MARK" >> "$TMP_HOSTS"
+
+	case "$preset" in
+		ru_smartdns_noads_quality|ru_noads_quality|"")
+			# 1. Динамический токен через Яндекс DNS (77.88.8.8)
+			local gql_ips
+			gql_ips="$(query_upstream_dns "gql.twitch.tv" "77.88.8.8")"
+			[ -n "$gql_ips" ] || gql_ips="$(query_upstream_dns "gql.twitch.tv" "62.76.76.62")"
+			for ip in $gql_ips; do
+				echo "$ip gql.twitch.tv $HOSTS_MARK" >> "$TMP_HOSTS"
+			done
+
+			# 2. Динамический мастер-плейлист через Comss SmartDNS (83.220.169.155)
+			local usher_ips
+			usher_ips="$(query_upstream_dns "usher.ttvnw.net" "83.220.169.155")"
+			[ -n "$usher_ips" ] || usher_ips="$(query_upstream_dns "usher.ttvnw.net" "212.109.195.93")"
+			for ip in $usher_ips; do
+				echo "$ip usher.ttvnw.net $HOSTS_MARK" >> "$TMP_HOSTS"
+			done
+			;;
+
+		smartdns_quality_unlock|quality_unlock)
+			local usher_ips
+			usher_ips="$(query_upstream_dns "usher.ttvnw.net" "83.220.169.155")"
+			[ -n "$usher_ips" ] || usher_ips="$(query_upstream_dns "usher.ttvnw.net" "212.109.195.93")"
+			for ip in $usher_ips; do
+				echo "$ip usher.ttvnw.net $HOSTS_MARK" >> "$TMP_HOSTS"
+			done
+			;;
+
+		ru_vpn_noads_quality|eu_bypass_ads)
+			local gql_ips
+			gql_ips="$(query_upstream_dns "gql.twitch.tv" "77.88.8.8")"
+			[ -n "$gql_ips" ] || gql_ips="$(query_upstream_dns "gql.twitch.tv" "62.76.76.62")"
+			for ip in $gql_ips; do
+				echo "$ip gql.twitch.tv $HOSTS_MARK" >> "$TMP_HOSTS"
+			done
+			;;
+
+		custom)
+			local r_token r_master
+			r_token="$(uci -q get openstream.twitch.route_token 2>/dev/null)"
+			r_master="$(uci -q get openstream.twitch.route_master 2>/dev/null)"
+
+			if [ "$r_token" = "dns_yandex" ]; then
+				for ip in $(query_upstream_dns "gql.twitch.tv" "77.88.8.8"); do
+					echo "$ip gql.twitch.tv $HOSTS_MARK" >> "$TMP_HOSTS"
+				done
+			elif [ "$r_token" = "dns_mskix" ]; then
+				for ip in $(query_upstream_dns "gql.twitch.tv" "62.76.76.62"); do
+					echo "$ip gql.twitch.tv $HOSTS_MARK" >> "$TMP_HOSTS"
+				done
+			elif [ "$r_token" = "smartdns_comss" ]; then
+				for ip in $(query_upstream_dns "gql.twitch.tv" "83.220.169.155"); do
+					echo "$ip gql.twitch.tv $HOSTS_MARK" >> "$TMP_HOSTS"
+				done
+			fi
+
+			if [ "$r_master" = "smartdns_comss" ]; then
+				for ip in $(query_upstream_dns "usher.ttvnw.net" "83.220.169.155"); do
+					echo "$ip usher.ttvnw.net $HOSTS_MARK" >> "$TMP_HOSTS"
+				done
+			elif [ "$r_master" = "dns_yandex" ]; then
+				for ip in $(query_upstream_dns "usher.ttvnw.net" "77.88.8.8"); do
+					echo "$ip usher.ttvnw.net $HOSTS_MARK" >> "$TMP_HOSTS"
+				done
+			fi
+			;;
+	esac
+
+	# Применяем в /etc/hosts только если есть новые записи
+	if [ -s "$TMP_HOSTS" ]; then
+		sed -i "\|$HOSTS_MARK|d" "$HOSTS_FILE" 2>/dev/null || true
+		cat "$TMP_HOSTS" >> "$HOSTS_FILE"
+		cp -f "$TMP_HOSTS" "$SMARTDNS_CACHE"
+		killall -HUP dnsmasq 2>/dev/null || true
+		logger -t openstream-smartdns "Dynamic SmartDNS routes applied successfully"
+	fi
+	rm -f "$TMP_HOSTS"
+}
+
+case "$1" in
+	--wan-dev)
+		detect_wan_device
+		;;
+	--force|*)
+		refresh_smartdns
+		;;
+esac

@@ -14,7 +14,52 @@ REFRESH_SET=/usr/libexec/openstream-refresh-hls-set
 CONFIG=/etc/openstream/config.yaml
 NFT_FILE=/usr/share/openstream/nft/openstream.nft
 CRON_FILE=/etc/crontabs/root
-CRON_MARK="# openstream-hostlist-remote"
+HOSTS_FILE=/etc/hosts
+HOSTS_MARK="# openstream"
+
+remove_hosts_routes() {
+	if [ -f "$HOSTS_FILE" ] && grep -q "$HOSTS_MARK" "$HOSTS_FILE" 2>/dev/null; then
+		sed -i "\|$HOSTS_MARK|d" "$HOSTS_FILE" 2>/dev/null || true
+		killall -HUP dnsmasq 2>/dev/null || true
+		logger -t openstream "removed all openstream entries from $HOSTS_FILE"
+	fi
+}
+
+apply_hosts_routes() {
+	local p_enabled="$1" p_preset="$2"
+	# Всегда сначала очищаем старые маркерные записи OpenStream
+	if [ -f "$HOSTS_FILE" ] && grep -q "$HOSTS_MARK" "$HOSTS_FILE" 2>/dev/null; then
+		sed -i "\|$HOSTS_MARK|d" "$HOSTS_FILE" 2>/dev/null || true
+	fi
+
+	if [ "$p_enabled" = "1" ] && [ "$p_preset" != "off" ]; then
+		{
+			# Блокировка рекламы и трекеров (Sinkhole)
+			echo "0.0.0.0 edge.ads.twitch.tv $HOSTS_MARK"
+			echo ":: edge.ads.twitch.tv $HOSTS_MARK"
+
+			case "$p_preset" in
+				ru_smartdns_noads_quality|ru_noads_quality|"")
+					# SmartDNS без VPN: RU Fastly IP для токена + Comss EU SNI Relay для плейлиста
+					echo "199.232.174.214 gql.twitch.tv $HOSTS_MARK"
+					echo "45.88.174.254 usher.ttvnw.net $HOSTS_MARK"
+					;;
+				smartdns_quality_unlock|quality_unlock)
+					# Разблокировка качеств через Comss SmartDNS
+					echo "45.88.174.254 usher.ttvnw.net $HOSTS_MARK"
+					;;
+				ru_vpn_noads_quality|eu_bypass_ads)
+					# Токен без рекламы через RU Fastly Anycast
+					echo "199.232.174.214 gql.twitch.tv $HOSTS_MARK"
+					;;
+			esac
+		} >> "$HOSTS_FILE"
+		killall -HUP dnsmasq 2>/dev/null || true
+		logger -t openstream "applied static SmartDNS routes to $HOSTS_FILE"
+	else
+		killall -HUP dnsmasq 2>/dev/null || true
+	fi
+}
 
 regen_config() {
 	if [ -x "$UCI2YAML" ]; then
@@ -34,33 +79,238 @@ notify_reload() {
 	wget -qO- --post-data='' http://127.0.0.1:18080/api/reload >/dev/null 2>&1 || true
 }
 
-apply_dnsmasq() {
-	local mode vpn_set
-	config_get mode proxy mode edge
-	config_get vpn_set proxy geo_split_vpn_set "4#inet#fw4#vpn_domains"
+REGEN_SMARTDNS=/usr/libexec/openstream-resolve-smartdns
 
-	vpn_set="$(echo "$vpn_set" | tr -cd 'a-zA-Z0-9#_-')"
-	[ -n "$vpn_set" ] || vpn_set="4#inet#fw4#vpn_domains"
-
-	mkdir -p /etc/dnsmasq.d
-
-	if [ "$mode" = "geo_split" ]; then
-		if dnsmasq --version 2>/dev/null | grep -q "nftset"; then
-			echo "nftset=/usher.ttvnw.net/$vpn_set" > /etc/dnsmasq.d/openstream.conf
-		else
-			local ipset_name
-			ipset_name="${vpn_set##*#}"
-			echo "ipset=/usher.ttvnw.net/$ipset_name" > /etc/dnsmasq.d/openstream.conf
-		fi
+detect_wan_device() {
+	if [ -x "$REGEN_SMARTDNS" ]; then
+		"$REGEN_SMARTDNS" --wan-dev
 	else
-		if [ -f /usr/share/openstream/dnsmasq-openstream.conf ]; then
-			cp -f /usr/share/openstream/dnsmasq-openstream.conf /etc/dnsmasq.d/openstream.conf 2>/dev/null
-		else
-			rm -f /etc/dnsmasq.d/openstream.conf 2>/dev/null
-		fi
+		echo "wan"
+	fi
+}
+
+emit_rule() {
+	local domain="$1" target="$2" has_nft="$3"
+	[ -n "$domain" ] || return 0
+
+	case "$target" in
+		block)
+			echo "address=/$domain/0.0.0.0"
+			echo "address=/$domain/::"
+			;;
+		smartdns_comss|comss)
+			echo "server=/$domain/83.220.169.155"
+			echo "server=/$domain/212.109.195.93"
+			;;
+		dns_yandex|yandex)
+			echo "server=/$domain/77.88.8.8"
+			echo "server=/$domain/77.88.8.1"
+			;;
+		dns_mskix|mskix)
+			echo "server=/$domain/62.76.76.62"
+			echo "server=/$domain/62.76.62.76"
+			;;
+		dns_cloudflare|cloudflare)
+			echo "server=/$domain/1.1.1.1"
+			echo "server=/$domain/1.0.0.1"
+			;;
+		dns_google|google)
+			echo "server=/$domain/8.8.8.8"
+			echo "server=/$domain/8.8.4.4"
+			;;
+		dns_nsdi|nsdi)
+			echo "server=/$domain/195.208.4.1"
+			echo "server=/$domain/195.208.5.1"
+			;;
+		vpn_eu|vpn_ru|vpn_custom|4#*|*#*)
+			local set_val=""
+			case "$target" in
+				vpn_eu) set_val="$VPN_EU" ;;
+				vpn_ru) set_val="$VPN_RU" ;;
+				vpn_custom) set_val="$VPN_CUSTOM" ;;
+				*) set_val="$target" ;;
+			esac
+			[ -n "$set_val" ] || return 0
+			if [ "$has_nft" = "1" ]; then
+				echo "nftset=/$domain/$set_val"
+			else
+				local ipset_name="${set_val##*#}"
+				echo "ipset=/$domain/$ipset_name"
+			fi
+			;;
+		direct|off|none|"")
+			;;
+	esac
+}
+
+detect_vpn_set() {
+	local has_nft="$1"
+	if [ "$has_nft" = "1" ]; then
+		local fw4_sets
+		fw4_sets="$(nft list sets table inet fw4 2>/dev/null)"
+		for s in vpn_domains forkop_domains netshift_domains podkop_domains passwall_vpn unblock_domains; do
+			if echo "$fw4_sets" | grep -q "set $s"; then
+				echo "4#inet#fw4#$s"
+				return 0
+			fi
+		done
+		echo "4#inet#fw4#vpn_domains"
+	else
+		for s in vpn_domains forkop_domains netshift_domains unblock zapret; do
+			if ipset list "$s" >/dev/null 2>&1; then
+				echo "$s"
+				return 0
+			fi
+		done
+		echo "vpn_domains"
+	fi
+}
+
+safe_dnsmasq_reload() {
+	# Проверяем валидность перед перезапуском
+	if ! dnsmasq --test >/dev/null 2>&1; then
+		logger -t openstream -p daemon.err "dnsmasq --test failed! Rolling back openstream.conf to prevent DNS outage."
+		rm -f /tmp/dnsmasq.d/openstream.conf /etc/dnsmasq.d/openstream.conf 2>/dev/null || true
 	fi
 
-	/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
+	/etc/init.d/dnsmasq restart > /dev/null 2>&1 || true
+	sleep 1
+	if ! /etc/init.d/dnsmasq running 2>/dev/null; then
+		logger -t openstream -p daemon.err "dnsmasq failed to start — recovering clean state"
+		rm -f /tmp/dnsmasq.d/openstream.conf /etc/dnsmasq.d/openstream.conf 2>/dev/null || true
+		/etc/init.d/dnsmasq restart > /dev/null 2>&1 || true
+	fi
+}
+
+apply_dnsmasq() {
+	local has_nft=0
+	dnsmasq --version 2>/dev/null | grep -q "nftset" && has_nft=1
+
+	local auto_set
+	auto_set="$(detect_vpn_set "$has_nft")"
+
+	local VPN_EU VPN_RU VPN_CUSTOM
+	config_get VPN_EU routing vpn_set_eu ""
+	config_get VPN_RU routing vpn_set_ru "4#inet#fw4#vpn_ru"
+	config_get VPN_CUSTOM routing vpn_set_custom "4#inet#fw4#vpn_custom"
+
+	# fallback на legacy proxy.geo_split_vpn_set
+	if [ -z "$VPN_EU" ]; then
+		config_get VPN_EU proxy geo_split_vpn_set ""
+	fi
+
+	[ -n "$VPN_EU" ] || VPN_EU="$auto_set"
+	[ -n "$VPN_RU" ] || VPN_RU="4#inet#fw4#vpn_ru"
+	[ -n "$VPN_CUSTOM" ] || VPN_CUSTOM="4#inet#fw4#vpn_custom"
+
+	VPN_EU="$(echo "$VPN_EU" | tr -cd 'a-zA-Z0-9#_-')"
+	VPN_RU="$(echo "$VPN_RU" | tr -cd 'a-zA-Z0-9#_-')"
+	VPN_CUSTOM="$(echo "$VPN_CUSTOM" | tr -cd 'a-zA-Z0-9#_-')"
+
+	local twitch_enabled twitch_preset
+	twitch_enabled="$(uci -q get openstream.twitch.enabled 2>/dev/null)"
+	[ -n "$twitch_enabled" ] || twitch_enabled="1"
+	twitch_preset="$(uci -q get openstream.twitch.preset 2>/dev/null)"
+	[ -n "$twitch_preset" ] || twitch_preset="ru_smartdns_noads_quality"
+
+	local WAN_DEV
+	WAN_DEV="$(detect_wan_device)"
+
+	local uci_confdir
+	uci_confdir="$(uci -q get dhcp.@dnsmasq[0].confdir 2>/dev/null | head -1 | tr -d '\n')"
+	if echo "$uci_confdir" | grep -q ","; then
+		# Значение с запятой ломает фильтр файлов в dnsmasq. Исправляем на чистый /tmp/dnsmasq.d
+		uci_confdir="/tmp/dnsmasq.d"
+		uci -q set dhcp.@dnsmasq[0].confdir='/tmp/dnsmasq.d' 2>/dev/null || true
+		uci -q commit dhcp 2>/dev/null || true
+	fi
+
+	mkdir -p /tmp/dnsmasq.d /etc/dnsmasq.d
+	[ -n "$uci_confdir" ] && mkdir -p "$uci_confdir" 2>/dev/null || true
+
+	# Очищаем /etc/dnsmasq.conf от старых вставок
+	if [ -f /etc/dnsmasq.conf ]; then
+		sed -i '/openstream/d' /etc/dnsmasq.conf 2>/dev/null || true
+	fi
+
+	local CONF_TMP="/tmp/dnsmasq.d/openstream.conf.new"
+	local CONF_LIVE="/tmp/dnsmasq.d/openstream.conf"
+
+	{
+		echo "# OpenStream Engine generated DNS routes (SmartDNS & Split Routing)"
+		if [ "$twitch_enabled" = "1" ] && [ "$twitch_preset" != "off" ]; then
+			case "$twitch_preset" in
+				ru_smartdns_noads_quality|ru_noads_quality|"")
+					# РФ SmartDNS: Без рекламы (Яндекс DNS) + 1440p (Comss SmartDNS) БЕЗ VPN
+					emit_rule "gql.twitch.tv" "dns_yandex" "$has_nft"
+					emit_rule "usher.ttvnw.net" "smartdns_comss" "$has_nft"
+					emit_rule "edge.ads.twitch.tv" "block" "$has_nft"
+					;;
+				smartdns_quality_unlock|quality_unlock)
+					# Разблокировка качеств 1080p/1440p/Source через SmartDNS (БЕЗ VPN)
+					emit_rule "usher.ttvnw.net" "smartdns_comss" "$has_nft"
+					emit_rule "edge.ads.twitch.tv" "block" "$has_nft"
+					;;
+				ru_vpn_noads_quality)
+					# Сплит через VPN-туннель (для тех у кого настроен VPN-интерфейс)
+					emit_rule "usher.ttvnw.net" "vpn_eu" "$has_nft"
+					emit_rule "edge.ads.twitch.tv" "block" "$has_nft"
+					;;
+				eu_bypass_ads)
+					# Европа/США: Обход рекламы через RU DNS
+					emit_rule "gql.twitch.tv" "dns_yandex" "$has_nft"
+					emit_rule "edge.ads.twitch.tv" "block" "$has_nft"
+					;;
+				full_bypass)
+					# Полный VPN обход
+					emit_rule "gql.twitch.tv" "vpn_eu" "$has_nft"
+					emit_rule "usher.ttvnw.net" "vpn_eu" "$has_nft"
+					emit_rule "ttvnw.net" "vpn_eu" "$has_nft"
+					emit_rule "live-video.net" "vpn_eu" "$has_nft"
+					emit_rule "jtvnw.net" "vpn_eu" "$has_nft"
+					emit_rule "edge.ads.twitch.tv" "block" "$has_nft"
+					;;
+				custom)
+					local r_token r_master r_media r_segments r_ads
+					r_token="$(uci -q get openstream.twitch.route_token 2>/dev/null)"; [ -n "$r_token" ] || r_token="dns_yandex"
+					r_master="$(uci -q get openstream.twitch.route_master 2>/dev/null)"; [ -n "$r_master" ] || r_master="smartdns_comss"
+					r_media="$(uci -q get openstream.twitch.route_media 2>/dev/null)"; [ -n "$r_media" ] || r_media="direct"
+					r_segments="$(uci -q get openstream.twitch.route_segments 2>/dev/null)"; [ -n "$r_segments" ] || r_segments="direct"
+					r_ads="$(uci -q get openstream.twitch.route_ads 2>/dev/null)"; [ -n "$r_ads" ] || r_ads="block"
+
+					emit_rule "gql.twitch.tv" "$r_token" "$has_nft"
+					emit_rule "usher.ttvnw.net" "$r_master" "$has_nft"
+					emit_rule "playlist.ttvnw.net" "$r_media" "$has_nft"
+					emit_rule "live-video.net" "$r_segments" "$has_nft"
+					emit_rule "edge.ads.twitch.tv" "$r_ads" "$has_nft"
+					;;
+			esac
+		fi
+	} > "$CONF_TMP"
+
+	# Перезапускаем dnsmasq только если конфиг изменился
+	if ! cmp -s "$CONF_TMP" "$CONF_LIVE" 2>/dev/null; then
+		mv "$CONF_TMP" "$CONF_LIVE"
+		# Копируем в /etc/dnsmasq.d/ для персистентности
+		cp -f "$CONF_LIVE" /etc/dnsmasq.d/openstream.conf 2>/dev/null || true
+		# Если Forkop/sing-box использует другой confdir — копируем туда тоже
+		if [ -n "$uci_confdir" ] && \
+		   [ "$uci_confdir" != "/tmp/dnsmasq.d" ] && \
+		   [ "$uci_confdir" != "/etc/dnsmasq.d" ] && \
+		   [ -d "$uci_confdir" ]; then
+			cp -f "$CONF_LIVE" "$uci_confdir/openstream.conf" 2>/dev/null || true
+			logger -t openstream "wrote dnsmasq conf to UCI confdir: $uci_confdir"
+		fi
+		safe_dnsmasq_reload
+	else
+		rm -f "$CONF_TMP"
+		logger -t openstream "dnsmasq config unchanged, skipping restart"
+	fi
+
+	# Запуск динамического SmartDNS авторезолвера
+	if [ -x "$REGEN_SMARTDNS" ]; then
+		"$REGEN_SMARTDNS" >/dev/null 2>&1 || true
+	fi
 }
 
 apply_transparent_nft() {
@@ -140,10 +390,17 @@ service_triggers() {
 
 stop_service() {
 	nft delete table inet openstream 2>/dev/null || true
-	rm -f /etc/dnsmasq.d/openstream.conf 2>/dev/null
-	/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
+	# Точечно удаляем записи OpenStream из /etc/hosts
+	remove_hosts_routes
+	# Удаляем оба конфига — /tmp/ (активный) и /etc/ (персистентный)
+	rm -f /tmp/dnsmasq.d/openstream.conf /tmp/dnsmasq.d/openstream.conf.new 2>/dev/null || true
+	rm -f /etc/dnsmasq.d/openstream.conf 2>/dev/null || true
+	if [ -f /etc/dnsmasq.conf ]; then
+		sed -i '\|# openstream|d' /etc/dnsmasq.conf 2>/dev/null || true
+	fi
+	safe_dnsmasq_reload
 	if [ -f "$CRON_FILE" ]; then
 		sed -i "\|$CRON_MARK|d" "$CRON_FILE" 2>/dev/null || true
-		/etc/init.d/cron reload >/dev/null 2>&1 || true
+		/etc/init.d/cron reload > /dev/null 2>&1 || true
 	fi
 }

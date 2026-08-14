@@ -16,17 +16,19 @@ Browser / App
   → *.playlist.ttvnw.net / live-video.net (?)
   → video-weaver*.ttvnw.net / CDN
   → segments (.ts / .m4s)
+  → edge.ads.twitch.tv (Ad server / Banners → DNS Block 0.0.0.0)
 ```
 
 ## Таблица шагов
 
-| # | Когда | DNS/SNI host | Method/path | Размер порядка | Geo? | VPS? | Примечание |
-|---|--------|--------------|-------------|----------------|------|------|------------|
-| 1 | pre-play | `www.twitch.tv`, `assets.twitch.tv` | `GET /<channel>` | ~MB (HTML/JS) | да | нет | Загрузка основного приложения |
-| 2 | token | `gql.twitch.tv` | `POST /gql` | ~KB | да | hypot. yes | PlaybackAccessToken |
-| 3 | master | `usher.ttvnw.net` | `GET /api/v2/channel/hls/…m3u8` | ~KB | да | hypot. yes | Мастер-плейлист с вариантами качеств |
-| 4 | media | `*.playlist.ttvnw.net` | `GET /v1/playlist/…m3u8` | ~KB | да | hypot. yes | Медиа-плейлист конкретного качества (SSAI маркеры) |
-| 5 | segment | `*.live-video.net`, `*.cloudfront.hls.ttvnw.net` | `GET /v1/segment/…ts` | MB/s | да | no (goal) | Видеосегменты (.ts / .m4s) |
+| # | Когда | DNS/SNI host | Method/path | Размер порядка | Geo? | Egress / Route | Примечание |
+|---|--------|--------------|-------------|----------------|------|----------------|------------|
+| 1 | pre-play | `www.twitch.tv`, `assets.twitch.tv` | `GET /<channel>` | ~MB (HTML/JS) | да | Direct (WAN) | Загрузка основного приложения |
+| 2 | token | `gql.twitch.tv` | `POST /gql` | ~KB | да | **Direct (RU WAN)** | PlaybackAccessToken (RU IP = no SSAI ads) |
+| 3 | master | `usher.ttvnw.net` | `GET /api/v2/channel/hls/…m3u8` | ~KB | да | **VPN (EU)** | Мастер-плейлист с вариантами качеств (1080p/1440p/Source) |
+| 4 | media | `*.playlist.ttvnw.net` | `GET /v1/playlist/…m3u8` | ~KB | да | Direct (WAN) | Медиа-плейлист конкретного качества |
+| 5 | segment | `*.live-video.net`, `*.cloudfront.hls.ttvnw.net` | `GET /v1/segment/…ts` | MB/s | да | Direct (WAN) | Видеосегменты (.ts / .m4s) |
+| 6 | ads/tracking | `edge.ads.twitch.tv` | `*` | ~KB | нет | **DNS BLOCK** | Баннеры, ad-сервер и трекеры (Sinkhole `0.0.0.0` на роутере) |
 
 Порядок во времени: timeline из HAR / `network.json`. Учитывать poll media и prefetch.
 

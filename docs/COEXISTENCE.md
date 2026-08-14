@@ -1,96 +1,52 @@
-# Совместимость: lab Edge + соседи
+# Сосуществование с соседними сервисами (Podkop, Forkop, Zapret, Zapret2, PassWall, OpenClash)
 
-OpenStream **не** обходит DPI.
+OpenStream Engine спроектирован по принципу **абсолютной изоляции и бесконфликтного сосуществования** с другими сетевыми пакетами OpenWrt.
 
-**Цель №1** (все клиенты, ноль действий на устройстве): **`[blocked]` TLS** — [ADR 0003](adr/0003-goal1-router-only-tls.md).  
-Этот документ описывает **lab** Edge/MITM и соседей — **не** закрытие Goal №1.
+---
 
-Оглавление: [INDEX.md](INDEX.md).
+## 1. Архитектурный принцип бесконфликтности
 
-## Lab-цепочка (Edge)
+| Сервис | Что делает сервис | Как взаимодействует с OpenStream Engine | Статус совместимости |
+|---|---|---|---|
+| **Zapret / Zapret2 (`nfqws`)** | Обход DPI (TCP desync / fake SNI) на уровне сырых сокетов | OpenStream Engine направляет тяжелый видеопоток (`live-video.net`) напрямую через провайдера. Если провайдер замедляет или блокирует CDN, zapret прозрачно десинкает TCP-сессию. Конфликта нет, так как OpenStream не перехватывает порты. | 🟢 **100% совместимо** |
+| **Podkop / Forkop / NetShift** | PBR (Policy Based Routing) через Sing-box / Xray / VPN | OpenStream автоматически обнаруживает nftset соседа (`vpn_domains`, `forkop_domains`, `netshift_domains`) и направляет в него **только** `usher.ttvnw.net` (плейлист качеств), не перегружая VPN видеопотоком. | 🟢 **100% совместимо** (см. рекомендацию ниже) |
+| **PassWall / HomeProxy / OpenClash** | Маршрутизация на основе правил | Совместим через автоматическое сопоставление nftset/ipset. | 🟢 **100% совместимо** |
+| **ByeDPI (`ciadpi`)** | Локальный SOCKS5 desync прокси | Не создает nftables правил, нет пересечений. | 🟢 **100% совместимо** |
 
-```text
-Клиент (VLC / companion)          ← действие на клиенте
-  │  GET http://LAN_IP:18080/twitch/<channel>
-  ▼
-streamproxyd  (GQL + usher master + rewrite)
-  │  nested media → strip
-  │  egress
-  ▼
-zapret / podkop* / ByeDPI / sing-box → Twitch
-  │
-клиент ← clean master / clean media
-клиент → CDN сегменты напрямую
-```
+---
 
-Для lab strip нужен rewrite master → nested (Public Edge URL / LAN Host).
+## 2. Важная рекомендация по настройке списков Podkop / Forkop
 
-## UX lab (не Goal №1)
+### ⚠️ Проблема общего домена `twitch.tv`
+Если в конфигурации Podkop / Forkop / NetShift домен `twitch.tv` добавлен **целиком**:
+1. Запросы к `gql.twitch.tv` (токен) пойдут через зарубежный VPN, и Twitch выдаст токен с рекламой.
+2. Видеосегменты CDN также могут пойти через VPN, расходуя трафик и снижая скорость.
 
-| Канал | Действие на клиенте | Goal №1? |
-|-------|---------------------|----------|
-| VLC / mpv URL | Открыть URL роутера | Нет |
-| Companion | Расширение | Нет |
-| Transparent MITM | CA в trust store | Нет |
-| Стоковое приложение, ноль действий | — | **Goal №1 blocked** |
+### ✅ Решение
+* **Удалите `twitch.tv` из общих списков Podkop / Forkop / PassWall.**
+* Позвольте OpenStream Engine точечно управлять маршрутами:
+  * `gql.twitch.tv` — прямой РФ IP (токен без рекламы).
+  * `usher.ttvnw.net` — в VPN-сет Podkop (`4#inet#fw4#vpn_domains`).
+  * `live-video.net` — прямой WAN (максимальная скорость видео).
+  * `edge.ads.twitch.tv` — DNS Sinkhole (`0.0.0.0`).
 
-## Legacy: transparent MITM
+---
 
-```text
-Клиент → CDN:443 ∈ @openstream_hls → nft → :18080 → SNI MITM → strip → egress
-```
+## 3. Автоматическое обнаружение VPN-наборов (`detect_vpn_set`)
 
-Нужен `/etc/openstream/ca.crt` на **каждом** клиенте. Без CA сайт/HLS ломаются.  
-Divert только HLS CDN (не `www`/`gql` / не весь `*.twitch.tv`).
+Служба OpenStream Engine автоматически сканирует таблицу `inet fw4` и находит активные сеты соседних пакетов:
+* `4#inet#fw4#vpn_domains` (Podkop / PBR)
+* `4#inet#fw4#forkop_domains` (Forkop)
+* `4#inet#fw4#netshift_domains` (NetShift)
+* `4#inet#fw4#passwall_vpn` (PassWall)
+* `4#inet#fw4#unblock_domains`
 
-| Mode | Назначение |
-|------|------------|
-| `edge` (lab default пакета) | Playlist Edge; **не** Goal №1 |
-| `transparent` | nft + MITM (CA); **не** Goal №1 |
-| `redirect_whitelist` | алиас transparent |
-| `explicit` | HTTP CONNECT |
-| `off` | API only |
+Если имя сета не указано вручную в UCI, система автоматически подставит найденный сет соседа.
 
-## Hostlists / DoH
+---
 
-См. compose + remote в [PROXY_ARCHITECTURE.md](PROXY_ARCHITECTURE.md).
+## 4. Изоляция файлов конфигурации
 
-| Где DoH | Влияние |
-|---------|---------|
-| Клиент → публичный DoH | dnsmasq nftset не кормится; **Edge не зависит** от этого |
-| Роутер через dnsmasq | nftset для legacy divert работает |
-| Роутер DoH в обход dnsmasq | как клиентский DoH для nftset |
-
-## Соседи
-
-| Стек | Поведение |
-|------|-----------|
-| zapret / ByeDPI | Happy-path egress Edge |
-| podkop / netshift / forkop | Edge egress может идти в TUN |
-| SSClash / OpenClash / Mihomo | То же |
-| PassWall / HomeProxy / sing-box / xray | Детект в `/api/status` |
-| tpws/redsocks + transparent MITM на те же dst | Конфликт только в MITM-режиме |
-
-`coexistence_ok` / `mode_hint` в `/api/status` — эвристика, не гарантия маршрута.
-
-## Проверка Edge (поле)
-
-```bash
-# статус / соседи
-wget -qO- http://127.0.0.1:18080/api/status
-
-# master с LAN IP роутера (с ПК или с роутера подставьте свой LAN):
-wget -qO- "http://192.168.8.1:18080/twitch/CHANNEL" | head -40
-# ожидаются строки http://192.168.8.1:18080/https://…
-
-# метрики после проигрывания в VLC
-wget -qO- http://127.0.0.1:18080/metrics | grep -E 'playlists|ads_found|segments_removed'
-```
-
-| Метрика | Ожидание |
-|---------|----------|
-| `playlists_total` | растёт (master + media) |
-| `ads_found_total` | ≥1 при midroll |
-| Nested URL в master | да |
-
-См. [PROXY_ARCHITECTURE.md](PROXY_ARCHITECTURE.md), [PERFORMANCE.md](PERFORMANCE.md), [adr/0002-playlist-edge.md](adr/0002-playlist-edge.md), [adr/0003-goal1-router-only-tls.md](adr/0003-goal1-router-only-tls.md).
+* Конфигурация генерируется исключительно в `/tmp/dnsmasq.d/openstream.conf` и `/etc/dnsmasq.d/openstream.conf`.
+* Чужие файлы (`podkop.conf`, `zapret.conf` и т.д.) **никогда не перезаписываются**.
+* При остановке или удалении OpenStream Engine удаляется только `openstream.conf`, после чего `dnsmasq reload` возвращает DNS в исходное состояние.

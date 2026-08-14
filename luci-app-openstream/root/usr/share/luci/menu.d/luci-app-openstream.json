@@ -34,36 +34,20 @@
 			"path": "openstream/services"
 		}
 	},
-	"admin/services/openstream/events": {
-		"title": "Events",
-		"order": 4,
-		"action": {
-			"type": "template",
-			"path": "openstream/events"
-		}
-	},
-	"admin/services/openstream/metrics": {
-		"title": "Metrics",
-		"order": 5,
-		"action": {
-			"type": "template",
-			"path": "openstream/metrics"
-		}
-	},
 	"admin/services/openstream/logs": {
 		"title": "Logs",
-		"order": 6,
+		"order": 4,
 		"action": {
 			"type": "template",
 			"path": "openstream/logs"
 		}
 	},
-	"admin/services/openstream/coexistence": {
-		"title": "Environment",
-		"order": 7,
+	"admin/services/openstream/diagnostics": {
+		"title": "Diagnostics",
+		"order": 5,
 		"action": {
 			"type": "template",
-			"path": "openstream/coexistence"
+			"path": "openstream/diagnostics"
 		}
 	}
 }

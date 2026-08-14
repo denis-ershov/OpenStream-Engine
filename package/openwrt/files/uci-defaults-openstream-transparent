@@ -1,9 +1,12 @@
 #!/bin/sh
 # dnsmasq nftset только для HLS CDN (не *.twitch.tv).
 # MITM/CA — только если mode=transparent (advanced).
-[ -d /etc/dnsmasq.d ] || mkdir -p /etc/dnsmasq.d
-[ -f /etc/dnsmasq.d/openstream.conf ] || \
-	cp -f /usr/share/openstream/dnsmasq-openstream.conf /etc/dnsmasq.d/openstream.conf 2>/dev/null
+mkdir -p /etc/dnsmasq.d /tmp/dnsmasq.d
+
+# НЕ используем uci add_list dhcp.@dnsmasq[0].confdir —
+# добавление нескольких записей через add_list создаёт путь с пробелом
+# '/tmp/dnsmasq.d /etc/dnsmasq.d', который не существует → dnsmasq падает.
+# Конфиги OpenStream пишутся напрямую в /tmp/dnsmasq.d/ (загружается автоматически).
 
 # Миграция: transparent → edge (Playlist Edge без CA)
 mode="$(uci -q get openstream.proxy.mode 2>/dev/null)"

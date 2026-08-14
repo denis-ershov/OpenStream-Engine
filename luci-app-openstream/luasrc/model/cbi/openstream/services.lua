@@ -1,68 +1,42 @@
 local m, s, o
 
 local function apply_daemon()
-	luci.sys.call("/usr/libexec/openstream-compose-hostlist >/dev/null 2>&1")
 	luci.sys.call("/usr/libexec/openstream-uci2yaml >/dev/null 2>&1")
-	luci.sys.call(
-		"wget -qO- --post-data='' http://127.0.0.1:18080/api/reload >/dev/null 2>&1 " ..
-		"|| /etc/init.d/streamproxyd reload >/dev/null 2>&1"
-	)
+	luci.sys.call("/etc/init.d/streamproxyd reload >/dev/null 2>&1")
 end
 
-local function add_hostlist(svc)
-	luci.sys.call(string.format(
-		"uci -q del_list openstream.proxy.hostlist_services='%s'; uci -q add_list openstream.proxy.hostlist_services='%s'; uci -q commit openstream",
-		svc, svc
-	))
-end
-
-m = Map("openstream", translate("Services & observability"),
-	translate("Enable additional HLS/DASH plugins and metrics endpoints."))
+m = Map("openstream", translate("Streaming Services Hub"),
+	translate("Manage streaming platform modules and global settings."))
 
 m.on_after_commit = function()
-	local c = luci.model.uci.cursor()
-	if c:get("openstream", "kick", "enabled") == "1" then add_hostlist("kick") end
-	if c:get("openstream", "trovo", "enabled") == "1" then add_hostlist("trovo") end
-	if c:get("openstream", "youtube", "enabled") == "1" then add_hostlist("youtube") end
 	apply_daemon()
 end
 
-s = m:section(NamedSection, "kick", "kick", translate("Kick"))
+s = m:section(NamedSection, "main", "main", translate("Global Settings"))
 s.anonymous = true
-o = s:option(Flag, "enabled", translate("Enable"))
-o.default = "0"
-o = s:option(Flag, "debug", translate("Debug"))
-o.default = "0"
 
-s = m:section(NamedSection, "trovo", "trovo", translate("Trovo"))
-s.anonymous = true
-o = s:option(Flag, "enabled", translate("Enable"))
-o.default = "0"
-o = s:option(Flag, "debug", translate("Debug"))
-o.default = "0"
-
-s = m:section(NamedSection, "youtube", "youtube", translate("YouTube Live"))
-s.anonymous = true
-o = s:option(Flag, "enabled", translate("Enable"))
-o.default = "0"
-o = s:option(Flag, "debug", translate("Debug"))
-o.default = "0"
-
-s = m:section(NamedSection, "dash", "dash", translate("DASH"))
-s.anonymous = true
-o = s:option(Flag, "enabled", translate("Enable"))
+o = s:option(Flag, "enabled", translate("Master Switch (OpenStream Engine)"))
 o.default = "1"
-o = s:option(Flag, "debug", translate("Debug"))
+o.rmempty = false
+
+o = s:option(Flag, "expert_mode", translate("Expert / Developer Mode"))
+o.default = "0"
+o.description = translate("Enables raw metric views and low-level diagnostic panels in navigation.")
+
+s = m:section(NamedSection, "youtube", "module", translate("YouTube (Experimental)"))
+s.anonymous = true
+o = s:option(Flag, "enabled", translate("Enable YouTube Module"))
+o.default = "0"
+o.description = translate("Policy-based routing for YouTube CDN and googlevideo streams.")
+
+s = m:section(NamedSection, "kick", "module", translate("Kick.com"))
+s.anonymous = true
+o = s:option(Flag, "enabled", translate("Enable Kick Module"))
 o.default = "0"
 
-s = m:section(NamedSection, "observability", "observability", translate("Observability"))
+s = m:section(NamedSection, "trovo", "module", translate("Trovo.live"))
 s.anonymous = true
-o = s:option(Flag, "metrics", translate("OpenMetrics /metrics"))
-o.default = "1"
-o = s:option(Flag, "events", translate("Events API /api/events"))
-o.default = "1"
-o = s:option(Value, "event_capacity", translate("Event ring capacity"))
-o.datatype = "uinteger"
-o.default = "128"
+o = s:option(Flag, "enabled", translate("Enable Trovo Module"))
+o.default = "0"
 
 return m

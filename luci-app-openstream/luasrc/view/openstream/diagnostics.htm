@@ -1,0 +1,103 @@
+<%+header%>
+<style>
+.ose-diag-card {
+	background: var(--cbi-section-bg, rgba(255,255,255,0.05));
+	border: 1px solid var(--cbi-section-border, rgba(0,0,0,0.1));
+	border-radius: 8px;
+	padding: 16px;
+	margin-bottom: 16px;
+}
+.ose-test-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 10px 14px;
+	margin-bottom: 8px;
+	background: rgba(0,0,0,0.02);
+	border-radius: 6px;
+}
+.ose-ip-badge {
+	font-family: monospace;
+	background: rgba(0,0,0,0.06);
+	padding: 2px 6px;
+	border-radius: 4px;
+	font-size: 12px;
+}
+</style>
+
+<div class="cbi-map">
+	<h2 name="content"><%:OpenStream Engine%> — <%:Diagnostics & DNS Test%></h2>
+	<div class="cbi-map-descr"><%:Verify local DNS resolution, nftset matching, and ad-blocking status directly on the router.%></div>
+
+	<div class="ose-diag-card">
+		<h3><%:Twitch Domain Resolution Test%></h3>
+		<p><%:Click the button below to test how the router resolves critical streaming and ad domains via local dnsmasq (127.0.0.1):%></p>
+		<p>
+			<button type="button" class="btn cbi-button cbi-button-apply" id="btn-run-test" onclick="runDnsTest()"><%:Run DNS Test Now%></button>
+			<span id="test-status" style="margin-left: 10px; font-weight: bold;"></span>
+		</p>
+
+		<div id="test-results" style="margin-top: 16px;">
+			<div class="ose-test-item">
+				<span>🔑 <strong>gql.twitch.tv</strong> (<%:Auth Token%>)</span>
+				<span class="ose-ip-badge" id="res-gql">—</span>
+			</div>
+			<div class="ose-test-item">
+				<span>📺 <strong>usher.ttvnw.net</strong> (<%:Master Playlist%>)</span>
+				<span class="ose-ip-badge" id="res-usher">—</span>
+			</div>
+			<div class="ose-test-item">
+				<span>🚫 <strong>edge.ads.twitch.tv</strong> (<%:Ad Server & Trackers%>)</span>
+				<span class="ose-ip-badge" id="res-ads">—</span>
+			</div>
+			<div class="ose-test-item">
+				<span>🚀 <strong>video-weaver.*.hls.ttvnw.net</strong> (<%:CDN Stream%>)</span>
+				<span class="ose-ip-badge" id="res-weaver">—</span>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script type="text/javascript">
+async function runDnsTest() {
+	const btn = document.getElementById('btn-run-test');
+	const status = document.getElementById('test-status');
+	btn.disabled = true;
+	status.textContent = '<%:Testing…%>';
+	status.style.color = '#3b82f6';
+
+	try {
+		const r = await fetch('<%=url("admin/services/openstream/api_dns_test")%>');
+		const results = await r.json();
+		btn.disabled = false;
+		status.textContent = '<%:Test Completed%>';
+		status.style.color = '#10b981';
+
+		results.forEach(item => {
+			let elId = '';
+			if (item.domain.indexOf('gql') >= 0) elId = 'res-gql';
+			else if (item.domain.indexOf('usher') >= 0) elId = 'res-usher';
+			else if (item.domain.indexOf('ads') >= 0) elId = 'res-ads';
+			else if (item.domain.indexOf('weaver') >= 0) elId = 'res-weaver';
+
+			const el = document.getElementById(elId);
+			if (el) {
+				if (item.ips && item.ips.length > 0) {
+					if (item.ips[0] === '0.0.0.0') {
+						el.innerHTML = '<span style="color:#ef4444;font-weight:bold;">0.0.0.0 (<%:BLOCKED - OK%>)</span>';
+					} else {
+						el.innerHTML = '<span style="color:#10b981;">' + item.ips.join(', ') + '</span>';
+					}
+				} else {
+					el.innerHTML = '<span style="color:#f59e0b;"><%:Unresolved%></span>';
+				}
+			}
+		});
+	} catch (e) {
+		btn.disabled = false;
+		status.textContent = '<%:Test Failed (Router unreachable)%>';
+		status.style.color = '#ef4444';
+	}
+}
+</script>
+<%+footer%>

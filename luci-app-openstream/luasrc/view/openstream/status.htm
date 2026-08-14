@@ -1,50 +1,290 @@
 <%+header%>
-<h2 name="content"><%:OpenStream Engine%> — <%:Status%></h2>
-<p>
-	<button type="button" class="btn cbi-button cbi-button-apply" id="ose-reload"><%:Apply and Reload%></button>
-	<span id="ose-reload-msg"></span>
-</p>
-<div class="cbi-section">
-	<h3><%:Playlist Edge%></h3>
-	<p><%:No client CA. Open in VLC / mpv (replace CHANNEL and router IP):%></p>
-	<pre id="ose-edge-url">http://ROUTER_LAN_IP:18080/twitch/CHANNEL</pre>
-	<p><%:Set Public Edge URL in Twitch settings to your LAN IP (e.g. http://192.168.8.1:18080). Companion can redirect usher/playlist here. Segments stay on CDN.%></p>
+<style>
+.ose-card-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+	gap: 16px;
+	margin-bottom: 20px;
+}
+.ose-card {
+	background: var(--cbi-section-bg, rgba(255,255,255,0.05));
+	border: 1px solid var(--cbi-section-border, rgba(0,0,0,0.1));
+	border-radius: 8px;
+	padding: 16px;
+	box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+.ose-card h4 {
+	margin-top: 0;
+	margin-bottom: 8px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+.ose-badge {
+	display: inline-block;
+	padding: 3px 8px;
+	border-radius: 12px;
+	font-size: 11px;
+	font-weight: bold;
+	text-transform: uppercase;
+}
+.ose-badge-active { background: #10b981; color: #fff; }
+.ose-badge-disabled { background: #6b7280; color: #fff; }
+.ose-badge-preset { background: #3b82f6; color: #fff; }
+.ose-badge-direct { background: #059669; color: #fff; }
+.ose-badge-vpn { background: #8b5cf6; color: #fff; }
+.ose-badge-block { background: #ef4444; color: #fff; }
+
+.ose-flow-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 8px 12px;
+	margin-bottom: 6px;
+	background: rgba(0,0,0,0.03);
+	border-radius: 6px;
+	font-size: 13px;
+}
+.ose-actions {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 16px;
+}
+</style>
+
+<div class="cbi-map">
+	<h2 name="content"><%:OpenStream Engine%> — <%:Dashboard%></h2>
+	<div class="cbi-map-descr"><%:Smart DNS & Modular Traffic Routing for Live Streaming Platforms.%></div>
+
+	<div class="ose-actions">
+		<button type="button" class="btn cbi-button cbi-button-apply" id="ose-reload"><%:Apply and Reload%></button>
+		<span id="ose-reload-msg" style="font-weight: bold;"></span>
+	</div>
+
+	<div class="ose-card-grid">
+		<div class="ose-card">
+			<h4>
+				<span>🎮 <%:Twitch Module%></span>
+				<span class="ose-badge ose-badge-active" id="ose-twitch-status"><%:Active%></span>
+			</h4>
+			<p><strong><%:Current Preset:%></strong> <span class="ose-badge ose-badge-preset" id="ose-twitch-preset"><%:Loading…%></span></p>
+			<p id="ose-twitch-descr" style="color: #6b7280; font-size: 12px;"><%:Smart Split Routing & Ad-Bypass for Twitch live streams.%></p>
+			<p><a href="<%=url("admin/services/openstream/twitch")%>" class="btn cbi-button"><%:Configure Twitch%> &rarr;</a></p>
+		</div>
+
+		<div class="ose-card">
+			<h4>
+				<span>📦 <%:Other Services%></span>
+				<span class="ose-badge ose-badge-disabled"><%:Standby%></span>
+			</h4>
+			<p><strong>YouTube / Kick / Trovo:</strong></p>
+			<p style="color: #6b7280; font-size: 12px;"><%:Modular streaming engine supports adding custom DNS policies for next-gen platforms.%></p>
+			<p><a href="<%=url("admin/services/openstream/services")%>" class="btn cbi-button"><%:Services Hub%> &rarr;</a></p>
+		</div>
+	</div>
+
+	<div class="cbi-section">
+		<h3><%:Active Twitch Traffic Flow%></h3>
+		<div class="ose-card" style="margin-top: 10px;">
+			<div class="ose-flow-row">
+				<span>🔑 <strong><%:Playback Token (gql.twitch.tv):%></strong></span>
+				<span class="ose-badge ose-badge-direct" id="flow-token"><%:Direct WAN (RU) — No Ads%></span>
+			</div>
+			<div class="ose-flow-row">
+				<span>📺 <strong><%:Stream Qualities (usher.ttvnw.net):%></strong></span>
+				<span class="ose-badge ose-badge-vpn" id="flow-master"><%:SmartDNS (EU) — 1440p/Source Unlock%></span>
+			</div>
+			<div class="ose-flow-row">
+				<span>🚀 <strong><%:Media & Video Segments (live-video.net):%></strong></span>
+				<span class="ose-badge ose-badge-direct" id="flow-media"><%:Direct WAN — 100% ISP Speed (0% VPN)%></span>
+			</div>
+			<div class="ose-flow-row">
+				<span>🚫 <strong><%:Banner Ads & Trackers (edge.ads.twitch.tv):%></strong></span>
+				<span class="ose-badge ose-badge-block" id="flow-ads"><%:DNS Sinkhole (0.0.0.0) — Blocked%></span>
+			</div>
+		</div>
+	</div>
+
+	<div class="cbi-section">
+		<h3><%:Coexistence with Neighbor Packages (podkop, forkop, zapret)%></h3>
+		<div class="ose-card" style="margin-top: 10px;">
+			<p style="margin-top:0; font-size:13px; color:#4b5563;">
+				<%:OpenStream Engine operates at DNS Policy level without TLS interception or heavy iptables/nftables redirect tables, ensuring 100% compatibility with DPI bypass and VPN services.%></p>
+			<div id="coex-list" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+				<span class="ose-badge ose-badge-disabled"><%:Scanning neighbors…%></span>
+			</div>
+			<div id="coex-warning" style="display:none; padding:10px 14px; background:#fffbeb; border:1px solid #fde68a; border-radius:6px; font-size:13px; color:#92400e; margin-top:8px;">
+				<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+					<div><strong>⚠️ <%:Recommendation:%></strong> <span id="coex-warning-text"></span></div>
+					<button type="button" class="btn cbi-button" id="btn-ignore-warn" style="font-size:11px; padding:2px 8px;"><%:I have already excluded Twitch (Hide)%></button>
+				</div>
+			</div>
+		</div>
+	</div>
 </div>
-<div id="ose-status">
-	<p><%:Loading…%></p>
-</div>
+
 <script type="text/javascript">
-async function oseRefresh() {
+const presetTitles = {
+	"ru_smartdns_noads_quality": "<%:🇷🇺 Russia / CIS: No ads + 1440p (SmartDNS — No VPN needed) [Recommended]%>",
+	"ru_noads_quality": "<%:🇷🇺 Russia / CIS: No ads + 1440p (SmartDNS — No VPN needed) [Recommended]%>",
+	"smartdns_quality_unlock": "<%:🌍 Quality Unlock: 1440p/Source (SmartDNS — No VPN needed)%>",
+	"quality_unlock": "<%:🌍 Quality Unlock: 1440p/Source (SmartDNS — No VPN needed)%>",
+	"ru_vpn_noads_quality": "<%:🛡️ Russia: No ads + 1440p (via Router VPN)%>",
+	"eu_bypass_ads": "<%:🇪🇺 Europe / US: Bypass ads via RU DNS%>",
+	"full_bypass": "<%:🔒 Full Bypass: Route entire Twitch via VPN%>",
+	"custom": "<%:⚙️ Custom: Fine-grained matrix routing%>",
+	"off": "<%:⏹️ Disabled%>"
+};
+
+const presetDescriptions = {
+	"ru_smartdns_noads_quality": "<%:Routes authorization token via Yandex DNS (RU) and master playlist via Comss SmartDNS (1440p). No VPN needed!%>",
+	"ru_noads_quality": "<%:Routes authorization token via Yandex DNS (RU) and master playlist via Comss SmartDNS (1440p). No VPN needed!%>",
+	"smartdns_quality_unlock": "<%:Unlocks 1080p60/1440p/Source qualities via Comss SmartDNS. No VPN needed.%>",
+	"quality_unlock": "<%:Unlocks 1080p60/1440p/Source qualities via Comss SmartDNS. No VPN needed.%>",
+	"ru_vpn_noads_quality": "<%:Routes authorization token directly (RU ISP) and master playlist via router VPN.%>",
+	"eu_bypass_ads": "<%:Fetches ad-free token via Russian DNS and streams via European CDN.%>",
+	"full_bypass": "<%:Routes all Twitch traffic via VPN tunnel.%>",
+	"custom": "<%:Custom routing matrix is active.%>"
+};
+
+async function loadStatus() {
 	try {
 		const r = await fetch('<%=url("admin/services/openstream/api_status")%>');
 		const j = await r.json();
-		const el = document.getElementById('ose-status');
-		el.innerHTML =
-			'<table class="table"><tr><th><%:Running%></th><td>' + (j.error ? '<%:No%>' : '<%:Yes%>') + '</td></tr>' +
-			'<tr><th><%:Playlists%></th><td>' + (j.playlists||0) + '</td></tr>' +
-			'<tr><th><%:Ads Found%></th><td>' + (j.ads||0) + '</td></tr>' +
-			'<tr><th><%:Segments Removed%></th><td>' + (j.removed_segments||0) + '</td></tr>' +
-			'<tr><th><%:Current Streams%></th><td>' + (j.streams||0) + '</td></tr>' +
-			'<tr><th><%:Events buffered%></th><td>' + (j.events_buffered||0) + '</td></tr>' +
-			'<tr><th><%:Plugin ABI%></th><td>' + (j.plugin_abi||'—') + '</td></tr>' +
-			'<tr><th><%:Plugins%></th><td>' + ((j.plugins||[]).join(', ')||'—') + '</td></tr></table>';
+		const pKey = j.twitch_preset || "ru_smartdns_noads_quality";
+		document.getElementById('ose-twitch-preset').textContent = presetTitles[pKey] || pKey;
+		if (presetDescriptions[pKey]) {
+			document.getElementById('ose-twitch-descr').textContent = presetDescriptions[pKey];
+		}
+		if (j.twitch_enabled === false || pKey === "off") {
+			document.getElementById('ose-twitch-status').className = 'ose-badge ose-badge-disabled';
+			document.getElementById('ose-twitch-status').textContent = '<%:Disabled%>';
+		} else {
+			document.getElementById('ose-twitch-status').className = 'ose-badge ose-badge-active';
+			document.getElementById('ose-twitch-status').textContent = '<%:Active%>';
+		}
+
+		// Update flow badges
+		if (pKey === "full_bypass") {
+			document.getElementById('flow-token').className = 'ose-badge ose-badge-vpn';
+			document.getElementById('flow-token').textContent = '<%:EU VPN — Proxied%>';
+			document.getElementById('flow-master').className = 'ose-badge ose-badge-vpn';
+			document.getElementById('flow-master').textContent = '<%:EU VPN — 1440p Unlock%>';
+			document.getElementById('flow-media').className = 'ose-badge ose-badge-vpn';
+			document.getElementById('flow-media').textContent = '<%:EU VPN — Proxied%>';
+		} else if (pKey === "ru_vpn_noads_quality") {
+			document.getElementById('flow-token').className = 'ose-badge ose-badge-direct';
+			document.getElementById('flow-token').textContent = '<%:Direct WAN (RU) — No Ads%>';
+			document.getElementById('flow-master').className = 'ose-badge ose-badge-vpn';
+			document.getElementById('flow-master').textContent = '<%:EU VPN — 1440p Unlock%>';
+			document.getElementById('flow-media').className = 'ose-badge ose-badge-direct';
+			document.getElementById('flow-media').textContent = '<%:Direct WAN — 100% ISP Speed%>';
+		} else {
+			document.getElementById('flow-token').className = 'ose-badge ose-badge-direct';
+			document.getElementById('flow-token').textContent = '<%:Yandex DNS (RU) — No Ads%>';
+			document.getElementById('flow-master').className = 'ose-badge ose-badge-preset';
+			document.getElementById('flow-master').textContent = '<%:Comss SmartDNS (EU) — 1440p Unlock (No VPN)%>';
+			document.getElementById('flow-media').className = 'ose-badge ose-badge-direct';
+			document.getElementById('flow-media').textContent = '<%:Direct WAN — 100% ISP Speed%>';
+		}
 	} catch (e) {
-		document.getElementById('ose-status').innerHTML = '<p><%:Daemon unreachable%></p>';
+		document.getElementById('ose-twitch-preset').textContent = '<%:Active%>';
+	}
+
+	try {
+		const r2 = await fetch('<%=url("admin/services/openstream/api_coexistence")%>');
+		const data = await r2.json();
+		const coex = data.neighbors || {};
+		const ignore_warn = data.ignore_warnings || false;
+		const list = document.getElementById('coex-list');
+		list.innerHTML = '';
+		let foundAny = false;
+		let warnList = [];
+
+		for (const key in coex) {
+			const item = coex[key];
+			if (item.detected) {
+				foundAny = true;
+				const span = document.createElement('span');
+				if (item.is_excluded) {
+					// Показываем в каких файлах Exclude найден домен
+					const excFiles = (item.exclude_files || []).join(', ');
+					span.className = 'ose-badge ose-badge-active';
+					span.title = excFiles ? '<%:Found in:%> ' + excFiles : '';
+					span.textContent = '✓ ' + item.name + ' (twitch.tv Exclude' + (excFiles ? ': ' + excFiles : '') + ')';
+				} else if (item.has_twitch) {
+					// Показываем в каких файлах найден домен в общем списке
+					const twFiles = (item.twitch_files || []).join(', ');
+					span.className = 'ose-badge ose-badge-disabled';
+					span.title = twFiles ? '<%:Found in:%> ' + twFiles : '';
+					span.textContent = '⚠️ ' + item.name + (twFiles ? ' [' + twFiles + ']' : '');
+					warnList.push(item.name + (twFiles ? ' (' + twFiles + ')' : ''));
+				} else {
+					span.className = 'ose-badge ose-badge-active';
+					span.textContent = '✓ ' + item.name + ' <%:detected%>';
+				}
+				list.appendChild(span);
+			}
+		}
+
+	
+
+		if (ignore_warn) {
+			const span = document.createElement('span');
+			span.className = 'ose-badge ose-badge-preset';
+			span.textContent = '🛡️ <%:Warnings Suppressed (Twitch Excluded)%>';
+			list.appendChild(span);
+		}
+
+		if (!foundAny) {
+			const span = document.createElement('span');
+			span.className = 'ose-badge ose-badge-disabled';
+			span.textContent = '<%:No conflicting packages found%>';
+			list.appendChild(span);
+		}
+
+		const warnDiv = document.getElementById('coex-warning');
+		if (warnList.length > 0 && !ignore_warn) {
+			const warnText = document.getElementById('coex-warning-text');
+			warnText.textContent = '<%:twitch.tv is present in general VPN list of:%> ' + warnList.join(', ') + '. <%:For best results, remove twitch.tv from their list so OpenStream Engine can split token, qualities and video streams cleanly.%>';
+			warnDiv.style.display = 'block';
+		} else {
+			warnDiv.style.display = 'none';
+		}
+	} catch (e) {
+		console.log(e);
 	}
 }
-document.getElementById('ose-reload').onclick = async function () {
+
+document.addEventListener('click', async function(e) {
+	if (e.target && e.target.id === 'btn-ignore-warn') {
+		await fetch('<%=url("admin/services/openstream/api_toggle_ignore_warn")%>');
+		loadStatus();
+	}
+});
+
+document.getElementById('ose-reload').addEventListener('click', async function() {
 	const msg = document.getElementById('ose-reload-msg');
-	msg.textContent = '…';
+	msg.textContent = '<%:Reloading…%>';
+	msg.style.color = '#3b82f6';
 	try {
 		const r = await fetch('<%=url("admin/services/openstream/api_reload")%>');
-		const t = await r.text();
-		msg.textContent = t.indexOf('"ok"') >= 0 ? '<%:Reloaded%>' : t;
-		oseRefresh();
+		const j = await r.json();
+		if (j.ok) {
+			msg.textContent = '<%:Applied successfully!%>';
+			msg.style.color = '#10b981';
+			setTimeout(() => { msg.textContent = ''; }, 3000);
+		} else {
+			msg.textContent = '<%:Failed to reload%>';
+			msg.style.color = '#ef4444';
+		}
 	} catch (e) {
-		msg.textContent = '<%:Daemon unreachable%>';
+		msg.textContent = '<%:Failed to reload%>';
+		msg.style.color = '#ef4444';
 	}
-};
-oseRefresh();
-setInterval(oseRefresh, 5000);
+});
+
+loadStatus();
 </script>
 <%+footer%>

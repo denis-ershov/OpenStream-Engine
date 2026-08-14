@@ -7,7 +7,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=openstream-engine
 PKG_VERSION:=0.4.2
-PKG_RELEASE:=14
+PKG_RELEASE:=30
 
 PKG_LICENSE:=MIT
 PKG_MAINTAINER:=Denis Ershov
@@ -63,6 +63,7 @@ define Package/openstream-engine/install
 	$(INSTALL_BIN) ./files/openstream-update-hostlists $(1)/usr/libexec/openstream-update-hostlists
 	$(INSTALL_BIN) ./files/openstream-refresh-hls-set $(1)/usr/libexec/openstream-refresh-hls-set
 	$(INSTALL_BIN) ./files/openstream-refresh-opkg-list $(1)/usr/libexec/openstream-refresh-opkg-list
+	$(INSTALL_BIN) ./files/openstream-resolve-smartdns $(1)/usr/libexec/openstream-resolve-smartdns
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ./files/streamproxyd.init $(1)/etc/init.d/streamproxyd
 	$(INSTALL_DIR) $(1)/etc/config

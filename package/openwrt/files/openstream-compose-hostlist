@@ -5,7 +5,8 @@
 #   - + UCI list custom_domain
 # Сервисы: UCI list proxy.hostlist_services; плюс авто из enabled-плагинов.
 
-set -e
+# set -e убран намеренно: UCI может вернуть ненулевой код для пустых значений,
+# что при set -e прерывало бы скрипт и оставляло частичный hostlist.
 
 OUT="${1:-/var/run/openstream/hostlist-effective.txt}"
 SHIPPED=/usr/share/openstream/hostlists

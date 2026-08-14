@@ -6,22 +6,26 @@ OpenStream Engine — это решение уровня роутера для O
 
 ---
 
-## Концепция: Smart Geo-Split (R3)
+## Концепция: Умная модульная маршрутизация (Split Routing)
 
 Классические методы блокировки вшитой рекламы требуют дешифрования HTTPS-трафика (MITM) с установкой корневого CA-сертификата роутера на каждое клиентское устройство (смартфоны, ТВ, приставки). Это создает огромные риски безопасности и зачастую технически невозможно на закрытых ОС вроде Apple TV, WebOS или Tizen.
 
-OpenStream Engine реализует **Smart Geo-Split (R3)** на сетевом уровне (DNS/Routing):
+OpenStream Engine реализует **прозрачную модульную маршрутизацию** на уровне ядра (DNS/Routing):
 
-| Трафик | Маршрутизация | Почему? |
-|--------|---------------|---------|
-| `gql.twitch.tv` | **Прямой WAN (РФ IP)** | Twitch выписывает токен авторизации для РФ-региона, в котором по умолчанию **отключена реклама**. |
-| `usher.ttvnw.net` | **Европейский VPN / SmartDNS** | Обход региональных ограничений на качества Source/1440p/1080p. |
-| `*.playlist.ttvnw.net` / CDN | **Прямой WAN (РФ IP)** | Сами медиа-плейлисты и видеосегменты (`.ts`) скачиваются напрямую, тратя 0% трафика вашего VPN и используя полную скорость провайдера. |
+| Пресет в LuCI | Token (GQL) | Master (Usher) | Media/Segments (CDN) | Баннеры (Ads) |
+|---|---|---|---|---|
+| 🇷🇺 **«РФ: Без рекламы + 1440p»** *(Рекомендуется)* | **Direct WAN (РФ)** | **VPN EU** | **Direct WAN (РФ)** | **DNS Block (0.0.0.0)** |
+| 🇪🇺 **«Европа/США: Обход рекламы через РФ»** | **VPN RU** | **Direct WAN (EU)** | **Direct WAN (EU)** | **DNS Block (0.0.0.0)** |
+| 🌍 **«Разблокировка 1440p/Source»** | **Direct WAN** | **VPN EU/US** | **Direct WAN** | **DNS Block (0.0.0.0)** |
+| 🛡️ **«Полный обход (Full VPN)»** | **VPN EU** | **VPN EU** | **VPN EU** | **DNS Block (0.0.0.0)** |
+| ⚙️ **«Пользовательский (Custom Matrix)»** | *Выбор* | *Выбор* | *Выбор* | *Выбор* |
 
 ```text
 Client ──► OpenWrt ──DNS/SNI usher.ttvnw.net──► VPN (EU) ──► Twitch (Quality master.m3u8)
               │
               ├──DNS/SNI gql.twitch.tv────────► РФ ISP   ──► Twitch (Token show_ads:false)
+              │
+              ├──DNS edge.ads.twitch.tv───────► 0.0.0.0  ──► (Баннеры/трекеры заблокированы)
               │
               └──DNS/SNI playlist/segments────► РФ ISP   ──► CDN (Прямой поток на макс. скорости)
 ```
@@ -38,20 +42,6 @@ Client ──► OpenWrt ──DNS/SNI usher.ttvnw.net──► VPN (EU) ──�
 ### ⚡ Производительность и ресурсы (Performance)
 - **Минимальная нагрузка CPU/RAM:** Видеосегменты не проксируются через пользовательское пространство роутера. Маршрутизация выполняется на уровне ядра через `dnsmasq` и быстрые таблицы `nftset/ipset`.
 - **Экономия трафика VPN:** Через VPN проходят только мелкие API-запросы (~10–20 КБ при запуске стрима). Сам тяжелый видеопоток идет напрямую.
-- **Очистка сетевого стека:** В режиме `geo_split` локальная таблица NAT-перенаправления `inet openstream` полностью удаляется, экономя такты процессора.
-
----
-
-## Структура проекта
-
-```text
-├── crates/                    # Исходный код демона прокси на Rust
-├── docs/                      # Архитектурные ADR и исследовательская документация
-├── luci-app-openstream/       # Веб-интерфейс LuCI (Lua / Model / Controller)
-├── package/                   # Файлы пакета OpenWrt (Makefile, конфиги, init-скрипты)
-├── research/                  # Autolab — фреймворк тестирования маршрутов
-└── scripts/                   # Скрипты сборки и упаковки релизов
-```
 
 ---
 
@@ -64,35 +54,17 @@ Client ──► OpenWrt ──DNS/SNI usher.ttvnw.net──► VPN (EU) ──�
 Скопируйте файлы на роутер и установите командой:
 ```bash
 opkg update
-opkg install openstream-engine_0.4.2-14_aarch64_cortex-a53.ipk
-opkg install luci-app-openstream_0.4.2-14_all.ipk
-opkg install luci-i18n-openstream-ru_0.4.2-14_all.ipk
+opkg install openstream-engine_0.4.2-30_aarch64_cortex-a53.ipk
+opkg install luci-app-openstream_0.4.2-30_all.ipk
+opkg install luci-i18n-openstream-ru_0.4.2-30_all.ipk
 ```
 
-### 2. Настройка через CLI
+### 2. Настройка через LuCI Web UI
 
-Для быстрой настройки через UCI выполните:
-```bash
-# Включить службу
-uci set openstream.main.enabled='1'
-
-# Переключить режим в Smart Geo-Split
-uci set openstream.proxy.mode='geo_split'
-
-# Указать имя nftset/ipset вашей VPN-маршрутизации
-uci set openstream.proxy.geo_split_vpn_set='4#inet#fw4#vpn_domains'
-
-# Применить изменения
-uci commit openstream
-/etc/init.d/streamproxyd restart
-```
-
-### 3. Настройка через LuCI Web UI
-
-Перейдите в меню **Службы → OpenStream** на вашем роутере:
-- Выберите режим **Smart Geo-Split (R3, Recommended, no CA)**.
-- Введите имя вашего VPN-набора в поле **Smart Geo-Split VPN Set**.
-- Нажмите «Сохранить и применить».
+Перейдите в меню **Службы → OpenStream Engine**:
+- **Обзор (Dashboard):** Мониторинг активных модулей и потоков трафика.
+- **Twitch:** Выберите желаемый сценарий (например, *«🇷🇺 Россия / СНГ: Без рекламы + 1440p/Source»*) в 1 клик.
+- **Диагностика:** Экспресс-проверка DNS и статуса блокировки трекеров.
 
 ---
 

@@ -1,117 +1,121 @@
 local m, s, o
 
 local function apply_daemon()
-	luci.sys.call("/usr/libexec/openstream-compose-hostlist >/dev/null 2>&1")
 	luci.sys.call("/usr/libexec/openstream-uci2yaml >/dev/null 2>&1")
-	luci.sys.call(
-		"wget -qO- --post-data='' http://127.0.0.1:18080/api/reload >/dev/null 2>&1 " ..
-		"|| /etc/init.d/streamproxyd reload >/dev/null 2>&1"
-	)
+	luci.sys.call("/etc/init.d/streamproxyd reload >/dev/null 2>&1")
 end
 
-m = Map("openstream", translate("Twitch plugin"),
-	translate("Segment Stripping. Default mode is Playlist Edge (no client CA)."))
+m = Map("openstream", translate("Twitch module"),
+	translate("Smart Split Routing and Ad-Bypass without client certificates."))
 
 m.on_after_commit = function()
-	local c = luci.model.uci.cursor()
-	if c:get("openstream", "twitch", "enabled") == "1" then
-		luci.sys.call(
-			"uci -q del_list openstream.proxy.hostlist_services='twitch'; " ..
-			"uci -q add_list openstream.proxy.hostlist_services='twitch'; " ..
-			"uci -q commit openstream"
-		)
-	end
 	apply_daemon()
 end
 
-s = m:section(NamedSection, "twitch", "twitch", translate("Detection"))
+s = m:section(NamedSection, "twitch", "module", translate("Twitch Routing Preset"))
 s.anonymous = true
 
-o = s:option(Flag, "enabled", translate("Enable"))
+o = s:option(Flag, "enabled", translate("Enable Twitch Module"))
 o.default = "1"
+o.rmempty = false
 
-o = s:option(Flag, "detect_stitched", translate("Detect stitched"))
-o.default = "1"
+o = s:option(ListValue, "preset", translate("Routing Preset"))
+o:value("ru_smartdns_noads_quality", translate("🇷🇺 Russia / CIS: No ads + 1440p (SmartDNS — No VPN needed) [Recommended]"))
+o:value("smartdns_quality_unlock", translate("🌍 Quality Unlock: 1440p/Source (SmartDNS — No VPN needed)"))
+o:value("ru_vpn_noads_quality", translate("🛡️ Russia: No ads + 1440p (via Router VPN)"))
+o:value("eu_bypass_ads", translate("🇪🇺 Europe / US: Bypass ads via RU DNS"))
+o:value("full_bypass", translate("🔒 Full Bypass: Route entire Twitch via VPN"))
+o:value("custom", translate("⚙️ Custom: Fine-grained matrix routing"))
+o:value("off", translate("⏹️ Disabled"))
+o.default = "ru_smartdns_noads_quality"
+o.description = translate("Select an automated routing strategy. SmartDNS presets work out-of-the-box without requiring any VPN tunnels.")
 
-o = s:option(Flag, "detect_daterange", translate("Detect EXT-X-DATERANGE"))
-o.default = "1"
+-- Custom matrix options (visible only when preset == 'custom')
+o = s:option(ListValue, "route_token", translate("Playback Token (gql.twitch.tv)"))
+o:depends("preset", "custom")
+o:value("dns_yandex", translate("Yandex DNS (RU — No Ads)"))
+o:value("dns_mskix", translate("MSK-IX DNS (Fastest RU)"))
+o:value("smartdns_comss", translate("Comss.one SmartDNS"))
+o:value("dns_cloudflare", translate("Cloudflare DNS (Global)"))
+o:value("direct", translate("Direct WAN (Local ISP)"))
+o:value("vpn_eu", translate("Main / European VPN"))
+o:value("vpn_ru", translate("Russian VPN (No Ads)"))
+o.default = "dns_yandex"
+o.description = translate("Location where authorization token is requested. RU DNS / IP gives ad-free token.")
 
-o = s:option(Flag, "detect_regex", translate("Regex heuristics"))
-o.default = "0"
+o = s:option(ListValue, "route_master", translate("Master Playlist (usher.ttvnw.net)"))
+o:depends("preset", "custom")
+o:value("smartdns_comss", translate("Comss.one SmartDNS (1440p No VPN)"))
+o:value("vpn_eu", translate("Main / European VPN"))
+o:value("dns_yandex", translate("Yandex DNS (RU)"))
+o:value("dns_cloudflare", translate("Cloudflare DNS (Global)"))
+o:value("direct", translate("Direct WAN (Local ISP)"))
+o.default = "smartdns_comss"
+o.description = translate("Location where quality variants are fetched. SmartDNS / EU VPN unlocks 1080p/1440p/Source.")
 
-o = s:option(Value, "max_wait_secs", translate("Maximum wait (sec)"))
-o.datatype = "uinteger"
-o.default = "30"
+o = s:option(ListValue, "route_media", translate("Media Playlists (playlist.ttvnw.net)"))
+o:depends("preset", "custom")
+o:value("direct", translate("Direct WAN (Local ISP)"))
+o:value("smartdns_comss", translate("Comss.one SmartDNS"))
+o:value("vpn_eu", translate("Main / European VPN"))
+o.default = "direct"
 
-o = s:option(Flag, "debug", translate("Debug"))
-o.default = "0"
+o = s:option(ListValue, "route_segments", translate("Video Streams / CDN (live-video.net, ttvnw.net)"))
+o:depends("preset", "custom")
+o:value("direct", translate("Direct WAN (Local ISP)"))
+o:value("smartdns_comss", translate("Comss.one SmartDNS"))
+o:value("vpn_eu", translate("Main / European VPN"))
+o.default = "direct"
+o.description = translate("Heavy video stream chunks. Direct WAN preserves 100% of your VPN bandwidth and speed.")
 
-o = s:option(Flag, "backup_seamless", translate("Backup seamless (opt-in scaffold)"))
-o.default = "0"
-o.description = translate("Does not enable GraphQL/token by default. Strip remains the primary mode.")
+o = s:option(ListValue, "route_ads", translate("Banners & Ad Trackers (edge.ads.twitch.tv)"))
+o:depends("preset", "custom")
+o:value("block", translate("DNS Sinkhole 0.0.0.0 (Block)"))
+o:value("direct", translate("Direct (Allow)"))
+o.default = "block"
+o.description = translate("Blocks banner ads and analytics trackers on router DNS level.")
 
-s = m:section(NamedSection, "proxy", "proxy", translate("Proxy / Routing"))
+-- SmartDNS Network Interface
+o = s:option(ListValue, "wan_interface", translate("WAN Interface for SmartDNS"))
+o:value("auto", translate("Auto-detect (Recommended)"))
+local nixio = require "nixio"
+local dev_iter = nixio.fs.dir("/sys/class/net")
+if dev_iter then
+	for dev in dev_iter do
+		if dev ~= "lo" and not dev:find("^ifb") then
+			o:value(dev, dev)
+		end
+	end
+end
+o.default = "auto"
+o.description = translate("Network interface used for direct SmartDNS and RU DNS requests in bypass of VPN tunnels.")
+
+-- VPN Routing Configuration Section
+s = m:section(TypedSection, "routing", translate("VPN Policy Routing Sets"))
 s.anonymous = true
+s.description = translate("Specify nftset (OpenWrt 22+) or ipset names configured in your router's VPN/PBR clients.")
 
-o = s:option(ListValue, "mode", translate("Mode"))
-o:value("edge", translate("Playlist Edge (no client CA)"))
-o:value("geo_split", translate("Smart Geo-Split (R3, Recommended, no CA)"))
-o:value("off", translate("Off"))
-o.default = "edge"
-o.description = translate("Smart Geo-Split: routes only usher.ttvnw.net to VPN, bypassing ads and keeping quality without CA. Edge: local HLS rewrite on the router.")
-
-o = s:option(Value, "geo_split_vpn_set", translate("Smart Geo-Split VPN Set"))
-o:depends("mode", "geo_split")
+o = s:option(Value, "vpn_set_eu", translate("Main / EU VPN Set"))
 o.default = "4#inet#fw4#vpn_domains"
 o.placeholder = "4#inet#fw4#vpn_domains"
-o.description = translate("Name of the nftset/ipset for VPN policy routing (e.g. 4#inet#fw4#vpn_domains or vpn_domains).")
+o.description = translate("e.g. 4#inet#fw4#vpn_domains (Sing-box / Clash / Passwall / OpenConnect)")
 
-o = s:option(Value, "listen", translate("Listen"))
-o.default = "0.0.0.0:18080"
-o:depends("mode", "edge")
+o = s:option(Value, "vpn_set_ru", translate("Russian VPN Set"))
+o.default = "4#inet#fw4#vpn_ru"
+o.placeholder = "4#inet#fw4#vpn_ru"
+o.description = translate("Used for ad-free token retrieval when you are located outside Russia.")
 
-o = s:option(Value, "proxy_public_url", translate("Public Edge URL"))
-o.placeholder = "http://192.168.8.1:18080"
-o.description = translate("Required for ad strip: master variants rewrite to nested /https://… on the router. If empty, Edge uses the request Host (LAN IP). Set explicitly if you open Edge via 127.0.0.1.")
-o:depends("mode", "edge")
+o = s:option(Value, "vpn_set_custom", translate("Custom VPN Set"))
+o.default = "4#inet#fw4#vpn_custom"
+o.placeholder = "4#inet#fw4#vpn_custom"
 
-o = s:option(Flag, "mitm", translate("MITM for HLS hosts (transparent/explicit only)"))
-o.default = "0"
-o:depends("mode", "edge")
-
-s = m:section(NamedSection, "proxy", "proxy", translate("Hostlists"))
+-- Compatibility Settings
+s = m:section(NamedSection, "main", "main", translate("Compatibility Settings"))
 s.anonymous = true
 
-o = s:option(MultiValue, "hostlist_services", translate("Service lists"))
-o:value("twitch", "Twitch")
-o:value("kick", "Kick")
-o:value("trovo", "Trovo")
-o:value("youtube", "YouTube")
-o.widget = "select"
-o.size = 4
-o.description = translate("Which shipped/remote hostlists to compose. Enabling a plugin also adds its list.")
-
-o = s:option(DynamicList, "custom_domain", translate("Custom domains"))
-o.placeholder = "cdn.example.net"
-o.description = translate("One domain or IPv4 per line. Merged into the effective hostlist.")
-
-o = s:option(Flag, "hostlist_remote", translate("Update lists from GitHub"))
+o = s:option(Flag, "ignore_coexistence_warnings", translate("Ignore Coexistence Warnings"))
 o.default = "0"
-o.description = translate("Fetch hostlists from remote base every N hours (optional).")
-
-o = s:option(Value, "hostlist_remote_base", translate("Remote base URL"))
-o.default = "https://raw.githubusercontent.com/denis-ershov/OpenStream-Engine/main/package/openwrt/files/hostlists"
-
-o = s:option(Value, "hostlist_remote_interval_hours", translate("Remote interval (hours)"))
-o.datatype = "uinteger"
-o.default = "12"
-
-o = s:option(Value, "hostlist_file", translate("Effective hostlist file"))
-o.default = "/var/run/openstream/hostlist-effective.txt"
-o.description = translate("Written by openstream-compose-hostlist. Used for nft divert when mode=transparent.")
-
-o = s:option(Value, "hostlist_refresh_secs", translate("Hostlist DNS refresh (sec)"))
-o.datatype = "uinteger"
-o.default = "300"
+o.rmempty = false
+o.description = translate("Check this if twitch.tv is already placed in Exclude / Bypass list of Forkop, Podkop or PassWall.")
 
 return m
