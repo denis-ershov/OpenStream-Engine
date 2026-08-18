@@ -4,6 +4,18 @@
 
 ### Изменено
 
+- **Release 0.4.2-35 (Очистка неработающих пресетов, актуализация LuCI и статус Research Beta):**
+  - **Очистка неработающих пресетов:** Удалены устаревшие пресеты `ru_smartdns_noads_quality`, `eu_bypass_ads` и `full_bypass`, которые обещали обход рекламы через обычный DNS РФ (опровергнуто прямыми тестами в реальном времени).
+  - **Утверждены подтвержденные сценарии:**
+    1. `clean_proxy_geosplit` — Geo-Split через Ad-Free VPN (UA/AL/KZ) для токенов + EU SmartDNS для 1080p/1440p master playlist + прямой WAN для видеосегментов.
+    2. `manifest_strip_edge` — Playlist Edge на порту 18080 со 100% физическим Manifest Stripping рекламных тегов `#EXT-X-DATERANGE:CLASS="twitch-stitched-ad"` для плееров VLC, Kodi, SmartTube, TiviMate, MPV, streamlink.
+    3. `smartdns_quality_unlock` — разблокировка качеств 1080p60/1440p/Source через SmartDNS / EU без ложных обещаний блокировки рекламы.
+    4. `custom` — пользовательская матрица.
+  - **LuCI & Переводы:** Обновлен файл модели `luci-app-openstream/luasrc/model/cbi/openstream/twitch.lua`, добавлено поле `vpn_set_adfree`, актуализированы русские переводы в `openstream.po`.
+  - **OpenWrt init & UCI:** Обновлены `openstream.config`, `streamproxyd.init`, `openstream-uci2yaml`.
+  - **Документация & README:** `README.md` и `README_EN.md` обновлены с явным указанием исследовательского статуса (Beta / Research Project), описана методология тестирования и результаты проверки на реальных провайдерах.
+  - Измененные файлы: `README.md`, `README_EN.md`, `luci-app-openstream/luasrc/model/cbi/openstream/twitch.lua`, `luci-app-openstream/po/ru/openstream.po`, `package/openwrt/files/openstream.config`, `package/openwrt/files/streamproxyd.init`, `package/openwrt/files/openstream-uci2yaml`, `docs/ROUTING_ARCHITECTURE.md`, `docs/CHANGELOG.md`. Миграций и breaking changes нет; откат — `git checkout`.
+
 - **Router DNS probe (2026-08-14):** добавлены `router_dns_probe.py` и unit-тесты
   для проверки действующей DNS-стратегии без MITM/VPN на клиенте. Проверяются
   токен, варианты master playlist и SSAI-маркеры media playlist в течение

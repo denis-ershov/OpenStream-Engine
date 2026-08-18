@@ -122,11 +122,11 @@ emit_rule() {
 			echo "server=/$domain/195.208.4.1"
 			echo "server=/$domain/195.208.5.1"
 			;;
-		vpn_eu|vpn_ru|vpn_custom|4#*|*#*)
+		vpn_eu|vpn_adfree|vpn_ru|vpn_custom|4#*|*#*)
 			local set_val=""
 			case "$target" in
 				vpn_eu) set_val="$VPN_EU" ;;
-				vpn_ru) set_val="$VPN_RU" ;;
+				vpn_adfree|vpn_ru) set_val="$VPN_ADFREE" ;;
 				vpn_custom) set_val="$VPN_CUSTOM" ;;
 				*) set_val="$target" ;;
 			esac
@@ -189,29 +189,32 @@ apply_dnsmasq() {
 	local auto_set
 	auto_set="$(detect_vpn_set "$has_nft")"
 
-	local VPN_EU VPN_RU VPN_CUSTOM
+	local VPN_EU VPN_ADFREE VPN_CUSTOM
 	config_get VPN_EU routing vpn_set_eu ""
-	config_get VPN_RU routing vpn_set_ru "4#inet#fw4#vpn_ru"
+	config_get VPN_ADFREE routing vpn_set_adfree "4#inet#fw4#vpn_adfree"
 	config_get VPN_CUSTOM routing vpn_set_custom "4#inet#fw4#vpn_custom"
 
-	# fallback на legacy proxy.geo_split_vpn_set
+	# fallback на legacy
 	if [ -z "$VPN_EU" ]; then
 		config_get VPN_EU proxy geo_split_vpn_set ""
 	fi
+	if [ -z "$VPN_ADFREE" ]; then
+		config_get VPN_ADFREE routing vpn_set_ru "4#inet#fw4#vpn_adfree"
+	fi
 
 	[ -n "$VPN_EU" ] || VPN_EU="$auto_set"
-	[ -n "$VPN_RU" ] || VPN_RU="4#inet#fw4#vpn_ru"
+	[ -n "$VPN_ADFREE" ] || VPN_ADFREE="4#inet#fw4#vpn_adfree"
 	[ -n "$VPN_CUSTOM" ] || VPN_CUSTOM="4#inet#fw4#vpn_custom"
 
 	VPN_EU="$(echo "$VPN_EU" | tr -cd 'a-zA-Z0-9#_-')"
-	VPN_RU="$(echo "$VPN_RU" | tr -cd 'a-zA-Z0-9#_-')"
+	VPN_ADFREE="$(echo "$VPN_ADFREE" | tr -cd 'a-zA-Z0-9#_-')"
 	VPN_CUSTOM="$(echo "$VPN_CUSTOM" | tr -cd 'a-zA-Z0-9#_-')"
 
 	local twitch_enabled twitch_preset
 	twitch_enabled="$(uci -q get openstream.twitch.enabled 2>/dev/null)"
 	[ -n "$twitch_enabled" ] || twitch_enabled="1"
 	twitch_preset="$(uci -q get openstream.twitch.preset 2>/dev/null)"
-	[ -n "$twitch_preset" ] || twitch_preset="ru_smartdns_noads_quality"
+	[ -n "$twitch_preset" ] || twitch_preset="clean_proxy_geosplit"
 
 	local WAN_DEV
 	WAN_DEV="$(detect_wan_device)"
@@ -240,9 +243,9 @@ apply_dnsmasq() {
 		echo "# OpenStream Engine generated DNS routes (SmartDNS & Split Routing)"
 		if [ "$twitch_enabled" = "1" ] && [ "$twitch_preset" != "off" ]; then
 			case "$twitch_preset" in
-				ru_smartdns_noads_quality|ru_noads_quality|"")
-					# РФ SmartDNS: Разблокировка 1440p (Comss SmartDNS) + Токен РФ (Яндекс DNS) + Полный Sinkhole рекламы
-					emit_rule "gql.twitch.tv" "dns_yandex" "$has_nft"
+				clean_proxy_geosplit|geosplit|ru_smartdns_noads_quality|ru_noads_quality|"")
+					# Geo-Split: Токен в Ad-Free VPN (UA/AL/KZ), мастер в EU SmartDNS (1440p), сегменты напрямую
+					emit_rule "gql.twitch.tv" "vpn_adfree" "$has_nft"
 					emit_rule "usher.ttvnw.net" "smartdns_comss" "$has_nft"
 					emit_ad_sinkhole
 					;;
@@ -252,32 +255,13 @@ apply_dnsmasq() {
 					emit_ad_sinkhole
 					;;
 				smartdns_quality_unlock|quality_unlock)
-					# Разблокировка качеств 1080p/1440p/Source через SmartDNS (БЕЗ VPN)
+					# Разблокировка качеств 1080p/1440p/Source через SmartDNS (БЕЗ блокировки рекламы)
 					emit_rule "usher.ttvnw.net" "smartdns_comss" "$has_nft"
-					emit_ad_sinkhole
-					;;
-				ru_vpn_noads_quality)
-					# Сплит через VPN-туннель (для тех у кого настроен VPN-интерфейс)
-					emit_rule "usher.ttvnw.net" "vpn_eu" "$has_nft"
-					emit_ad_sinkhole
-					;;
-				eu_bypass_ads)
-					# Европа/США: Обход рекламы через RU DNS
-					emit_rule "gql.twitch.tv" "dns_yandex" "$has_nft"
-					emit_ad_sinkhole
-					;;
-				full_bypass)
-					# Полный VPN обход
-					emit_rule "gql.twitch.tv" "vpn_eu" "$has_nft"
-					emit_rule "usher.ttvnw.net" "vpn_eu" "$has_nft"
-					emit_rule "ttvnw.net" "vpn_eu" "$has_nft"
-					emit_rule "live-video.net" "vpn_eu" "$has_nft"
-					emit_rule "jtvnw.net" "vpn_eu" "$has_nft"
 					emit_ad_sinkhole
 					;;
 				custom)
 					local r_token r_master r_media r_segments r_ads
-					r_token="$(uci -q get openstream.twitch.route_token 2>/dev/null)"; [ -n "$r_token" ] || r_token="dns_yandex"
+					r_token="$(uci -q get openstream.twitch.route_token 2>/dev/null)"; [ -n "$r_token" ] || r_token="vpn_adfree"
 					r_master="$(uci -q get openstream.twitch.route_master 2>/dev/null)"; [ -n "$r_master" ] || r_master="smartdns_comss"
 					r_media="$(uci -q get openstream.twitch.route_media 2>/dev/null)"; [ -n "$r_media" ] || r_media="direct"
 					r_segments="$(uci -q get openstream.twitch.route_segments 2>/dev/null)"; [ -n "$r_segments" ] || r_segments="direct"

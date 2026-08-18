@@ -1,34 +1,45 @@
-# OpenStream Engine
+# OpenStream Engine 🧪 (Beta / Research Project)
 
 [Читать на русском языке](README.md)
 
-OpenStream Engine is a router-level solution for OpenWrt that bypasses Twitch SSAI (Server-Side Ad Insertion) ads and unlocks high stream quality (1080p/1440p/Source) **without any client-side modifications** (no custom CA certificates, no client apps, no URL changes, no per-device VPNs).
+> [!NOTE]
+> **Research Project Status (Experimental Beta):**
+> OpenStream Engine is an OpenWrt research toolkit designed to investigate router-level SSAI (Server-Side Ad Insertion) mitigation and 1080p60/1440p/Source quality unlocking for live streaming platforms (Twitch, etc.) **without TLS decryption (No MITM) and without installing custom Root CA certificates on client devices**.
 
 ---
 
-## The Concept: Smart Modular Split Routing
+## 🔬 Research & Live Testing Results
 
-Traditional ad-blocking methods require decryption of HTTPS traffic (MITM), which requires installing custom root certificates on all client devices (TVs, smartphones, consoles). This introduces significant security risks and is often impossible on closed platforms like Apple TV, WebOS, or Tizen.
+Based on our recent audit and live probes across top Twitch streams (20k+ concurrent viewers):
+1. **Generic Geo-Split Limitations:** Twitch has updated its SSAI policy. Direct Russian ISP egress now receives `show_ads: true` and stitched Amazon video ads on partner channels. Naive DNS-only redirect to generic RU DNS is no longer sufficient for ad-free playback.
+2. **Verified Working Strategies:**
+   * **Strategy 1: Geo-Split via Clean-Proxy / Ad-Free VPN (Zero-CA for all devices):** Routes authorization tokens (`gql.twitch.tv`) through ad-free VPN egresses (e.g. Ukraine, Albania, Kazakhstan), master playlists (`usher.ttvnw.net`) through EU/SmartDNS for 1080p60/1440p quality, and heavy video segments directly through local ISP WAN.
+   * **Strategy 2: Playlist Edge / Local Manifest Stripping (100% Guaranteed for custom players):** Local `streamproxyd` daemon running on port 18080 fetches manifests, strips `#EXT-X-DATERANGE:CLASS="twitch-stitched-ad"` blocks, and serves clean HLS (`http://router:18080/twitch/<channel>`). Ideal for VLC, Kodi, SmartTube, TiviMate, MPV, and streamlink.
 
-OpenStream Engine implements **transparent modular routing** at the network core level (DNS/Routing):
+---
 
-| LuCI Preset | Token (GQL) | Master (Usher) | Media/Segments (CDN) | Banners (Ads) |
-|---|---|---|---|---|
-| 🇷🇺 **"Russia/CIS: No ads + 1440p"** *(Recommended)* | **Direct WAN (RU)** | **VPN EU** | **Direct WAN (RU)** | **DNS Block (0.0.0.0)** |
-| 🇪🇺 **"Europe/US: Bypass ads via RU token"** | **VPN RU** | **Direct WAN (EU)** | **Direct WAN (EU)** | **DNS Block (0.0.0.0)** |
-| 🌍 **"Quality Unlock: 1440p/Source"** | **Direct WAN** | **VPN EU/US** | **Direct WAN** | **DNS Block (0.0.0.0)** |
-| 🛡️ **"Full Bypass: Complete VPN Routing"** | **VPN EU** | **VPN EU** | **VPN EU** | **DNS Block (0.0.0.0)** |
-| ⚙️ **"Custom: Fine-grained matrix"** | *Custom* | *Custom* | *Custom* | *Custom* |
+## Split Routing Architecture
 
 ```text
-Client ──► OpenWrt ──DNS/SNI usher.ttvnw.net──► VPN (EU) ──► Twitch (Quality master.m3u8)
-              │
-              ├──DNS/SNI gql.twitch.tv────────► Direct WAN ──► Twitch (Token show_ads:false)
-              │
-              ├──DNS edge.ads.twitch.tv───────► 0.0.0.0  ──► (Banners & ad trackers blocked)
-              │
-              └──DNS/SNI playlist/segments────► Direct WAN ──► CDN (Max speed direct stream)
+                               ┌────────────────── OpenStream Engine ──────────────────┐
+                               │                                                       │
+Client (TV/Phone/PC) ──────────┼──► DNS/SNI gql.twitch.tv ────► Ad-Free VPN (UA/AL/KZ) ──► Twitch (Token show_ads:false)
+(No CA, valid TLS)             │                                                       │
+                               ├──► DNS/SNI usher.ttvnw.net ──► EU VPN / SmartDNS ────► Twitch (Unlock 1440p/Source)
+                               │                                                       │
+                               ├──► DNS/SNI cdn/live-video ───► Direct WAN (ISP) ──────► CDN (Full Speed Stream)
+                               │                                                       │
+                               └──► DNS edge.ads.twitch.tv ───► 0.0.0.0 (Sinkhole)       (Banners/trackers blocked)
 ```
+
+### LuCI Preset Matrix
+
+| LuCI Preset | Token (GQL) | Master (Usher) | Media & Segments (CDN) | Banners (Ads) |
+|---|---|---|---|---|
+| 🛡️ **"Geo-Split via Clean-Proxy"** *(Recommended)* | **Ad-Free VPN (UA/AL/KZ)** | **SmartDNS / EU VPN** | **Direct WAN (ISP)** | **DNS Block (0.0.0.0)** |
+| ⚡ **"Playlist Edge (Manifest Strip)"** | **via streamproxyd** | **via streamproxyd** | **Direct CDN (via Edge)** | **Stripped from HLS** |
+| 🌍 **"Quality Unlock: 1440p/Source"** | **Direct WAN** | **SmartDNS / EU VPN** | **Direct WAN (ISP)** | **DNS Block (0.0.0.0)** |
+| ⚙️ **"Custom: Fine-grained Matrix"** | *Custom* | *Custom* | *Custom* | *Custom* |
 
 ---
 
@@ -63,7 +74,7 @@ opkg install luci-i18n-openstream-ru_0.4.2-31_all.ipk
 
 Go to **Services → OpenStream Engine** on your router:
 - **Dashboard:** Monitor active modules and live traffic streams.
-- **Twitch:** Select your preferred preset in 1-click (e.g. *«🇷🇺 Russia/CIS: No ads + 1440p/Source»*).
+- **Twitch:** Select your preferred preset in 1-click (e.g. *«🛡️ Geo-Split via Clean-Proxy / Ad-Free VPN»*).
 - **Diagnostics:** Verify DNS resolution and ad-blocking status instantly.
 
 ---

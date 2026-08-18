@@ -59,9 +59,10 @@ VPNSET_EU="$(uci_get routing.vpn_set_eu)"
 [ -n "$VPNSET_EU" ] || VPNSET_EU="4#inet#fw4#vpn_domains"
 VPNSET_EU="$(echo "$VPNSET_EU" | tr -cd 'a-zA-Z0-9#_-')"
 
-VPNSET_RU="$(uci_get routing.vpn_set_ru)"
-[ -n "$VPNSET_RU" ] || VPNSET_RU="4#inet#fw4#vpn_ru"
-VPNSET_RU="$(echo "$VPNSET_RU" | tr -cd 'a-zA-Z0-9#_-')"
+VPNSET_ADFREE="$(uci_get routing.vpn_set_adfree)"
+[ -n "$VPNSET_ADFREE" ] || VPNSET_ADFREE="$(uci_get routing.vpn_set_ru)"
+[ -n "$VPNSET_ADFREE" ] || VPNSET_ADFREE="4#inet#fw4#vpn_adfree"
+VPNSET_ADFREE="$(echo "$VPNSET_ADFREE" | tr -cd 'a-zA-Z0-9#_-')"
 
 VPNSET_CUSTOM="$(uci_get routing.vpn_set_custom)"
 [ -n "$VPNSET_CUSTOM" ] || VPNSET_CUSTOM="4#inet#fw4#vpn_custom"

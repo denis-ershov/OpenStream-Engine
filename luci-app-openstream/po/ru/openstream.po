@@ -67,35 +67,29 @@ msgstr "Включить модуль Twitch"
 msgid "Routing Preset"
 msgstr "Готовый сценарий"
 
-msgid "🇷🇺 Russia / CIS: No ads + 1440p/Source (Recommended)"
-msgstr "🇷🇺 Россия / СНГ: Без рекламы + 1440p/Source (Рекомендуется)"
+msgid "🛡️ Geo-Split via Clean-Proxy / Ad-Free VPN (Zero-CA for all devices) [Recommended]"
+msgstr "🛡️ Geo-Split через Clean-Proxy / Ad-Free VPN (Zero-CA для всех устройств) [Рекомендуется]"
 
-msgid "🇪🇺 Europe / US: Bypass ads via RU token"
-msgstr "🇪🇺 Европа / США: Обход рекламы через токен РФ"
+msgid "⚡ Playlist Edge: Local Manifest Stripping (Port 18080 for SmartTV/VLC/Kodi)"
+msgstr "⚡ Playlist Edge: Локальный Manifest Stripping (Порт 18080 для SmartTV/VLC/Kodi)"
 
-msgid "🌍 Quality Unlock: 1440p/Source (Direct token)"
-msgstr "🌍 Разблокировка 1440p/Source (Прямой токен)"
+msgid "🌍 Quality Unlock: 1080p60/1440p/Source (SmartDNS — without ad-block)"
+msgstr "🌍 Quality Unlock: 1080p60/1440p/Source (SmartDNS — без блокировки рекламы)"
 
-msgid "🛡️ Full Bypass: Route entire Twitch via VPN"
-msgstr "🛡️ Полный обход: Весь Twitch через VPN"
+msgid "Select an automated routing strategy. Geo-Split routes tokens to ad-free VPN and master to EU. Playlist Edge physically strips ads via local HTTP proxy."
+msgstr "Выберите стратегию маршрутизации. Geo-Split направляет токен в Ad-Free VPN, а мастер-плейлист в EU. Playlist Edge физически вырезает рекламу локальным HTTP-прокси."
 
-msgid "🌟 🇷🇺 Russia / CIS: Max 1440p Quality + Ad-Trackers Block (SmartDNS — No VPN) [Recommended]"
-msgstr "🌟 🇷🇺 Россия / СНГ: 1440p + Блок трекеров и баннеров (SmartDNS — Без VPN) [Рекомендуется]"
+msgid "Ad-Free VPN / Clean-Proxy (UA/AL/KZ)"
+msgstr "Ad-Free VPN / Clean-Proxy (UA/AL/KZ)"
 
-msgid "⚡ Playlist Edge: Local Stripping for SmartTV/MPV/Streamlink (Port 18080)"
-msgstr "⚡ Playlist Edge: Локальный стриппинг для SmartTV/MPV/Streamlink (Порт 18080)"
+msgid "Location where authorization token is requested. Country without Twitch ads gives ad-free token."
+msgstr "Регион запроса токена. Страна без рекламы на Twitch (UA/AL/KZ) возвращает токен без рекламы."
 
-msgid "🛡️ Router VPN Split: 100% Ad-Free for All Devices (via UA/GE/RS VPN)"
-msgstr "🛡️ VPN Сплит: 100% Без рекламы для всех устройств (через VPN UA/GE/RS)"
+msgid "Ad-Free / Clean-Proxy VPN Set"
+msgstr "Набор VPN для Ad-Free / Clean-Proxy"
 
-msgid "🌍 Quality Unlock: 1440p/Source (SmartDNS — No VPN)"
-msgstr "🌍 Разблокировка качеств: 1440p/Source (SmartDNS — Без VPN)"
-
-msgid "🌍 Quality Unlock: 1440p/Source (SmartDNS)"
-msgstr "🌍 Разблокировка качеств: 1440p/Source (SmartDNS)"
-
-msgid "🛡️ VPN Split: 1440p + No Ads (via Router VPN)"
-msgstr "🛡️ VPN Сплит: 1440p + Без рекламы (через роутерный VPN)"
+msgid "Used for ad-free token retrieval (UA/AL/KZ tunnel). e.g. 4#inet#fw4#vpn_adfree"
+msgstr "Используется для получения токена без рекламы (туннель UA/AL/KZ). Например: 4#inet#fw4#vpn_adfree"
 
 msgid "Live Streaming Traffic Optimizer & Ad-Free Edge Accelerator."
 msgstr "Оптимизатор потокового трафика и акселератор без рекламы."

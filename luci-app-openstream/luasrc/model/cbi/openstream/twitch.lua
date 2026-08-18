@@ -20,34 +20,30 @@ o.default = "1"
 o.rmempty = false
 
 o = s:option(ListValue, "preset", translate("Routing Preset"))
-o:value("ru_smartdns_noads_quality", translate("🌟 🇷🇺 Russia / CIS: Max 1440p Quality + Ad-Trackers Block (SmartDNS — No VPN) [Recommended]"))
-o:value("manifest_strip_edge", translate("⚡ Playlist Edge: Local Stripping for SmartTV/MPV/Streamlink (Port 18080)"))
-o:value("ru_vpn_noads_quality", translate("🛡️ Router VPN Split: 100% Ad-Free for All Devices (via UA/GE/RS VPN)"))
-o:value("smartdns_quality_unlock", translate("🌍 Quality Unlock: 1440p/Source (SmartDNS — No VPN)"))
-o:value("full_bypass", translate("🔒 Full Bypass: Route entire Twitch via VPN"))
+o:value("clean_proxy_geosplit", translate("🛡️ Geo-Split via Clean-Proxy / Ad-Free VPN (Zero-CA for all devices) [Recommended]"))
+o:value("manifest_strip_edge", translate("⚡ Playlist Edge: Local Manifest Stripping (Port 18080 for SmartTV/VLC/Kodi)"))
+o:value("smartdns_quality_unlock", translate("🌍 Quality Unlock: 1080p60/1440p/Source (SmartDNS — without ad-block)"))
 o:value("custom", translate("⚙️ Custom: Fine-grained matrix routing"))
 o:value("off", translate("⏹️ Disabled"))
-o.default = "ru_smartdns_noads_quality"
-o.description = translate("Select an automated routing strategy. SmartDNS unlocks 1080p/1440p and blocks banner trackers. For browser ad-free playback, use VPN Split or browser adblock.")
+o.default = "clean_proxy_geosplit"
+o.description = translate("Select an automated routing strategy. Geo-Split routes tokens to ad-free VPN and master to EU. Playlist Edge physically strips ads via local HTTP proxy.")
 
 -- Custom matrix options (visible only when preset == 'custom')
 o = s:option(ListValue, "route_token", translate("Playback Token (gql.twitch.tv)"))
 o:depends("preset", "custom")
-o:value("dns_yandex", translate("Yandex DNS (RU — No Ads)"))
-o:value("dns_mskix", translate("MSK-IX DNS (Fastest RU)"))
-o:value("smartdns_comss", translate("Comss.one SmartDNS"))
-o:value("dns_cloudflare", translate("Cloudflare DNS (Global)"))
-o:value("direct", translate("Direct WAN (Local ISP)"))
+o:value("vpn_adfree", translate("Ad-Free VPN / Clean-Proxy (UA/AL/KZ)"))
 o:value("vpn_eu", translate("Main / European VPN"))
-o:value("vpn_ru", translate("Russian VPN (No Ads)"))
-o.default = "dns_yandex"
-o.description = translate("Location where authorization token is requested. RU DNS / IP gives ad-free token.")
+o:value("direct", translate("Direct WAN (Local ISP)"))
+o:value("dns_yandex", translate("Yandex DNS (RU)"))
+o:value("dns_mskix", translate("MSK-IX DNS (RU)"))
+o:value("dns_cloudflare", translate("Cloudflare DNS (Global)"))
+o.default = "vpn_adfree"
+o.description = translate("Location where authorization token is requested. Country without Twitch ads gives ad-free token.")
 
 o = s:option(ListValue, "route_master", translate("Master Playlist (usher.ttvnw.net)"))
 o:depends("preset", "custom")
 o:value("smartdns_comss", translate("Comss.one SmartDNS (1440p No VPN)"))
 o:value("vpn_eu", translate("Main / European VPN"))
-o:value("dns_yandex", translate("Yandex DNS (RU)"))
 o:value("dns_cloudflare", translate("Cloudflare DNS (Global)"))
 o:value("direct", translate("Direct WAN (Local ISP)"))
 o.default = "smartdns_comss"
@@ -95,15 +91,15 @@ s = m:section(TypedSection, "routing", translate("VPN Policy Routing Sets"))
 s.anonymous = true
 s.description = translate("Specify nftset (OpenWrt 22+) or ipset names configured in your router's VPN/PBR clients.")
 
+o = s:option(Value, "vpn_set_adfree", translate("Ad-Free / Clean-Proxy VPN Set"))
+o.default = "4#inet#fw4#vpn_adfree"
+o.placeholder = "4#inet#fw4#vpn_adfree"
+o.description = translate("Used for ad-free token retrieval (UA/AL/KZ tunnel). e.g. 4#inet#fw4#vpn_adfree")
+
 o = s:option(Value, "vpn_set_eu", translate("Main / EU VPN Set"))
 o.default = "4#inet#fw4#vpn_domains"
 o.placeholder = "4#inet#fw4#vpn_domains"
 o.description = translate("e.g. 4#inet#fw4#vpn_domains (Sing-box / Clash / Passwall / OpenConnect)")
-
-o = s:option(Value, "vpn_set_ru", translate("Russian VPN Set"))
-o.default = "4#inet#fw4#vpn_ru"
-o.placeholder = "4#inet#fw4#vpn_ru"
-o.description = translate("Used for ad-free token retrieval when you are located outside Russia.")
 
 o = s:option(Value, "vpn_set_custom", translate("Custom VPN Set"))
 o.default = "4#inet#fw4#vpn_custom"
