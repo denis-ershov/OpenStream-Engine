@@ -281,6 +281,24 @@ apply_dnsmasq() {
 		fi
 	} > "$CONF_TMP"
 
+	# OpenStream 2.1: компиляция сервисных правил .osrule.yaml в dnsmasq и nftables
+	if [ -x /usr/libexec/openstream-render.uc ]; then
+		/usr/libexec/openstream-render.uc >/dev/null 2>&1 || true
+		if [ -f "/tmp/openstream.nft" ] && command -v nft >/dev/null 2>&1; then
+			nft -f "/tmp/openstream.nft" 2>/dev/null || true
+		fi
+		logger -t openstream "rendered .osrule packages via ucode"
+	elif [ -x "$PROG" ] && [ -d "/usr/share/openstream/rules" ]; then
+		"$PROG" --compile-rules \
+			--rules-dir "/usr/share/openstream/rules" \
+			--out-dnsmasq "/tmp/dnsmasq.d/openstream-rules.conf" \
+			--out-nft "/tmp/openstream-rules.nft" >/dev/null 2>&1 || true
+		if [ -f "/tmp/openstream-rules.nft" ] && command -v nft >/dev/null 2>&1; then
+			nft -f "/tmp/openstream-rules.nft" 2>/dev/null || true
+		fi
+		logger -t openstream "compiled .osrule packages from /usr/share/openstream/rules"
+	fi
+
 	# Перезапускаем dnsmasq только если конфиг изменился
 	if ! cmp -s "$CONF_TMP" "$CONF_LIVE" 2>/dev/null; then
 		mv "$CONF_TMP" "$CONF_LIVE"
@@ -385,9 +403,10 @@ stop_service() {
 	nft delete table inet openstream 2>/dev/null || true
 	# Точечно удаляем записи OpenStream из /etc/hosts
 	remove_hosts_routes
-	# Удаляем оба конфига — /tmp/ (активный) и /etc/ (персистентный)
-	rm -f /tmp/dnsmasq.d/openstream.conf /tmp/dnsmasq.d/openstream.conf.new 2>/dev/null || true
-	rm -f /etc/dnsmasq.d/openstream.conf 2>/dev/null || true
+	# Удаляем все сгенерированные файлы правил и конфигурации dnsmasq
+	rm -f /tmp/dnsmasq.d/openstream.conf /tmp/dnsmasq.d/openstream.conf.new /tmp/dnsmasq.d/openstream-rules.conf 2>/dev/null || true
+	rm -f /tmp/openstream.nft /tmp/openstream-rules.nft 2>/dev/null || true
+	rm -f /etc/dnsmasq.d/openstream.conf /etc/dnsmasq.d/openstream-rules.conf 2>/dev/null || true
 	if [ -f /etc/dnsmasq.conf ]; then
 		sed -i '\|# openstream|d' /etc/dnsmasq.conf 2>/dev/null || true
 	fi

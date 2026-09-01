@@ -19,6 +19,13 @@ members = [
     "crates/ose-api",
     "crates/ose-config",
     "crates/ose-neighbors",
+    "crates/openstream-rule",
+    "crates/openstream-core",
+    "crates/openstream-backend-openwrt",
+    "crates/openstream-ffi",
+    "crates/openstream-cli",
+    "crates/openstream-jni",
+    "crates/openstream-backend-desktop",
 ]
 
 [workspace.package]
@@ -46,6 +53,9 @@ ose-proxy = { path = "crates/ose-proxy", default-features = false }
 ose-api = { path = "crates/ose-api" }
 ose-config = { path = "crates/ose-config" }
 ose-neighbors = { path = "crates/ose-neighbors" }
+openstream-rule = { path = "crates/openstream-rule" }
+openstream-core = { path = "crates/openstream-core" }
+openstream-backend-openwrt = { path = "crates/openstream-backend-openwrt" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "io-util", "sync", "time", "fs", "signal"] }
 hyper = { version = "1", features = ["full"] }
 hyper-util = { version = "0.1", features = ["full"] }

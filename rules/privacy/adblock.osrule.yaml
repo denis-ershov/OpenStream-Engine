@@ -1,0 +1,29 @@
+schema_version: "2.0"
+id: "org.openstream.rules.adblock"
+name: "Privacy Essentials & Ad Block"
+version: "1.0.0"
+author: "OpenStream Community"
+description: "Core tracker and telemetry sinkhole (0.0.0.0)"
+
+capabilities_required:
+  - dns_interception
+
+allow_sensitive: true
+
+matches:
+  - group: "telemetry"
+    domains:
+      - "telemetry.sdk.split.io"
+      - "app-measurement.com"
+      - "*.crashlytics.com"
+      - "*.telemetry.microsoft.com"
+    action: "block"
+
+  - group: "trackers"
+    domains:
+      - "yandexmetrika.com"
+      - "mc.yandex.ru"
+      - "top-fwz1.mail.ru"
+      - "google-analytics.com"
+      - "*.google-analytics.com"
+    action: "block"

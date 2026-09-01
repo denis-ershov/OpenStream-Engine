@@ -1,0 +1,30 @@
+schema_version: "2.0"
+id: "org.openstream.rules.crunchyroll"
+name: "Crunchyroll Smart Route"
+version: "1.0.0"
+author: "OpenStream Community"
+description: "US library catalog unlock with direct CDN stream speeds"
+
+capabilities_required:
+  - domain_routing
+
+matches:
+  - group: "api_geo"
+    domains:
+      - "beta-api.crunchyroll.com"
+      - "api.crunchyroll.com"
+      - "*.crunchyroll.com"
+    strategy: "geo_us"
+
+  - group: "video_streaming"
+    domains:
+      - "*.vrv.co"
+      - "*.akamaized.net"
+    action: "direct"
+
+strategies:
+  geo_us:
+    preference:
+      - "proxy:us_west"
+      - "geo:us"
+      - "direct"

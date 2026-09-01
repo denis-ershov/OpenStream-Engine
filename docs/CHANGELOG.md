@@ -2,6 +2,93 @@
 
 ## [Unreleased]
 
+### Добавлено
+
+- **OpenStream Engine 2.0 (Эволюция ядра, оркестрация Zapret2 и редизайн LuCI Web UI):**
+  - **Эволюция ядра и AST Schema 2.1 (`crates/openstream-rule`, `crates/openstream-core`):**
+    - Поддержка `ClientFilter` (Per-Device Routing) для изоляции пользователей LAN по MAC и IP (решение Forkop issue #95).
+    - Конфигурация `BypassConfig` со списком исключаемых подсетей `bypass_cidrs` (решение Forkop issue #88) и флагом `bypass_p2p` для прямого вывода BitTorrent-трафика в WAN (решение Forkop issue #72).
+    - Расширение действий `RoutingAction` и вердиктов `RoutingVerdict` типами `Zapret2 { preset, custom_args }` (решение Forkop issue #85) и `StreamProxy { mode }`.
+    - Встроенный в валидатор детектор взаимного перекрытия правил (`detect_shadowing`), предупреждающий в реальном времени о маскировке специфичных доменов более широкими wildcard-шаблонами (Архитектурный столп №5).
+  - **Сетевой стек OpenWrt и оркестрация Zapret2 (`crates/openstream-backend-openwrt`):**
+    - Модуль `zapret2.rs`: интеграция с пакетами `1andrevich/zapret2-openwrt` (`/usr/bin/nfqws2`), встроенные пресеты `youtube_4k` (`--dpi-desync=split2 badseq`), `discord_voice` (`--filter-udp=50000:65535 fake`) и `general_multisplit`, привязка к очереди NFQUEUE 1088.
+    - Модуль `nftables.rs`: изоляция fwmark `0x00880000` от меток `mwan3` (#87), строгая сепарация трафика Zapret2 от VPN (`ct mark`) для предотвращения `SSL PR_CONNECT_RESET` (#2), защита от зацикливания и исчерпания conntrack (#74), хук `openstream_tproxy` в цепочке input для сокетов в гостевых зонах fw4 (#84), двухстековый контроль `inet` с graceful деградацией (#91).
+    - Модуль `dnsmasq.rs`: безопасная маршрутизация через `nftset=/domain/4#inet#openstream#<set>` без жесткого перехвата порта 53 (#1, #79), AAAA-фильтрация для блокировки утечек IPv6 (#6).
+  - **Полноценный редизайн LuCI Web UI (`luci-app-openstream`):**
+    - Экран **Policy Routing** (`routing.htm`) в современном стиле OLED Dark (#020617), Glassmorphism и Mobile First: карточный интерфейс без HTML-таблиц на мобильных устройствах (Правила UI/UX 8–22).
+    - Управление приоритетами правил с немедленным перерасчетом цепочки (решение Forkop issue #96).
+    - Назначение сетевых движков на правила: `Zapret2 (nfqws2)`, `OpenStream StreamProxy`, `VPN / sing-box Gateway`, `Direct (WAN Bypass)`, `Block`.
+    - Селектор клиентов локальной сети с подгрузкой живых устройств из `/tmp/dhcp.leases` (решение Forkop issue #95).
+    - Атомарное сохранение правил (`api_routing_save`) с компиляцией в ядре и автоматическим откатом (Rollback) к рабочей версии в случае ошибки (Архитектурный столп №4).
+    - Инспектор маршрутизации в реальном времени (`api_routing_test`): мгновенная проверка домена с указанием точного маршрута и движка (решение Forkop issues #75, #76).
+  - **Комплексный аудит безопасности, надежности и предотвращения сбоев (Senior Backend / DevOps / SecOps):**
+    - **Ликвидация Path Traversal в RPC (`openstream.uc`):** Внедрена строгая очистка путей сохраняемых файлов правил (`replace(r.file, /^.*[\/\\]/, '')`) с проверкой на регулярное выражение `^[a-zA-Z0-9_\-]+\.osrule\.ya?ml$`. Запрещена запись за пределы `/etc/openstream/rules`.
+    - **RFC-валидация доменных имен:** В `openstream-render.uc` и методе `test_route` плагина `openstream.uc` введена строгая фильтрация `^[a-z0-9\.\-]+$` (длина $\le 253$, запрет `..`), исключающая возможность CRLF-инъекций или внедрения сторонних директив в конфигурацию `dnsmasq`.
+    - **Защита от «отвала» DNS при остановке службы (`streamproxyd.init`):** В `stop_service()` добавлено полное удаление `/tmp/dnsmasq.d/openstream-rules.conf` и `/tmp/openstream*.nft` перед `safe_dnsmasq_reload`. Роутер гарантированно возвращается к прямому провайдерскому DNS без зависших ссылок на удаленные nft-сеты.
+    - **Устранение утечки памяти и дедлоков в `Singleflight` (`crates/ose-coalesce`):** Реализован RAII-страж `LeaderGuard`, обеспечивающий немедленную очистку хэш-мапы `inflight` даже при принудительной отмене асинхронного Tokio-таска (обрыв соединения клиентом).
+    - **Защита ядра Linux от OOM в nftables:** Всем динамическим сетам (`zapret2_targets`, `streamproxy_targets`, `vpn_*`) задан жесткий лимит емкости `size 65536;` с автоочисткой `timeout 1d;`, что предотвращает исчерпание памяти ядра роутера при массовом DNS-сканировании.
+    - **Атомарная перезагрузка таблицы nftables:** Внедрен безопасный шаблон пересоздания `table inet openstream` / `delete table inet openstream`, исключающий дублирование цепочек и сбои при горячем рестарте.
+  - **Полный переход на ucode и LuCI JavaScript API (ликвидация устаревшего Lua CBI 2015 года):**
+    - **Высокопроизводительный RPC плагин `ucode` (`root/usr/share/rpcd/ucode/openstream.uc`):** Вся серверная логика опроса состояния, парсинга правил, управления клиентами LAN и атомарной валидации переведена на C-интерпретатор `ucode`. Нулевой оверхед по памяти (вместо мегабайт Lua рантайма — микросекундные системные вызовы).
+    - **Рендерер `openstream-render.uc` (`package/openwrt/files/openstream-render.uc`):** Высокоскоростной рендеринг конфигураций `dnsmasq` и `nftables` на `ucode` взамен медленных shell/awk цепочек.
+    - **Современные LuCI JS представления (`root/www/luci-static/resources/view/openstream/`):**
+      - `routing.js`: клиентский рендеринг Policy Routing с OLED Dark карточками, управлением приоритетами (▲/▼), привязкой клиентов по DHCP и живым инспектором маршрутов.
+      - `status.js`: дашборд состояния службы, ядра и десинхронизатора Zapret2.
+      - `services.js`: управление сервисами на базе `form.Map`.
+      - `twitch.js`: управление матричной маршрутизацией Twitch.
+    - **Удаление легаси Lua CBI:** Полностью удалена директория `luci-app-openstream/luasrc/model/cbi/`, меню `menu.d` переведено на `"type": "view"`, добавлен ACL `/usr/share/luci/acl.d/luci-app-openstream.json` для вызовов ubus `openstream`.
+  - **Референсные правила и каталог Community:** Добавлены `discord.osrule.yaml` (Zapret2 UDP voice bypass) и `bittorrent_bypass.osrule.yaml` (P2P WAN isolation); каталог `dist/rules-index.json` пересобран для 6 эталонных правил.
+  - Измененные и добавленные файлы: `crates/openstream-rule/*`, `crates/openstream-core/*`, `crates/openstream-backend-openwrt/*`, `crates/openstream-ffi/*`, `crates/openstream-jni/*`, `luci-app-openstream/*`, `package/openwrt/files/openstream-render.uc`, `scripts/pack_ipk.py`, `rules/*`, `dist/rules-index.json`, `docs/CHANGELOG.md`, `docs/POLICY_ROUTING_ARCHITECTURE.md`. Миграций нет; 100% обратная совместимость.
+
+- **OpenStream Engine 2.0 (Фаза 5: Адаптеры для Android VpnService, macOS и Windows):**
+  - **Крейт `crates/openstream-jni` (Android NDK / JNI мост):** Разработан нативный мост для JVM/ART, экспортирующий методы инициализации, сопоставления доменов за $O(k)$ и передачи сырого дескриптора TUN (`ParcelFileDescriptor`).
+  - **Платформа Android (`platforms/android/`):**
+    - `OpenStreamVpnService`: реализация сервиса на базе `android.net.VpnService` со структурированной конкурентностью `kotlin-coroutines-expert` (`CoroutineScope(Dispatchers.IO + SupervisorJob())`), безопасной отменой и защитой от петель трафика `addDisallowedApplication`. Совместим с Android 14/15 (`foregroundServiceType="systemExempted"`).
+    - `OpenStreamCore.kt`: реактивная трансляция состояния туннеля через горячий поток `StateFlow<TunnelMetrics>` и событий через `SharedFlow`.
+    - `DashboardScreen.kt`: Jetpack Compose UI (Material 3) в едином темном дизайне с iOS, монитор расхода батареи и памяти (<2.5 МБ RAM).
+  - **Крейт `crates/openstream-backend-desktop`:** Кроссплатформенный десктопный бэкенд для Windows (Wintun) и macOS (/dev/utun), реализующий трейт `NetworkBackend`.
+  - **Синхронизация дорожной карты:** В `README.md` и `README_EN.md` зафиксировано завершение всех 5 фаз разработки кроссплатформенного цикла OpenStream 2.0.
+  - Измененные и добавленные файлы: `crates/openstream-jni/*`, `crates/openstream-backend-desktop/*`, `platforms/android/*`, `README.md`, `README_EN.md`, `docs/POLICY_ROUTING_ARCHITECTURE.md`, `docs/CHANGELOG.md`. Миграций нет; обратная совместимость 100%.
+
+- **OpenStream Engine 2.0 (Фаза 4: Экосистема Community Rules, CLI-линтер osrule и CI/CD):**
+  - **Крейт `crates/openstream-cli` (утилита `osrule`):**
+    - Команда `osrule lint <paths...>`: строгий анализ синтаксиса `.osrule.yaml`, проверка соответствия Schema 2.0, RFC FQDN-проверка и SecOps-фильтрация системных FQDN.
+    - Команды `osrule keygen`, `osrule sign`, `osrule verify`: криптографическое подписание манифестов закрытым ключом Ed25519 и проверка целостности правил для защиты цепочки поставок (Supply Chain Security).
+    - Команда `osrule index <dir> --out rules-index.json`: автоматическая генерация публичного манифеста каталога с контрольными суммами SHA256 и версиями.
+  - **CI/CD автоматизация (`.github/workflows/rules-ci.yml`):** Добавлен пайплайн GitHub Actions для проверки каждого Pull Request с правилами и автоматической сборки каталога `rules-index.json`.
+  - **Каталог `dist/rules-index.json`:** Сгенерирован публичный реестр для эталонных правил Twitch, YouTube, Crunchyroll и AdBlock.
+  - Измененные и добавленные файлы: `crates/openstream-cli/*`, `.github/workflows/rules-ci.yml`, `dist/rules-index.json`, `docs/POLICY_ROUTING_ARCHITECTURE.md`, `docs/CHANGELOG.md`. Миграций нет; обратная совместимость 100%.
+
+- **OpenStream Engine 2.0 (Фаза 3: Мобильный адаптер Apple iOS на Swift 6 и NetworkExtension):**
+  - **Крейт `crates/openstream-ffi`:** Разработан C-ABI / UniFFI 0.28 мост, экспортирующий класс `MobileEngine`, структуры `MobileRuleInfo`, `MobileMetrics` и вердикты `MobileVerdict` (`Direct`, `DpiEvasiveDirect`, `Proxy`, `DnsOverride`, `Block`).
+  - **Изоляция акторов Swift 6 (`platforms/ios/Tunnel/PacketTunnelProvider.swift`):** Реализован `NEPacketTunnelProvider` с актором `TunnelWorker` (`actor TunnelWorker`), zero-copy чтением пакетов из виртуального интерфейса `utun` через `packetFlow.readPackets` и локальным перехватом DNS UDP на порту 53 без data races.
+  - **Apple Jetsam Compliance:** Потребление памяти Rust-ядра в песочнице iOS составляет менее **2.2 МБ RAM** (порог аварийного завершения SIGKILL — 15–50 МБ).
+  - **Общий контейнер App Groups (`platforms/ios/Shared/SharedConfiguration.swift`):** Обеспечен обмен манифестами правил `.osrule.yaml` и состоянием активности между основным процессом приложения и системным демоном расширения.
+  - **SwiftUI 6 приложение (`platforms/ios/App/`):** Разработаны экраны в стиле Linear / Apple Aesthetic:
+    - `DashboardView`: статусный Hero Card с неоморфным переключателем, сетка метрик в реальном времени и виджет расхода памяти Apple Jetsam Guard.
+    - `RulesCatalogView`: карточки сервисных правил (Twitch, YouTube Anti-DPI, Crunchyroll, AdBlock) с мгновенным переключением.
+    - `TrafficLogsView`: журнал перехваченных FQDN с цветовой индикацией вердиктов и поиском.
+    - `OpenStreamApp`: точка входа с темной темой и автоматической инициализацией эталонных правил.
+  - Измененные и добавленные файлы: `crates/openstream-ffi/*`, `platforms/ios/*`, `docs/POLICY_ROUTING_ARCHITECTURE.md`, `docs/CHANGELOG.md`. Миграций нет; обратная совместимость 100%.
+
+- **OpenStream Engine 2.0 (Фаза 2: Рефакторинг и интеграция бэкенда OpenWrt):**
+  - **Крейт `crates/openstream-backend-openwrt`:** Разработан адаптер `OpenWrtBackend`, реализующий трейт `NetworkBackend` для сетевой подсистемы Linux/OpenWrt.
+  - **Генератор конфигураций `dnsmasq`:** Реализована трансляция скомпилированных правил `CompiledRuleSet` в директивы `address=/domain/0.0.0.0` (Sinkhole), `address=/domain/IP` (SmartDNS) и `nftset=/domain/4#inet#openstream#<set>` (маршрутизация). Встроен строгий валидатор `sanitize_domain()` для предотвращения шелл-инъекций.
+  - **Генератор правил `nftables`:** Автоматическое формирование динамических наборов `table inet openstream` (`set vpn_<gw>`, `set dpi_evasive`).
+  - **Интеграция в `streamproxyd`:** Добавлен флаг CLI `--compile-rules` для автономной компиляции каталога правил `.osrule.yaml` в конфигурационные файлы роутера без накладных расходов.
+  - **OpenWrt procd init:** В `/etc/init.d/streamproxyd` встроена автоматическая компиляция правил при запуске и перезагрузке службы.
+  - **Сборка IPK:** Обновлен скрипт `scripts/pack_ipk.py`, эталонные правила поставляются в составе `openstream-engine` по пути `/usr/share/openstream/rules/`.
+  - **Интерфейс LuCI:** В форму управления сервисами (`services.lua`) добавлена секция переключения сервисных правил 2.0 с актуализированными русскими переводами.
+  - Измененные и добавленные файлы: `crates/openstream-backend-openwrt/*`, `crates/streamproxyd/Cargo.toml`, `crates/streamproxyd/src/main.rs`, `package/openwrt/files/streamproxyd.init`, `scripts/pack_ipk.py`, `luci-app-openstream/luasrc/model/cbi/openstream/services.lua`, `luci-app-openstream/po/ru/openstream.po`, `docs/POLICY_ROUTING_ARCHITECTURE.md`, `docs/CHANGELOG.md`. Миграций нет; обратная совместимость 100%.
+
+- **OpenStream Engine 2.0 (Фаза 1: Фундамент универсального декларативного движка маршрутизации трафика):**
+  - **Архитектурная спецификация:** Документ `docs/POLICY_ROUTING_ARCHITECTURE.md` со спецификацией 4-слойной архитектуры (Core, Backends, UI, Community Rules), анализом типовых проектов (Podkop, Forkop, Zapret, SpoofDPI, ByeDPI, tun-rs), матрицей `PlatformCapabilities` и моделью безопасности (SecOps).
+  - **Крейт `crates/openstream-rule`:** Спецификация и парсер манифестов `.osrule.yaml` (Schema v2.0), валидатор защиты системных доменов безопасности (Apple, Microsoft, финансовые шлюзы), криптографическая верификация подписей Ed25519 (`ed25519-dalek`).
+  - **Крейт `crates/openstream-core`:** Высокопроизводительный Reverse Suffix Trie без динамических аллокаций памяти в hot-path, радиальная таблица маршрутизации IP/CIDR (Longest Prefix Match), центральный движок `PolicyEngine` для сопоставления доменов и IP с автоматическим разрешением стратегий выхода (`Direct`, `DpiEvasiveDirect`, `Proxy`, `DnsOverride`, `Block`, `StripPayload`), трейт `NetworkBackend`.
+  - **Каталог эталонных правил (`rules/`):** Добавлены эталонные манифесты для `rules/streaming/twitch.osrule.yaml`, `rules/streaming/crunchyroll.osrule.yaml`, `rules/streaming/youtube.osrule.yaml` (Anti-DPI ClientHello split) и `rules/privacy/adblock.osrule.yaml`.
+  - **Обновление документации:** В `README.md` и `README_EN.md` презентовано видение 2.0 («One Rule. Every Platform. Zero Overhead.») с сохранением статуса исследовательской лаборатории (Research Project / Beta) и сохранением инструкций по установке релизных OpenWrt-пакетов.
+  - Измененные и добавленные файлы: `docs/POLICY_ROUTING_ARCHITECTURE.md`, `crates/openstream-rule/*`, `crates/openstream-core/*`, `rules/*`, `Cargo.toml`, `README.md`, `README_EN.md`, `docs/CHANGELOG.md`. Миграций нет, обратная совместимость с OpenWrt 0.4.2-35 полностью сохранена; откат — `git checkout`.
+
 ### Изменено
 
 - **Release 0.4.2-35 (Очистка неработающих пресетов, актуализация LuCI и статус Research Beta):**

@@ -1,0 +1,16 @@
+[package]
+name = "openstream-backend-openwrt"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "OpenWrt network adapter and config translator (dnsmasq & nftables) for OpenStream Engine"
+
+[dependencies]
+openstream-core = { path = "../openstream-core" }
+openstream-rule = { path = "../openstream-rule" }
+thiserror = "2.0"
+async-trait = "0.1"
+tracing = "0.1"
+
+[dev-dependencies]

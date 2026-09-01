@@ -1,0 +1,21 @@
+[package]
+name = "openstream-jni"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "JNI bridge for Android VpnService integration with OpenStream Engine"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+name = "openstream_jni"
+
+[dependencies]
+openstream-core = { path = "../openstream-core" }
+openstream-rule = { path = "../openstream-rule" }
+jni = "0.21"
+tokio = { workspace = true }
+thiserror = "2.0"
+tracing = "0.1"
+
+[dev-dependencies]

@@ -1,0 +1,17 @@
+[package]
+name = "openstream-backend-desktop"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Desktop (Windows Wintun / macOS utun) network backend for OpenStream Engine"
+
+[dependencies]
+openstream-core = { path = "../openstream-core" }
+openstream-rule = { path = "../openstream-rule" }
+tokio = { workspace = true }
+async-trait = "0.1"
+thiserror = "2.0"
+tracing = "0.1"
+
+[dev-dependencies]

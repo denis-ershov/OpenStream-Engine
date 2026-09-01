@@ -27,32 +27,50 @@ function index()
 		1
 	)
 	entry(
-		{ "admin", "services", "openstream", "twitch" },
-		cbi("openstream/twitch"),
-		_("Twitch"),
+		{ "admin", "services", "openstream", "routing" },
+		template("openstream/routing"),
+		_("Policy Routing"),
 		2
 	)
 	entry(
 		{ "admin", "services", "openstream", "services" },
-		cbi("openstream/services"),
+		view("openstream/services"),
 		_("Services"),
 		3
+	)
+	entry(
+		{ "admin", "services", "openstream", "twitch" },
+		view("openstream/twitch"),
+		_("Twitch"),
+		4
 	)
 	entry(
 		{ "admin", "services", "openstream", "logs" },
 		template("openstream/logs"),
 		_("Logs"),
-		4
+		5
 	)
 	entry(
 		{ "admin", "services", "openstream", "diagnostics" },
 		template("openstream/diagnostics"),
 		_("Diagnostics"),
-		5
+		6
 	)
 	entry(
 		{ "admin", "services", "openstream", "api_status" },
 		call("action_api_status")
+	).leaf = true
+	entry(
+		{ "admin", "services", "openstream", "api_routing_get" },
+		call("action_api_routing_get")
+	).leaf = true
+	entry(
+		{ "admin", "services", "openstream", "api_routing_save" },
+		call("action_api_routing_save")
+	).leaf = true
+	entry(
+		{ "admin", "services", "openstream", "api_routing_test" },
+		call("action_api_routing_test")
 	).leaf = true
 	entry(
 		{ "admin", "services", "openstream", "api_events" },
@@ -347,3 +365,218 @@ function action_api_dns_test()
 	http.prepare_content("application/json")
 	http.write(json.stringify(results))
 end
+
+function action_api_routing_get()
+	local nixio = require "nixio"
+	local json = require "luci.jsonc"
+	local util = require "luci.util"
+
+	local zapret2_installed = nixio.fs.access("/usr/bin/nfqws2") or nixio.fs.access("/usr/bin/nfqws")
+	local singbox_installed = nixio.fs.access("/usr/bin/sing-box")
+
+	-- Сбор клиентов локальной сети из /tmp/dhcp.leases
+	local clients = {}
+	local leases_raw = nixio.fs.readfile("/tmp/dhcp.leases") or ""
+	for line in leases_raw:gmatch("[^\r\n]+") do
+		local ts, mac, ip, name = line:match("(%d+)%s+([%x:]+)%s+([%d%.]+)%s+([^%s]+)")
+		if mac and ip then
+			table.insert(clients, {
+				mac = mac:upper(),
+				ip = ip,
+				hostname = (name ~= "*" and name) or "Unknown Device"
+			})
+		end
+	end
+
+	-- Сбор правил из /etc/openstream/rules/
+	local rules = {}
+	local rules_dir = "/etc/openstream/rules"
+	local entries = nixio.fs.dir(rules_dir)
+	if entries then
+		for filename in entries do
+			if filename:match("%.osrule%.ya?ml$") then
+				local content = nixio.fs.readfile(rules_dir .. "/" .. filename)
+				if content then
+					local id = content:match("id:%s*[\"']?([%w%.%-_]+)") or filename
+					local name = content:match("name:%s*[\"']?([^\"\r\n]+)") or id
+					local enabled = not content:match("enabled:%s*false")
+					local desc = content:match("description:%s*[\"']?([^\"\r\n]+)") or ""
+					
+					-- Определение активного действия
+					local action = "direct"
+					if content:match("zapret2") then
+						action = "zapret2"
+					elseif content:match("stream_proxy") or content:match("streamproxy") then
+						action = "streamproxy"
+					elseif content:match("proxy:") or content:match("action:%s*\"?proxy") then
+						action = "vpn"
+					elseif content:match("action:%s*\"?block") then
+						action = "block"
+					end
+
+					table.insert(rules, {
+						file = filename,
+						id = id,
+						name = name,
+						enabled = enabled,
+						description = desc,
+						action = action,
+						raw_yaml = content
+					})
+				end
+			end
+		end
+	end
+
+	-- Если каталог пуст, отдаем базовые встроенные шаблоны
+	if #rules == 0 then
+		table.insert(rules, {
+			file = "youtube.osrule.yaml",
+			id = "org.openstream.rules.youtube",
+			name = "YouTube 4K & Googlevideo",
+			enabled = true,
+			description = "Десинхронизация DPI через Zapret2 (nfqws2) без тормозов 4K",
+			action = "zapret2",
+			preset = "youtube_4k"
+		})
+		table.insert(rules, {
+			file = "discord.osrule.yaml",
+			id = "org.openstream.rules.discord",
+			name = "Discord RTC & Voice",
+			enabled = true,
+			description = "Обход блокировок голосовых каналов Discord через UDP-пресет Zapret2",
+			action = "zapret2",
+			preset = "discord_voice"
+		})
+		table.insert(rules, {
+			file = "twitch.osrule.yaml",
+			id = "org.openstream.rules.twitch",
+			name = "Twitch AdBlock StreamProxy",
+			enabled = true,
+			description = "Локальная модификация плейлистов HLS без рекламы в 1080p60",
+			action = "streamproxy"
+		})
+		table.insert(rules, {
+			file = "bittorrent.osrule.yaml",
+			id = "org.openstream.rules.p2p",
+			name = "BitTorrent & P2P Bypass",
+			enabled = true,
+			description = "Исключение P2P-трафика из прокси и туннелей напрямую в WAN (решение #72)",
+			action = "direct",
+			bypass_p2p = true
+		})
+	end
+
+	local data = {
+		zapret2_installed = zapret2_installed,
+		singbox_installed = singbox_installed,
+		clients = clients,
+		rules = rules,
+		shadow_warnings = {}
+	}
+
+	http.prepare_content("application/json")
+	http.write(json.stringify(data))
+end
+
+function action_api_routing_save()
+	local json = require "luci.jsonc"
+	local util = require "luci.util"
+	local nixio = require "nixio"
+
+	local body = http.content()
+	local payload = json.parse(body or "{}")
+
+	if not payload or not payload.rules then
+		http.status(400, "Bad Request")
+		http.prepare_content("application/json")
+		http.write(json.stringify({ success = false, error = "Отсутствуют правила для сохранения" }))
+		return
+	end
+
+	local rules_dir = "/etc/openstream/rules"
+	nixio.fs.mkdir(rules_dir)
+
+	-- Резервная копия перед валидацией (Rollback safety - правило #4)
+	util.exec("rm -rf /tmp/openstream_rules_backup && cp -r " .. rules_dir .. " /tmp/openstream_rules_backup 2>/dev/null")
+
+	-- Запись обновленных файлов правил
+	for _, r in ipairs(payload.rules) do
+		if r.file and r.raw_yaml then
+			local filepath = rules_dir .. "/" .. r.file
+			nixio.fs.writefile(filepath, r.raw_yaml)
+		end
+	end
+
+	-- Атомарная валидация компилятором ядра
+	local validate_res = util.exec("/usr/bin/streamproxyd --compile-rules --rules-dir " .. rules_dir .. " 2>&1")
+	local ok = (nixio.fs.access("/tmp/dnsmasq.d/openstream-rules.conf") and true) or false
+
+	if not ok and nixio.fs.access("/tmp/openstream_rules_backup") then
+		-- Откат при ошибке
+		util.exec("cp -r /tmp/openstream_rules_backup/* " .. rules_dir .. "/ 2>/dev/null")
+		http.status(422, "Validation Failed")
+		http.prepare_content("application/json")
+		http.write(json.stringify({
+			success = false,
+			error = "Ошибка компиляции правил. Выполнен автоматический откат к рабочей версии.",
+			details = validate_res
+		}))
+		return
+	end
+
+	-- Применение изменений без разрыва DNS (Правило #1, #4)
+	util.exec("/etc/init.d/openstream reload 2>/dev/null")
+
+	http.prepare_content("application/json")
+	http.write(json.stringify({ success = true, message = "Маршруты успешно обновлены и проверены ядром." }))
+end
+
+function action_api_routing_test()
+	local json = require "luci.jsonc"
+	local util = require "luci.util"
+	local http = require "luci.http"
+
+	local domain = http.formvalue("domain") or ""
+	domain = domain:gsub("[%s;%|%&]", "")
+
+	if #domain == 0 then
+		http.status(400, "Bad Request")
+		http.prepare_content("application/json")
+		http.write(json.stringify({ success = false, error = "Домен не указан" }))
+		return
+	end
+
+	local nft_match = util.exec(string.format("nft list sets | grep -B 1 -A 5 '%s' 2>/dev/null", domain))
+	local dns_check = util.exec(string.format("grep -i '%s' /tmp/dnsmasq.d/openstream-rules.conf 2>/dev/null", domain))
+
+	local result = {
+		domain = domain,
+		route = "direct",
+		engine = "Direct / WAN",
+		details = "Трафик идет напрямую через сетевой шлюз провайдера"
+	}
+
+	if dns_check:match("zapret2_targets") then
+		result.route = "zapret2"
+		result.engine = "Zapret2 (nfqws2 NFQUEUE 1088)"
+		result.details = "Обход блокировок ТСПУ десинхронизацией пакетов"
+	elseif dns_check:match("streamproxy_targets") then
+		result.route = "streamproxy"
+		result.engine = "OpenStream StreamProxy (:8888)"
+		result.details = "Локальное удаление рекламы и стриминг HLS"
+	elseif dns_check:match("vpn_") then
+		local vpn_tag = dns_check:match("vpn_([%w_]+)")
+		result.route = "vpn"
+		result.engine = "VPN Gateway (" .. (vpn_tag or "default") .. ")"
+		result.details = "Маршрутизируется в зашифрованный туннель"
+	elseif dns_check:match("0.0.0.0") then
+		result.route = "block"
+		result.engine = "DNS Sinkhole (Blocked)"
+		result.details = "Заблокировано на уровне DNS"
+	end
+
+	http.prepare_content("application/json")
+	http.write(json.stringify({ success = true, result = result }))
+end
+

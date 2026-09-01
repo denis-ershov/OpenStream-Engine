@@ -1,0 +1,19 @@
+schema_version: "2.1"
+id: "org.openstream.rules.p2p_bypass"
+name: "BitTorrent & Local P2P Bypass"
+version: "1.0.0"
+author: "OpenStream Community"
+description: "Isolates torrent traffic directly into WAN to save VPN bandwidth and prevent connection resets"
+
+capabilities_required:
+  - domain_routing
+
+matches:
+  - group: "torrent_clients"
+    domains:
+      - "tracker.opentrackr.org"
+      - "open.stealth.si"
+      - "*.tracker.torrent.to"
+    bypass:
+      bypass_p2p: true
+    action: "direct"

@@ -1,0 +1,54 @@
+name: Community Rules CI & Catalog Index
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "rules/**"
+      - "crates/openstream-rule/**"
+      - "crates/openstream-cli/**"
+      - ".github/workflows/rules-ci.yml"
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - "rules/**"
+      - "crates/openstream-rule/**"
+      - "crates/openstream-cli/**"
+
+jobs:
+  lint-and-index:
+    name: Lint Rules & Build Index
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo Dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build osrule CLI
+        run: cargo build --release -p openstream-cli
+
+      - name: Lint All .osrule.yaml Rules
+        run: ./target/release/osrule lint rules/
+
+      - name: Generate Community Rules Index (rules-index.json)
+        run: |
+          mkdir -p dist
+          ./target/release/osrule index rules/ --out dist/rules-index.json
+
+      - name: Upload Rules Catalog Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rules-index
+          path: dist/rules-index.json

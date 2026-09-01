@@ -1,0 +1,94 @@
+{
+  "catalog_version": "2.0",
+  "generated_at": "2026-09-01T17:00:00Z",
+  "total_rules": 6,
+  "rules": [
+    {
+      "id": "org.openstream.rules.adblock",
+      "name": "Privacy Essentials & Ad Block",
+      "version": "1.0.0",
+      "author": "OpenStream Community",
+      "description": "Core tracker and telemetry sinkhole (0.0.0.0)",
+      "capabilities": [
+        "dns_interception"
+      ],
+      "matches_count": 2,
+      "sha256": "406ea593a199e3d0ce37d52cc0211eae7f5a56428066302bb7045dda8897e37a",
+      "signature": null,
+      "relative_path": "privacy/adblock.osrule.yaml"
+    },
+    {
+      "id": "org.openstream.rules.p2p_bypass",
+      "name": "BitTorrent & Local P2P Bypass",
+      "version": "1.0.0",
+      "author": "OpenStream Community",
+      "description": "Isolates torrent traffic directly into WAN to save VPN bandwidth and prevent connection resets",
+      "capabilities": [
+        "domain_routing"
+      ],
+      "matches_count": 1,
+      "sha256": "1c5f862027fcf53c0786a12c33965473b94ba19d2c35ccb0374c9a7e7aa26233",
+      "signature": null,
+      "relative_path": "privacy/bittorrent_bypass.osrule.yaml"
+    },
+    {
+      "id": "org.openstream.rules.crunchyroll",
+      "name": "Crunchyroll Smart Route",
+      "version": "1.0.0",
+      "author": "OpenStream Community",
+      "description": "US library catalog unlock with direct CDN stream speeds",
+      "capabilities": [
+        "domain_routing"
+      ],
+      "matches_count": 2,
+      "sha256": "7e6555a3cd9acb880c68b9cb48561ac8ecc65f66e8e72f89880490a9384de142",
+      "signature": null,
+      "relative_path": "streaming/crunchyroll.osrule.yaml"
+    },
+    {
+      "id": "org.openstream.rules.discord",
+      "name": "Discord Voice & Media Unblocker",
+      "version": "1.0.0",
+      "author": "OpenStream Community",
+      "description": "Discord RTC voice gateways and media desync via Zapret2 nfqws2 UDP/TCP",
+      "capabilities": [
+        "domain_routing",
+        "l4_packet_desync"
+      ],
+      "matches_count": 1,
+      "sha256": "7c995387ada1b4db713dfbb93ffec620a716de9fea3d79f9c756f576d7027c15",
+      "signature": null,
+      "relative_path": "streaming/discord.osrule.yaml"
+    },
+    {
+      "id": "org.openstream.rules.twitch",
+      "name": "Twitch Live Optimizer",
+      "version": "2.0.0",
+      "author": "OpenStream Community",
+      "description": "SSAI ad-bypass via clean tokens and 1440p quality unlock",
+      "capabilities": [
+        "domain_routing",
+        "dns_interception"
+      ],
+      "matches_count": 4,
+      "sha256": "11a3ef9681f5f7bb763572a2b27633c590eb34bb10cec66b989cb26208f10075",
+      "signature": null,
+      "relative_path": "streaming/twitch.osrule.yaml"
+    },
+    {
+      "id": "org.openstream.rules.youtube",
+      "name": "YouTube Clean & Unthrottled",
+      "version": "1.0.0",
+      "author": "OpenStream Community",
+      "description": "Anti-DPI ClientHello segmentation for googlevideo CDN with direct unmetered speeds",
+      "capabilities": [
+        "domain_routing",
+        "l4_packet_desync"
+      ],
+      "matches_count": 3,
+      "sha256": "8931b6781251ec39e79a2d771e0a48f70aeb12dab67ca403d8af06d3ac08fccc",
+      "signature": null,
+      "relative_path": "streaming/youtube.osrule.yaml"
+    }
+  ]
+}

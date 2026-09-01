@@ -1,0 +1,23 @@
+[package]
+name = "openstream-ffi"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "UniFFI Swift and Mobile FFI bridge for OpenStream Engine"
+
+[lib]
+crate-type = ["lib", "staticlib", "cdylib"]
+name = "openstream_ffi"
+
+[dependencies]
+openstream-core = { path = "../openstream-core" }
+openstream-rule = { path = "../openstream-rule" }
+uniffi = { version = "0.28", features = ["tokio"] }
+thiserror = "2.0"
+tracing = "0.1"
+
+[build-dependencies]
+uniffi = { version = "0.28", features = ["build"] }
+
+[dev-dependencies]

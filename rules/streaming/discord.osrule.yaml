@@ -1,0 +1,21 @@
+schema_version: "2.1"
+id: "org.openstream.rules.discord"
+name: "Discord Voice & Media Unblocker"
+version: "1.0.0"
+author: "OpenStream Community"
+description: "Discord RTC voice gateways and media desync via Zapret2 nfqws2 UDP/TCP"
+
+capabilities_required:
+  - domain_routing
+  - l4_packet_desync
+
+matches:
+  - group: "voice_gateways"
+    domains:
+      - "*.discord.gg"
+      - "*.discord.media"
+      - "*.discordapp.net"
+      - "*.discord.com"
+    action:
+      type: "zapret2"
+      preset: "discord_voice"

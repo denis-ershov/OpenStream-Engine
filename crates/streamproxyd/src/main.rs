@@ -16,6 +16,18 @@ struct Args {
     config: PathBuf,
     #[arg(long)]
     mitm: Option<bool>,
+    /// Скомпилировать сервисные правила .osrule.yaml в конфигурации dnsmasq и nftables
+    #[arg(long)]
+    compile_rules: bool,
+    /// Каталог с файлами правил .osrule.yaml
+    #[arg(long, default_value = "/usr/share/openstream/rules")]
+    rules_dir: PathBuf,
+    /// Путь для записи сгенерированного файла dnsmasq
+    #[arg(long, default_value = "/tmp/dnsmasq.d/openstream-rules.conf")]
+    out_dnsmasq: PathBuf,
+    /// Путь для записи сгенерированного файла nftables
+    #[arg(long, default_value = "/tmp/openstream-rules.nft")]
+    out_nft: PathBuf,
 }
 
 fn build_plugins(config: &Config) -> Result<PluginManager> {
@@ -120,6 +132,29 @@ async fn main() -> Result<()> {
     let _ = rustls::crypto::ring::default_provider().install_default();
 
     let args = Args::parse();
+
+    if args.compile_rules {
+        match openstream_backend_openwrt::compile_rules_dir(
+            &args.rules_dir,
+            &args.out_dnsmasq,
+            &args.out_nft,
+        ) {
+            Ok(count) => {
+                println!(
+                    "openstream: compiled {} .osrule packages into {} and {}",
+                    count,
+                    args.out_dnsmasq.display(),
+                    args.out_nft.display()
+                );
+                return Ok(());
+            }
+            Err(e) => {
+                eprintln!("openstream: failed to compile rules: {e}");
+                std::process::exit(1);
+            }
+        }
+    }
+
     let config_path = args.config.clone();
 
     // Логирование как можно раньше — иначе crash loop без причины в logread

@@ -1,0 +1,26 @@
+{
+	"luci-app-openstream": {
+		"description": "Grant access to OpenStream Engine ucode RPC and configurations",
+		"read": {
+			"uci": [ "openstream" ],
+			"ubus": {
+				"openstream": [ "status", "get_routing", "test_route" ],
+				"luci": [ "getInitList" ]
+			},
+			"file": {
+				"/etc/openstream/rules/*": [ "read" ],
+				"/tmp/dhcp.leases": [ "read" ],
+				"/tmp/dnsmasq.d/openstream-rules.conf": [ "read" ]
+			}
+		},
+		"write": {
+			"uci": [ "openstream" ],
+			"ubus": {
+				"openstream": [ "save_routing" ]
+			},
+			"file": {
+				"/etc/openstream/rules/*": [ "write" ]
+			}
+		}
+	}
+}

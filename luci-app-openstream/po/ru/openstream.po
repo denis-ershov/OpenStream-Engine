@@ -481,5 +481,26 @@ msgstr "Автоопределение (Рекомендуется)"
 msgid "Network interface used for direct SmartDNS and RU DNS requests in bypass of VPN tunnels."
 msgstr "Сетевой интерфейс, используемый для прямых запросов к SmartDNS и DNS РФ в обход VPN-туннелей."
 
+msgid "OpenStream 2.0: Service Policies (.osrule)"
+msgstr "OpenStream 2.0: Сервисные правила (.osrule)"
 
+msgid "Declarative cross-platform service rules compiled directly into kernel nftables and dnsmasq."
+msgstr "Декларативные кроссплатформенные правила сервисов, компилируемые напрямую в nftables и dnsmasq."
 
+msgid "YouTube Anti-DPI & Clean"
+msgstr "YouTube Anti-DPI & Clean"
+
+msgid "Local TLS ClientHello segmentation for googlevideo CDN without remote VPN limits."
+msgstr "Локальное разделение TLS ClientHello для серверов googlevideo без ограничений VPN."
+
+msgid "Crunchyroll Smart Route"
+msgstr "Crunchyroll Smart Route"
+
+msgid "US library catalog unlock with direct CDN stream speeds."
+msgstr "Разблокировка каталога США с прямой загрузкой видеопотока."
+
+msgid "Privacy & AdBlock Sinkhole"
+msgstr "Privacy & AdBlock Sinkhole"
+
+msgid "Block telemetry, tracking domains, and analytics at DNS level (0.0.0.0)."
+msgstr "Блокировка телеметрии, трекеров и аналитики на уровне DNS (0.0.0.0)."

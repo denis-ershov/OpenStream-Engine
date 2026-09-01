@@ -7,12 +7,12 @@ include $(TOPDIR)/rules.mk
 
 LUCI_TITLE:=LuCI support for OpenStream Engine
 LUCI_DESCRIPTION:=Web UI for OpenStream Engine (Services menu). Install luci-i18n-openstream-ru for Russian.
-LUCI_DEPENDS:=+luci-base +openstream-engine
+LUCI_DEPENDS:=+luci-base +openstream-engine +ucode +ucode-mod-fs +ucode-mod-uci
 LUCI_PKGARCH:=all
 
 PKG_LICENSE:=MIT
 PKG_VERSION:=0.4.2
-PKG_RELEASE:=8
+PKG_RELEASE:=9
 
 include $(TOPDIR)/feeds/luci/luci.mk
 

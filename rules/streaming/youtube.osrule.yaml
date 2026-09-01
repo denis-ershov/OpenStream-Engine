@@ -1,0 +1,29 @@
+schema_version: "2.0"
+id: "org.openstream.rules.youtube"
+name: "YouTube Clean & Unthrottled"
+version: "1.0.0"
+author: "OpenStream Community"
+description: "Anti-DPI ClientHello segmentation for googlevideo CDN with direct unmetered speeds"
+
+capabilities_required:
+  - domain_routing
+  - l4_packet_desync
+
+matches:
+  - group: "video_cdn"
+    domains:
+      - "*.googlevideo.com"
+      - "*.ytimg.com"
+    action: "dpi_evasive_direct"
+
+  - group: "web_api"
+    domains:
+      - "youtube.com"
+      - "*.youtube.com"
+    action: "direct"
+
+  - group: "ads_and_tracking"
+    domains:
+      - "youtubeads.g.doubleclick.net"
+      - "pubads.g.doubleclick.net"
+    action: "block"

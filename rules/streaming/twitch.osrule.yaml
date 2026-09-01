@@ -1,0 +1,49 @@
+schema_version: "2.0"
+id: "org.openstream.rules.twitch"
+name: "Twitch Live Optimizer"
+version: "2.0.0"
+author: "OpenStream Community"
+description: "SSAI ad-bypass via clean tokens and 1440p quality unlock"
+
+capabilities_required:
+  - domain_routing
+  - dns_interception
+
+matches:
+  - group: "auth_token"
+    domains:
+      - "gql.twitch.tv"
+    strategy: "adfree_egress"
+
+  - group: "master_playlist"
+    domains:
+      - "usher.ttvnw.net"
+    strategy: "quality_unlock"
+
+  - group: "video_cdn"
+    domains:
+      - "*.live-video.net"
+      - "*.ttvnw.net"
+      - "*.jtvnw.net"
+    action: "direct"
+
+  - group: "ad_servers"
+    domains:
+      - "edge.ads.twitch.tv"
+      - "countess.twitch.tv"
+    action: "block"
+
+strategies:
+  adfree_egress:
+    preference:
+      - "geo:al"
+      - "geo:ua"
+      - "geo:kz"
+      - "proxy:clean_relay"
+      - "direct"
+  quality_unlock:
+    preference:
+      - "smartdns:eu"
+      - "geo:de"
+      - "geo:nl"
+      - "direct"

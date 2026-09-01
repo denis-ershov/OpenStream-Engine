@@ -72,14 +72,25 @@ impl Singleflight {
                 }
             },
             Role::Leader(tx) => {
+                struct LeaderGuard<'a> {
+                    sf: &'a Singleflight,
+                    key: &'a str,
+                }
+                impl<'a> Drop for LeaderGuard<'a> {
+                    fn drop(&mut self) {
+                        let mut map = self.sf.inflight.lock();
+                        map.remove(self.key);
+                    }
+                }
+                let _guard = LeaderGuard {
+                    sf: self,
+                    key: &key,
+                };
+
                 let result = match work().await {
                     Ok(v) => Ok(Arc::<[u8]>::from(v.into_boxed_slice())),
                     Err(e) => Err(e),
                 };
-                {
-                    let mut map = self.inflight.lock();
-                    map.remove(&key);
-                }
                 let _ = tx.send(result.clone());
                 result
             }

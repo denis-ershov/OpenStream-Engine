@@ -66,6 +66,7 @@ def build_packages():
     engine_data = [
         collect_file("/usr/bin/streamproxyd", binary_path, 0o755),
         collect_file("/usr/libexec/openstream-uci2yaml", ROOT / "package/openwrt/files/openstream-uci2yaml", 0o755),
+        collect_file("/usr/libexec/openstream-render.uc", ROOT / "package/openwrt/files/openstream-render.uc", 0o755),
         collect_file("/usr/libexec/openstream-compose-hostlist", ROOT / "package/openwrt/files/openstream-compose-hostlist", 0o755),
         collect_file("/usr/libexec/openstream-update-hostlists", ROOT / "package/openwrt/files/openstream-update-hostlists", 0o755),
         collect_file("/usr/libexec/openstream-refresh-hls-set", ROOT / "package/openwrt/files/openstream-refresh-hls-set", 0o755),
@@ -81,10 +82,13 @@ def build_packages():
     ]
     for hl in (ROOT / "package/openwrt/files/hostlists").glob("*.txt"):
         engine_data.append(collect_file(f"/usr/share/openstream/hostlists/{hl.name}", hl, 0o644))
+    for rf in (ROOT / "rules").rglob("*.osrule.yaml"):
+        rel_sub = rf.relative_to(ROOT / "rules").as_posix()
+        engine_data.append(collect_file(f"/usr/share/openstream/rules/{rel_sub}", rf, 0o644))
 
     engine_control = f"""Package: openstream-engine
 Version: {VERSION}-{RELEASE}
-Depends: ca-bundle
+Depends: ca-bundle, ucode, ucode-mod-fs, ucode-mod-uci
 License: MIT
 Section: net
 Architecture: {ARCH}
@@ -116,26 +120,31 @@ exit 0
     ]
     pack_ipk(IPK_OUT / f"openstream-engine_{VERSION}-{RELEASE}_{ARCH}.ipk", engine_ctrl, engine_data)
 
-    # 2. LuCI App Package
+    # 2. LuCI App Package (ucode + client-side JavaScript views)
     luci_data = [
         collect_file("/usr/lib/lua/luci/controller/openstream.lua", ROOT / "luci-app-openstream/luasrc/controller/openstream.lua", 0o644),
-        collect_file("/usr/lib/lua/luci/model/cbi/openstream/twitch.lua", ROOT / "luci-app-openstream/luasrc/model/cbi/openstream/twitch.lua", 0o644),
-        collect_file("/usr/lib/lua/luci/model/cbi/openstream/services.lua", ROOT / "luci-app-openstream/luasrc/model/cbi/openstream/services.lua", 0o644),
         collect_file("/usr/share/luci/menu.d/luci-app-openstream.json", ROOT / "luci-app-openstream/root/usr/share/luci/menu.d/luci-app-openstream.json", 0o644),
-        collect_file("/usr/share/rpcd/acl.d/luci-app-openstream.json", ROOT / "luci-app-openstream/root/usr/share/rpcd/acl.d/luci-app-openstream.json", 0o644),
+        collect_file("/usr/share/rpcd/ucode/openstream.uc", ROOT / "luci-app-openstream/root/usr/share/rpcd/ucode/openstream.uc", 0o644),
+        collect_file("/usr/share/luci/acl.d/luci-app-openstream.json", ROOT / "luci-app-openstream/root/usr/share/luci/acl.d/luci-app-openstream.json", 0o644),
         collect_file("/etc/uci-defaults/40_luci-openstream", ROOT / "luci-app-openstream/root/etc/uci-defaults/40_luci-openstream", 0o755),
     ]
+    # Add modern client-side JS views
+    js_dir = ROOT / "luci-app-openstream/root/www/luci-static/resources/view/openstream"
+    if js_dir.exists():
+        for js in js_dir.glob("*.js"):
+            luci_data.append(collect_file(f"/www/luci-static/resources/view/openstream/{js.name}", js, 0o644))
+
     for htm in (ROOT / "luci-app-openstream/luasrc/view/openstream").glob("*.htm"):
         luci_data.append(collect_file(f"/usr/lib/lua/luci/view/openstream/{htm.name}", htm, 0o644))
 
     luci_control = f"""Package: luci-app-openstream
 Version: {VERSION}-{RELEASE}
-Depends: luci-base, openstream-engine
+Depends: luci-base, openstream-engine, ucode, ucode-mod-fs, ucode-mod-uci
 License: MIT
 Section: luci
 Architecture: all
 Installed-Size: 0
-Description: LuCI web UI for OpenStream Engine
+Description: LuCI modern JavaScript and ucode web UI for OpenStream Engine
 """.encode("utf-8")
 
     luci_postinst = b"""#!/bin/sh

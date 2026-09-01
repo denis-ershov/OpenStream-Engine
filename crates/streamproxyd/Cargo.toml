@@ -30,6 +30,9 @@ ose-plugin-twitch = { workspace = true, optional = true }
 ose-plugin-hls = { workspace = true, optional = true }
 ose-plugin-dash = { workspace = true, optional = true }
 ose-rules = { workspace = true, optional = true }
+openstream-core.workspace = true
+openstream-rule.workspace = true
+openstream-backend-openwrt.workspace = true
 tokio.workspace = true
 clap.workspace = true
 tracing.workspace = true

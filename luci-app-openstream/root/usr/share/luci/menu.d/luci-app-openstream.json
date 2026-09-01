@@ -10,33 +10,41 @@
 			"uci": { "openstream": true }
 		}
 	},
-	"admin/services/openstream/status": {
-		"title": "Status",
+	"admin/services/openstream/routing": {
+		"title": "Policy Routing",
 		"order": 1,
 		"action": {
-			"type": "template",
-			"path": "openstream/status"
+			"type": "view",
+			"path": "openstream/routing"
 		}
 	},
-	"admin/services/openstream/twitch": {
-		"title": "Twitch",
+	"admin/services/openstream/status": {
+		"title": "Status",
 		"order": 2,
 		"action": {
-			"type": "cbi",
-			"path": "openstream/twitch"
+			"type": "view",
+			"path": "openstream/status"
 		}
 	},
 	"admin/services/openstream/services": {
 		"title": "Services",
 		"order": 3,
 		"action": {
-			"type": "cbi",
+			"type": "view",
 			"path": "openstream/services"
+		}
+	},
+	"admin/services/openstream/twitch": {
+		"title": "Twitch",
+		"order": 4,
+		"action": {
+			"type": "view",
+			"path": "openstream/twitch"
 		}
 	},
 	"admin/services/openstream/logs": {
 		"title": "Logs",
-		"order": 4,
+		"order": 5,
 		"action": {
 			"type": "template",
 			"path": "openstream/logs"
@@ -44,7 +52,7 @@
 	},
 	"admin/services/openstream/diagnostics": {
 		"title": "Diagnostics",
-		"order": 5,
+		"order": 6,
 		"action": {
 			"type": "template",
 			"path": "openstream/diagnostics"
