@@ -14,6 +14,7 @@ use crate::trie::DomainTrie;
 pub enum RoutingVerdict {
     #[default]
     Direct,
+    Bypass, // Принудительный пропуск без обработки (Direct WAN)
     DpiEvasiveDirect,
     Zapret2 { preset: String, custom_args: Option<String> },
     StreamProxy { mode: String },
@@ -28,6 +29,7 @@ impl From<RoutingAction> for RoutingVerdict {
         match action {
             RoutingAction::Simple(s) => match s {
                 SimpleAction::Direct => RoutingVerdict::Direct,
+                SimpleAction::Bypass | SimpleAction::Pass => RoutingVerdict::Bypass,
                 SimpleAction::DpiEvasiveDirect => RoutingVerdict::DpiEvasiveDirect,
                 SimpleAction::Zapret2 => RoutingVerdict::Zapret2 {
                     preset: "general".to_string(),
@@ -41,6 +43,7 @@ impl From<RoutingAction> for RoutingVerdict {
             RoutingAction::Detailed(d) => match d {
                 DetailedAction::Tagged(t) => match t {
                     TaggedAction::Direct => RoutingVerdict::Direct,
+                    TaggedAction::Bypass | TaggedAction::Pass => RoutingVerdict::Bypass,
                     TaggedAction::DpiEvasiveDirect => RoutingVerdict::DpiEvasiveDirect,
                     TaggedAction::Zapret2 { preset, custom_args } => {
                         RoutingVerdict::Zapret2 { preset, custom_args }
@@ -226,11 +229,21 @@ impl PolicyEngine {
                     if bypass.bypass_p2p {
                         compiled.bypass_p2p = true;
                     }
+                    if bypass.disable_quic {
+                        compiled.disable_quic = true;
+                    }
+                    if bypass.block_doh {
+                        compiled.block_doh = true;
+                    }
+                    if bypass.exclude_ntp {
+                        compiled.exclude_ntp = true;
+                    }
                 }
 
                 for domain in &rule.domains {
                     match &verdict {
                         RoutingVerdict::Direct => compiled.direct_domains.push(domain.clone()),
+                        RoutingVerdict::Bypass => compiled.bypass_domains.push(domain.clone()),
                         RoutingVerdict::DpiEvasiveDirect => {
                             compiled.dpi_evasive_domains.push(domain.clone());
                         }

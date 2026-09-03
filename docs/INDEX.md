@@ -1,32 +1,31 @@
-# Документация OpenStream Engine
+# Документация OpenStream Engine 2.1
 
-**Research** toward OpenWrt Goal №1 (все клиенты, ноль действий на устройстве).  
-Статус: **`[research]`** — [ADR 0003](adr/0003-goal1-router-only-tls.md) · кандидат [ADR 0004](adr/0004-geo-split-egress.md).
+Универсальный кроссплатформенный оркестратор сетевого трафика и декларативных политик маршрутизации (**«One Rule. Every Platform. Zero Overhead.»**).
 
-IPK 0.4.2-14 = lab archive (Edge/MITM), не claim Goal №1.
+---
 
-## С чего начать
+## 📚 Основная архитектурная документация (2.1)
 
-| Документ | Содержание |
-|----------|------------|
-| [../README.md](../README.md) | Research front door |
-| [adr/0003-goal1-router-only-tls.md](adr/0003-goal1-router-only-tls.md) | Цель №1 |
-| [adr/0004-geo-split-egress.md](adr/0004-geo-split-egress.md) | Гипотеза geo-split |
-| [research/OPENTWITCH_LAB.md](research/OPENTWITCH_LAB.md) | Gate E0–E4 |
-| [research/TWITCH_TRAFFIC_MAP.md](research/TWITCH_TRAFFIC_MAP.md) | Карта трафика |
-| [../research/twitch/autolab/README.md](../research/twitch/autolab/README.md) | Автолаб ПК |
-| [ROADMAP.md](ROADMAP.md) | Stage R |
+| Документ | Назначение и содержание |
+|---|---|
+| [../README.md](../README.md) | Обзор возможностей, витрина 2.1, установка на роутеры и мобильные ОС |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | **Манифест архитектуры 2.1**: Смена парадигмы, кроссплатформенные слои, матрица действий |
+| [POLICY_ROUTING_ARCHITECTURE.md](POLICY_ROUTING_ARCHITECTURE.md) | **Детальная спецификация маршрутизации**: nftables, dnsmasq, Bypass-сеты, Zapret2, sing-box 4 сборок, Multi-DNS Failover, подписки |
+| [adr/0003-goal1-router-only-tls.md](adr/0003-goal1-router-only-tls.md) | Принцип «Zero MITM»: отказ от подмены сертификатов и сторонних корневых CA на клиентах |
+| [CHANGELOG.md](CHANGELOG.md) | Хронологический журнал изменений и версий проекта |
 
-## Lab archive
+---
 
-| Документ | |
-|----------|--|
-| [adr/0002-playlist-edge.md](adr/0002-playlist-edge.md) | Edge (не Goal №1) |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Компоненты lab + Goal №1 |
-| [PROXY_ARCHITECTURE.md](PROXY_ARCHITECTURE.md) | Режимы lab |
-| [COEXISTENCE.md](COEXISTENCE.md) | Соседи |
-| [CHANGELOG.md](CHANGELOG.md) | История |
+## 🛠️ Платформенная экосистема
 
-## Слои (lab code)
+* **OpenWrt / Linux**: `openstream-backend-openwrt`, `luci-app-openstream` (ucode RPC, LuCI JS OLED Dark без таблиц).
+* **Desktop (Windows, macOS, Linux)**: `openstream-backend-desktop`, `streamproxyd`.
+* **Android**: `openstream-jni`, Jetpack Compose Material 3 UI, `OpenStreamVpnService`.
+* **iOS**: `openstream-ffi`, Swift 6 Strict Concurrency, `PacketTunnelProvider`.
 
-[HLS](HLS_ARCHITECTURE.md) · [DASH](DASH_ARCHITECTURE.md) · [PLUGIN](PLUGIN_ARCHITECTURE.md) · [SDK](SDK.md) · [PACKAGING](PACKAGING.md) · [BUILD](BUILD_OPENWRT.md) · [PERFORMANCE](PERFORMANCE.md)
+---
+
+## 🔬 Исследовательские материалы и архив 1.0
+
+[TWITCH_TRAFFIC_MAP](research/TWITCH_TRAFFIC_MAP.md) · [HLS](HLS_ARCHITECTURE.md) · [DASH](DASH_ARCHITECTURE.md) · [COEXISTENCE](COEXISTENCE.md) · [PACKAGING](PACKAGING.md)
+

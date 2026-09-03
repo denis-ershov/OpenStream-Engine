@@ -1,8 +1,99 @@
 # Changelog
 
-## [Unreleased]
+## [2.1.0-r35] - 2026-09-03
 
 ### Добавлено
+
+- **Полноценная кроссплатформенная реализация OpenStream Engine 2.1 на ВСЕХ системах:**
+  - **Действие «⏩ Пропустить / Bypass» (приоритетное исключение напрямую в WAN):**
+    - В схему правил AST (`crates/openstream-rule`) добавлены варианты `Bypass` и `Pass` (с псевдонимом `exclude`) для `SimpleAction` и `TaggedAction`.
+    - В структуру `CompiledRuleSet` (`crates/openstream-core`) добавлены поля `bypass_domains: Vec<String>`, `disable_quic: bool`, `block_doh: bool`, `exclude_ntp: bool`.
+    - В `openstream-backend-openwrt/src/nftables.rs`: динамический сет `bypass_targets` размещен в самом начале `mangle_prerouting` (`ip daddr @bypass_targets return`) ДО очередей Zapret2 и ДО VPN-туннелей.
+    - В `openstream-backend-openwrt/src/dnsmasq.rs`: генерация `nftset=/<domain>/4#inet#openstream#bypass_targets`.
+    - В `openstream-ffi` (iOS/macOS) и `openstream-jni` (Android): добавлен вердикт `MobileVerdict::Bypass` (код 6 в JNI).
+  - **Ручное указание аргументов десинхронизации Zapret2 (`custom_args`):**
+    - В `routing.js` добавлен выбор готовых пресетов либо пункт «⚙️ Пользовательские аргументы (Custom Flags)» с вводом любых флагов `nfqws2` (например, `--dpi-desync=fake,split2 --dpi-desync-split-pos=3 --dpi-desync-fooling=badseq --filter-udp=443,50000:65535`).
+  - **Универсальный менеджер подписок и серверов sing-box (`servers.js`, `openstream.uc`):**
+    - Поддержка ссылок `vless://` (Reality/xHTTP/Vision), `hysteria2://` / `hy2://`, `tuic://`, `ss://` (Shadowsocks 2022), `trojan://`, `vmess://`.
+    - Импорт подписок по URL `https://...`, спискам Base64 и файлам конфигураций Clash / Mihomo YAML (`proxies:`).
+    - Новое LuCI JS представление `openstream/servers.js`: карточки серверов в стиле OLED Dark (Mobile-First, без HTML-таблиц), флаги стран, протокольные бейджи.
+    - Измерение реального TCP-пинга и задержки серверов с кнопки «⚡ Проверить пинг».
+    - Селектор исходящего шлюза `urltest` (автовыбор самого быстрого узла по задержке) либо ручной выбор.
+  - **Отказоустойчивый Multi-DNS Failover и Bootstrap DNS (`services.js`, `openstream.uc`):**
+    - Настройка пула первичных DoH/DoT/UDP серверов с автопереключением при недоступности (Failover).
+    - Выделенный пул статических Bootstrap DNS (`77.88.8.8`, `1.1.1.1`) с прямым выходом (`detour: direct`) для устранения дедлоков резолва DoH.
+  - **Сетевая безопасность и фильтрация протоколов в nftables:**
+    - Блокировка QUIC (UDP 443): форсирование быстрого TCP TLS 1.3 для эффективного обхода замедления YouTube в Zapret2.
+    - Блокировка прямого DoH (TCP 853): исключение обхода DNS-правил сторонними браузерными резолверами.
+    - Пропуск NTP (UDP 123): защита синхронизации системного времени.
+    - Опция скачивания обновлений через прокси для обхода региональных блокировок GitHub.
+  - **Раздельное обновление компонентов и фоновое автообновление по Cron (`updates.js`, `openstream.uc`):**
+    - Точечное обновление каждого компонента по отдельности (`core`, `luci`, `singbox`, `zapret2`, `lists`).
+    - Автообновление по расписанию через Cron (ежедневно в 04:00, каждые 3 дня, еженедельно) с проверкой SHA-256 и безопасным откатом (Safe Fallback).
+  - **Самодиагностика системы (Self-Diagnostics, `diagnostics.js`, `openstream.uc`):**
+    - Комплексная проверка целостности правил nftables, сокетов sing-box TPROXY, очередей Zapret2 и отсутствия утечек DNS в 1 клик.
+  - **Резервное копирование и восстановление (Backup & Restore):**
+    - Экспорт и импорт архивов tar.gz конфигураций и правил прямо из веб-интерфейса `services.js`.
+  - **Кроссплатформенная реализация клиентов:**
+    - Android: обновлен `OpenStreamCore.kt` (константа `ACTION_BYPASS = 6`), `DashboardScreen.kt` (индикатор активных правил).
+    - iOS: обновлен `PacketTunnelProvider.swift` (обработка вердиктов `.bypass`, `.zapret2`, `.streamProxy`), `RulesCatalogView.swift`.
+    - Desktop: обновлен `crates/openstream-backend-desktop/src/adapter.rs`.
+
+### Изменённые файлы
+- `.gitignore`: изоляция каталога `research/references/`.
+- `crates/openstream-rule/src/schema.rs`
+- `crates/openstream-core/src/backend.rs`
+- `crates/openstream-core/src/engine.rs`
+- `crates/openstream-backend-openwrt/src/nftables.rs`
+- `crates/openstream-backend-openwrt/src/dnsmasq.rs`
+- `crates/openstream-backend-openwrt/src/singbox.rs`
+- `crates/openstream-backend-openwrt/src/monitor.rs`
+- `crates/openstream-ffi/src/models.rs`
+- `crates/openstream-ffi/src/engine.rs`
+- `crates/openstream-jni/src/bridge.rs`
+- `crates/openstream-backend-desktop/src/adapter.rs`
+- `luci-app-openstream/root/usr/share/rpcd/ucode/openstream.uc`
+- `luci-app-openstream/root/usr/share/rpcd/acl.d/luci-app-openstream.json`
+- `luci-app-openstream/root/usr/share/luci/menu.d/luci-app-openstream.json`
+- `luci-app-openstream/root/www/luci-static/resources/view/openstream/routing.js`
+- `luci-app-openstream/root/www/luci-static/resources/view/openstream/servers.js`
+- `luci-app-openstream/root/www/luci-static/resources/view/openstream/services.js`
+- `luci-app-openstream/root/www/luci-static/resources/view/openstream/updates.js`
+- `luci-app-openstream/root/www/luci-static/resources/view/openstream/diagnostics.js`
+- `platforms/android/core/OpenStreamCore.kt`
+- `platforms/android/ui/DashboardScreen.kt`
+- `platforms/ios/Tunnel/PacketTunnelProvider.swift`
+- `platforms/ios/App/Views/RulesCatalogView.swift`
+- `README.md`
+- `docs/ARCHITECTURE.md`
+- `docs/INDEX.md`
+- `docs/POLICY_ROUTING_ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+
+## [2.1.0-alpha] - 2026-09-02
+
+- **OpenStream Engine 2.1 (Live Monitoring, One-Click Component Updater и Мульти-версионная интеграция sing-box):**
+  - **Интерактивный мониторинг потоков и маршрутизации в реальном времени (`crates/openstream-backend-openwrt/src/monitor.rs`, `openstream.uc`, `monitor.js`):**
+    - Реализован мониторинг того, какие сайты, домены и IP-адреса локальных клиентов через какие сетевые секции и движки направляются (`Zapret2 (nfqws2)`, `StreamProxy (:8888)`, `sing-box / VPN`, `Direct (WAN Bypass)`, `Block (DNS Sinkhole)`).
+    - В ядре Rust (`openstream-backend-openwrt`) создан модуль `monitor.rs` со структурами `RoutingSection`, `FlowRecord` и потокобезопасным кольцевым буфером `FlowTracker` с жестким ограничением емкости, предотвращающим утечки памяти.
+    - В плагин `openstream.uc` добавлены методы RPC шины ubus: `get_monitor_flows` (сбор активных сопоставлений из nftables и `/tmp/dhcp.leases`) и `clear_monitor_flows`.
+    - Создано современное LuCI JS представление `monitor.js` в стиле OLED Dark (`#020617`, `#0f172a`): карточный интерфейс Mobile First без HTML-таблиц (Правила UI/UX 8–22), панель живых счетчиков, чип-фильтры по секциям, селектор клиентов LAN и живой инспектор доменов (Live Domain Inspector).
+  - **Менеджер обновлений в 1 клик (One-Click Component Updater, `openstream.uc`, `updates.js`):**
+    - Единая панель управления обновлениями всех компонентов системы: ядра OSE (`streamproxyd`), веб-интерфейса LuCI (`luci-app-openstream`), сторонних демонов (`sing-box`, `zapret2`), а также баз GeoIP/GeoSite и каталога правил `.osrule.yaml`.
+    - В `openstream.uc` реализованы RPC-методы `check_updates` (асинхронный опрос версий установленных vs доступных пакетов), `perform_update` (безопасное пошаговое обновление с контролем контрольных сумм SHA-256) и `get_update_log` (потоковый вывод хода операции).
+    - В LuCI JS представление `updates.js` добавлена кнопка «Обновить всё в 1 клик», карточки точечного управления каждым компонентом и терминальная консоль для отслеживания хода обновления без перезагрузки страниц.
+  - **Мульти-версионная интеграция sing-box (Stable / Extended / Tiny / Extended Compress, `crates/openstream-backend-openwrt/src/singbox.rs`, `openstream.uc`, `updates.js`):**
+    - В ядре Rust реализован модуль `singbox.rs` с типизированным перечислением `SingBoxVariant`:
+      - `Stable`: официальный стабильный пакет из фидов OpenWrt;
+      - `Extended`: расширенная сборка с поддержкой транспорта xHTTP, TUIC v5, Shadowsocks 2022 и Reality;
+      - `Tiny`: облегченная сборка для роутеров с 64–128 МБ RAM (размер <8 МБ Flash, потребление <15 МБ RAM);
+      - `ExtendedCompress`: UPX-сжатая сборка Extended для экономии до 65% Flash-памяти.
+    - Функция `detect_singbox_info()` для автоматического определения установленного бинарника, размера, сигнатуры UPX и флагов сборки (`version`, `with_xhttp`).
+    - Функция `generate_singbox_inbound_config()` для безопасной привязки sing-box к порту TPROXY 10888 с сетевой меткой fwmark `0x00880001` и таблицей `1088` (исключающей конфликты с `mwan3` и сетевые петли).
+    - В LuCI JS добавлена панель переключения вариантов sing-box с подробными подсказками по требованиям к Flash/RAM и мгновенным переключением сборки.
+  - **Интеграция меню и прав доступа LuCI:**
+    - В `menu.d/luci-app-openstream.json` зарегистрированы представления `openstream/monitor` (порядок 2) и `openstream/updates` (порядок 5).
+    - В `acl.d/luci-app-openstream.json` добавлены разрешения ubus на новые методы: `get_monitor_flows`, `clear_monitor_flows`, `check_updates`, `perform_update`, `get_update_log`, `get_singbox_info`, `switch_singbox_variant`.
 
 - **OpenStream Engine 2.0 (Эволюция ядра, оркестрация Zapret2 и редизайн LuCI Web UI):**
   - **Эволюция ядра и AST Schema 2.1 (`crates/openstream-rule`, `crates/openstream-core`):**

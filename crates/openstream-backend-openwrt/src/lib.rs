@@ -1,11 +1,15 @@
 pub mod adapter;
 pub mod dnsmasq;
+pub mod monitor;
 pub mod nftables;
+pub mod singbox;
 pub mod zapret2;
 
 pub use adapter::OpenWrtBackend;
 pub use dnsmasq::{generate_dnsmasq_config, sanitize_domain};
+pub use monitor::{FlowRecord, FlowTracker, RoutingSection};
 pub use nftables::{generate_nftables_rules, generate_nftables_sets};
+pub use singbox::{detect_singbox_info, generate_singbox_inbound_config, SingBoxInfo, SingBoxVariant};
 pub use zapret2::{is_zapret2_installed, resolve_zapret2_args, BUILTIN_PRESETS};
 
 use std::fs;

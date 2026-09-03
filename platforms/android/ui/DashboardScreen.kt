@@ -303,12 +303,13 @@ private fun ActivePoliciesCard() {
                     color = Color.White
                 )
                 Text(
-                    text = "4 активны",
+                    text = "5 активны",
                     fontSize = 12.sp,
                     color = Color(0xFF60A5FA)
                 )
             }
 
+            PolicyRowItem("Исключения Bypass", "Direct WAN Return", Color(0xFF06B6D4))
             PolicyRowItem("Twitch Live Optimizer", "Geo-Split + 1440p", Color(0xFFA855F7))
             PolicyRowItem("YouTube Anti-DPI", "ClientHello Split", Color(0xFFEF4444))
             PolicyRowItem("Crunchyroll Smart Route", "US Catalog + CDN", Color(0xFFF97316))

@@ -56,7 +56,10 @@ pub fn generate_nftables_rules(compiled: &CompiledRuleSet, table_family: &str, t
         out.push_str("    set dpi_evasive {\n        type ipv4_addr\n        flags interval, timeout\n        timeout 1d\n        size 65536\n    }\n\n");
     }
 
-    // Сеты для VPN-шлюзов
+    // Динамический сет исключений доменов (Bypass / Pass)
+    out.push_str("    set bypass_targets {\n        type ipv4_addr\n        flags interval, timeout\n        timeout 1d\n        size 65536\n    }\n");
+
+    // Динамические сеты для туннелей
     let mut vpn_sets = BTreeSet::new();
     for (_, gw_id) in &compiled.proxy_domains {
         let clean_gw: String = gw_id
@@ -93,8 +96,26 @@ pub fn generate_nftables_rules(compiled: &CompiledRuleSet, table_family: &str, t
     out.push_str("        # Защита от петель зацикливания и conntrack exhaustion (решение #74)\n");
     out.push_str("        ct mark & 0x00ff0000 == 0x00880000 return\n\n");
 
+    out.push_str("        # Приоритетное исключение доменов из обработки (Bypass / Pass)\n");
+    out.push_str("        ip daddr @bypass_targets return\n");
+
     out.push_str("        # Исключения подсетей (Bypass CIDRs - решение #88)\n");
     out.push_str("        ip daddr @bypass_cidrs return\n");
+
+    if compiled.exclude_ntp {
+        out.push_str("        # Исключение NTP (UDP 123) для синхронизации времени\n");
+        out.push_str("        udp dport 123 return\n");
+    }
+
+    if compiled.disable_quic {
+        out.push_str("        # Блокировка QUIC (UDP 443) для форсирования быстрого TCP TLS 1.3\n");
+        out.push_str("        udp dport 443 reject\n");
+    }
+
+    if compiled.block_doh {
+        out.push_str("        # Блокировка прямого DoH (TCP 853) в обход dnsmasq\n");
+        out.push_str("        tcp dport 853 reject\n");
+    }
 
     if compiled.bypass_p2p {
         out.push_str("        # Исключение BitTorrent напрямую в WAN (решение #72)\n");

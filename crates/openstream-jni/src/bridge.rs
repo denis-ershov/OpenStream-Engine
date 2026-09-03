@@ -81,6 +81,10 @@ pub extern "system" fn Java_org_openstream_engine_OpenStreamCore_nativeMatchDoma
             state.direct_queries.fetch_add(1, Ordering::Relaxed);
             0
         }
+        RoutingVerdict::Bypass => {
+            state.direct_queries.fetch_add(1, Ordering::Relaxed);
+            6 // 6 = Bypass
+        }
         RoutingVerdict::DpiEvasiveDirect => {
             state.dpi_evasive_queries.fetch_add(1, Ordering::Relaxed);
             1

@@ -1,4 +1,9 @@
-'use strict';
+# -*- coding: utf-8 -*-
+"""
+Генератор серверного ucode RPC для luci-app-openstream (OpenStream Engine 2.1)
+"""
+
+content = r"""'use strict';
 
 import { readfile, writefile, access, dir, stat, unlink } from 'fs';
 import { cursor } from 'uci';
@@ -1060,3 +1065,9 @@ return {
 		}
 	}
 };
+"""
+
+target = r'luci-app-openstream/root/usr/share/rpcd/ucode/openstream.uc'
+with open(target, 'w', encoding='utf-8') as f:
+    f.write(content)
+print(f'Successfully written {len(content)} bytes to {target}')

@@ -49,8 +49,9 @@ ENV/
 .ruff_cache/
 
 # ------------------------------------------------------------------------------
-# Research / Autolab Data & Session Logs
+# Research References & Competitor Repositories
 # ------------------------------------------------------------------------------
+research/references/
 research/twitch/results/*/
 research/twitch/autolab/.venv/
 research/twitch/autolab/user_data/

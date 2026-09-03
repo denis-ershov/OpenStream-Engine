@@ -12,5 +12,6 @@ openstream-rule = { path = "../openstream-rule" }
 thiserror = "2.0"
 async-trait = "0.1"
 tracing = "0.1"
+serde = { version = "1.0", features = ["derive"] }
 
 [dev-dependencies]

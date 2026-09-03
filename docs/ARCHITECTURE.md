@@ -1,39 +1,96 @@
-# Архитектура OpenStream Engine
+# Архитектура OpenStream Engine 2.1
 
-## Цель №1 vs lab
+## 1. Архитектурный манифест: Смена парадигмы (1.0 → 2.1)
 
-**Цель №1** `[research]`: OpenWrt · все клиенты · ноль действий на устройстве · **без MITM**.  
-[ADR 0003](adr/0003-goal1-router-only-tls.md) · кандидат geo-split [ADR 0004](adr/0004-geo-split-egress.md).
+В версии 1.0 проект проектировался как узкоспециализированный локальный прокси-демон (`streamproxyd`) для потокового HLS/DASH видео.
+
+В версиях **2.0 и 2.1** произошел фундаментальный переворот архитектуры:
+OpenStream Engine трансформировался в **универсальный кроссплатформенный оркестратор сетевого трафика (Universal Traffic Orchestrator)**, управляемый едиными декларативными политиками (`.osrule.yaml`).
 
 ```text
-Goal №1 (hypothesis):
-  Client ──► OpenWrt ──gql/usher──► VPS ──► Twitch
-                └──weaver/CDN──► ISP ──► segments
-  (no TLS termination, no CA on client)
+               ┌──────────────────────────────────────────────┐
+               │    Декларативные манифесты (*.osrule.yaml)   │
+               └──────────────────────┬───────────────────────┘
+                                      │
+               ┌──────────────────────▼───────────────────────┐
+               │   openstream-core (Zero-Alloc Trie, <2 MB)   │
+               └──────┬───────────────┬───────────────┬───────┘
+                      │               │               │
+       ┌──────────────▼──────┐ ┌──────▼──────┐ ┌──────▼──────┐
+       │   OpenWrt Router    │ │   Desktop   │ │   Mobile    │
+       │ (nftables + dnsmasq)│ │(Windows/Lin)│ │ (iOS/Android)│
+       └──────┬──────────────┘ └──────┬────────┘ └──────┬──────┘
+              │                       │               │
+     ┌────────┴────────┬──────────────┴────────┬──────┴────────┐
+     ▼                 ▼                       ▼               ▼
+[ ⏩ Bypass ]   [ 🚀 Zapret2 ]          [ 🌐 sing-box ]  [ ⛔ Block ]
+ Direct WAN     NFQUEUE 1088            urltest Selector  0.0.0.0
+ (Исключения)   (DPI Desync/Custom)     (Multi-DNS/Hy2)  (Sinkhole)
 ```
 
-**Lab archive** (не Goal №1): Playlist Edge / MITM strip — [ADR 0002](adr/0002-playlist-edge.md).
+---
 
-Research tools: [OPENTWITCH_LAB](research/OPENTWITCH_LAB.md), [autolab](../research/twitch/autolab/).
+## 2. Кроссплатформенная модель слоев
 
-## Lab-компоненты (0.4.x archive)
+### Слой 1: Декларативные манифесты правил (`openstream-rule`)
+* **Спецификация 2.1**: Поддержка простых и составных действий, включая `Bypass`, `Zapret2`, `Proxy`, `StreamProxy`, `Direct`, `Block`.
+* **Флаги сетевой безопасности (`BypassConfig`)**:
+  * `disable_quic`: блокировка UDP 443 для форсирования TCP TLS 1.3 в браузерах.
+  * `block_doh`: блокировка TCP 853 для предотвращения утечек DNS мимо локального резолвера.
+  * `exclude_ntp`: прямой пропуск UDP 123 для синхронизации системного времени.
+* **Криптографическая верификация**: подписи Ed25519 для пакетов каталога Community Rules.
 
-| Компонент | Crate | |
-|-----------|-------|--|
-| streamproxyd | `streamproxyd` | демон (lab Edge/MITM) |
-| Proxy | `ose-proxy` | Edge, nested, optional MITM |
-| Manifest / plugins | `ose-manifest`, `ose-plugin-*` | strip HLS/DASH |
-| … | см. crates/ | |
+### Слой 2: Легковесное ядро маршрутизации (`openstream-core`)
+* **Zero-Allocation Reverse Suffix Trie**: поиск доменов за $O(k)$, где $k$ — глубина домена, без аллокаций памяти в hot-path.
+* **Расход памяти**: $< 2$ МБ RAM (в 15 раз меньше Go-аналогов).
+* **Отсутствие сборщика мусора (GC)**: гарантирует мгновенное время отклика и совместимость с жестким лимитом Apple Jetsam (15–50 МБ) на iOS.
 
-Поток lab Edge: клиент **сам** открывает `/twitch/<channel>` → не Goal №1.
+### Слой 3: Платформенные адаптеры (Network Backends)
+1. **OpenWrt / Linux Routers (`openstream-backend-openwrt`)**:
+   * **nftables**: таблица `inet openstream`, цепочка `mangle_prerouting`.
+   * **Приоритет Bypass**: `ip daddr @bypass_targets return` выполняется в самом начале цепочки ДО очередей Zapret2 и VPN!
+   * **dnsmasq**: директивы `nftset=/<domain>/4#inet#openstream#<set_name>`. Без перехвата порта 53.
+   * **sing-box 4 сборок**: Stable, Extended (xHTTP/Reality), Tiny (<8 МБ), Extended Compress (UPX).
+   * **Zapret2**: интеграция с `nfqws2` по очереди 1088, поддержка готовых пресетов и `custom_args`.
+2. **Desktop Windows, macOS, Linux (`openstream-backend-desktop`)**:
+   * Адаптер на базе TUN и системных таблиц маршрутизации.
+3. **Android (`openstream-jni`, `platforms/android/`)**:
+   * JNI-мост к ядру `openstream-core`, служба `OpenStreamVpnService`, Jetpack Compose интерфейс.
+4. **iOS (`openstream-ffi`, `platforms/ios/`)**:
+   * UniFFI Swift-биндинги, `PacketTunnelProvider` с акторной изоляцией Swift 6 Strict Concurrency.
 
-## Ключевые решения
+### Слой 4: Пользовательские интерфейсы и RPC
+* **Серверный ucode RPC (`openstream.uc`)**: модульный RPC-слой без утечек памяти и с защитой от Command Injection.
+* **LuCI Web UI (`luci-app-openstream`)**:
+  * Строгий принцип **Mobile First** (Правила 8–11): категорический запрет HTML-таблиц, карточный адаптивный дизайн OLED Dark (`#020617`, `#0b1329`).
+  * Экраны: `routing.js` (политики маршрутизации), `servers.js` (управление серверами, замер задержки, импорт подписок), `monitor.js` (живой трафик), `services.js` (Multi-DNS, безопасность, бэкап), `updates.js` (раздельные обновления, автообновление cron), `diagnostics.js` (самодиагностика системы).
 
-- MITM **rejected** для Goal №1.
-- Geo-split исследуется до OpenWrt routing package.
-- Ядро можно менять после E0–E4.
-- Плагины compile-time — [ADR 0001](adr/0001-plugin-abi.md).
+---
 
-## Версии
+## 3. Матрица действий маршрутизации (Routing Actions)
 
-[ROADMAP.md](ROADMAP.md) Stage R · [INDEX.md](INDEX.md).
+| Действие (Action) | Смысл и сетевая реализация | Применение |
+|---|---|---|
+| `⏩ Bypass` (`pass`, `exclude`) | Пакет делает немедленный `return` из `mangle_prerouting` напрямую в WAN провайдера. | Исключение сервисов из Zapret2/VPN (банки, Госуслуги, рабочая почта). |
+| `🚀 Zapret2` | Пакет уходит в очередь `counter queue num 1088 bypass` демона `nfqws2`. | Обход замедления YouTube 4K, Discord Voice, обход блокировок ТСПУ без снижения скорости. |
+| `🌐 Proxy` (`vpn`) | Помечается `mark set 0x00880001` и уходит в сокет TPROXY `:10888` sing-box. | Доступ к заблокированным ресурсам через защищенные протоколы (VLESS, Hy2, TUIC). |
+| `🛡️ StreamProxy` | Перенаправляется на `127.0.0.1:8888` для локальной очистки стримов. | Удаление SSAI рекламы в Twitch/Kick без буферизации. |
+| `➡️ Direct` | Обычный маршрут WAN по умолчанию. | Весь нейтральный интернет-трафик. |
+| `⛔ Block` | Локальный DNS Sinkhole (`address=/domain/0.0.0.0` и `::`). | Блокировка рекламы, трекеров и телеметрии. |
+
+---
+
+## 4. Multi-DNS Failover и устойчивость к сбоям
+
+В OpenStream 2.1 решена ключевая проблема дедлоков DNS при использовании зашифрованных DoH-протоколов:
+1. **Bootstrap DNS**: Выделенные статические IPv4-адреса (`77.88.8.8`, `1.1.1.1`) работают напрямую через WAN (`detour: direct`) исключительно для разрешения IP-адресов DoH-серверов.
+2. **Каскадный Failover**: Запросы направляются на первичный DoH-сервер. При задержке или сбое запросы мгновенно подхватываются резервными серверами (`dns-remote-backup-N`).
+3. **URLTest Latency Selector**: Входящий трафик sing-box динамически тестирует задержку всех узлов через `https://cp.cloudflare.com/generate_204` и автоматически выбирает самый быстрый шлюз.
+
+---
+
+## 5. Обновления и безопасность
+
+* **Раздельные обновления**: каждый компонент (`core`, `luci`, `singbox`, `zapret2`, `lists`) обновляется независимо в 1 клик.
+* **Cron Автообновление**: фоновая синхронизация списков по расписанию в 04:00 с проверкой контрольных сумм SHA-256.
+* **Safe Fallback**: при ошибке синтаксиса или валидации `streamproxyd --compile-rules` система автоматически восстанавливает рабочую конфигурацию из бэкапа `/tmp/openstream_rules_bak`.

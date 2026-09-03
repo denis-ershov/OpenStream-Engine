@@ -130,6 +130,10 @@ impl MobileEngine {
                 self.direct_queries.fetch_add(1, Ordering::Relaxed);
                 MobileVerdict::Direct
             }
+            RoutingVerdict::Bypass => {
+                self.direct_queries.fetch_add(1, Ordering::Relaxed);
+                MobileVerdict::Bypass
+            }
             RoutingVerdict::DpiEvasiveDirect => {
                 self.dpi_evasive_queries.fetch_add(1, Ordering::Relaxed);
                 MobileVerdict::DpiEvasiveDirect

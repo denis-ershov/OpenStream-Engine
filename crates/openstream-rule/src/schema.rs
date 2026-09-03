@@ -65,6 +65,15 @@ pub struct BypassConfig {
     /// Пускать торренты / P2P напрямую в WAN (решение issue #72)
     #[serde(default)]
     pub bypass_p2p: bool,
+    /// Блокировка QUIC (UDP 443) для форсирования TCP TLS 1.3 (решение проблем YouTube/Chrome)
+    #[serde(default)]
+    pub disable_quic: bool,
+    /// Блокировка прямого браузерного DoH/DoT в обход dnsmasq (порт 853)
+    #[serde(default)]
+    pub block_doh: bool,
+    /// Исключение NTP (UDP 123) для точного системного времени
+    #[serde(default)]
+    pub exclude_ntp: bool,
 }
 
 /// Правило сопоставления трафика (Matcher)
@@ -121,6 +130,14 @@ impl RoutingAction {
         )
     }
 
+    pub fn is_bypass(&self) -> bool {
+        matches!(
+            self,
+            RoutingAction::Simple(SimpleAction::Bypass | SimpleAction::Pass)
+                | RoutingAction::Detailed(DetailedAction::Tagged(TaggedAction::Bypass | TaggedAction::Pass))
+        )
+    }
+
     pub fn is_block(&self) -> bool {
         matches!(
             self,
@@ -161,6 +178,9 @@ impl RoutingAction {
 #[serde(rename_all = "snake_case")]
 pub enum SimpleAction {
     Direct,
+    Bypass,
+    #[serde(alias = "pass", alias = "exclude")]
+    Pass,
     DpiEvasiveDirect,
     Zapret2,
     StreamProxy,
@@ -179,6 +199,9 @@ pub enum DetailedAction {
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum TaggedAction {
     Direct,
+    Bypass,
+    #[serde(alias = "pass", alias = "exclude")]
+    Pass,
     DpiEvasiveDirect,
     Zapret2 {
         preset: String,

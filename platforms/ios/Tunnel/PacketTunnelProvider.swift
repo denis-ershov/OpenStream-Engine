@@ -91,8 +91,17 @@ private actor TunnelWorker {
         case .dpiEvasiveDirect:
             logger.debug("Routing [Anti-DPI ClientHello Split]: \(domain)")
             packetFlow.writePackets([packet], withProtocols: [proto])
+        case .zapret2(let preset):
+            logger.debug("Routing [Zapret2 Anti-DPI -> \(preset)]: \(domain)")
+            packetFlow.writePackets([packet], withProtocols: [proto])
+        case .streamProxy(let mode):
+            logger.debug("Routing [StreamProxy (:8888) -> \(mode)]: \(domain)")
+            packetFlow.writePackets([packet], withProtocols: [proto])
         case .proxy(let gatewayId):
             logger.debug("Routing [Proxy -> \(gatewayId)]: \(domain)")
+            packetFlow.writePackets([packet], withProtocols: [proto])
+        case .bypass:
+            logger.debug("Routing [Bypass Direct WAN]: \(domain)")
             packetFlow.writePackets([packet], withProtocols: [proto])
         case .direct:
             packetFlow.writePackets([packet], withProtocols: [proto])

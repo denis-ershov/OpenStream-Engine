@@ -36,6 +36,7 @@ pub struct BackendMetrics {
 #[derive(Debug, Clone, Default)]
 pub struct CompiledRuleSet {
     pub direct_domains: Vec<String>,
+    pub bypass_domains: Vec<String>,
     pub dpi_evasive_domains: Vec<String>,
     pub zapret2_domains: Vec<(String, String)>, // (domain, preset)
     pub streamproxy_domains: Vec<String>,
@@ -44,6 +45,9 @@ pub struct CompiledRuleSet {
     pub dns_overrides: Vec<(String, Vec<std::net::IpAddr>)>,
     pub bypass_cidrs: Vec<ipnet::IpNet>,
     pub bypass_p2p: bool,
+    pub disable_quic: bool,
+    pub block_doh: bool,
+    pub exclude_ntp: bool,
 }
 
 /// Универсальный контракт платформенного сетевого адаптера

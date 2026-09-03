@@ -18,44 +18,60 @@
 			"path": "openstream/routing"
 		}
 	},
+	"admin/services/openstream/servers": {
+		"title": "Servers & Subscriptions",
+		"order": 2,
+		"action": {
+			"type": "view",
+			"path": "openstream/servers"
+		}
+	},
+	"admin/services/openstream/monitor": {
+		"title": "Live Monitoring",
+		"order": 3,
+		"action": {
+			"type": "view",
+			"path": "openstream/monitor"
+		}
+	},
 	"admin/services/openstream/status": {
 		"title": "Status",
-		"order": 2,
+		"order": 4,
 		"action": {
 			"type": "view",
 			"path": "openstream/status"
 		}
 	},
 	"admin/services/openstream/services": {
-		"title": "Services",
-		"order": 3,
+		"title": "Services & DNS",
+		"order": 5,
 		"action": {
 			"type": "view",
 			"path": "openstream/services"
 		}
 	},
-	"admin/services/openstream/twitch": {
-		"title": "Twitch",
-		"order": 4,
+	"admin/services/openstream/updates": {
+		"title": "Updates",
+		"order": 6,
 		"action": {
 			"type": "view",
-			"path": "openstream/twitch"
-		}
-	},
-	"admin/services/openstream/logs": {
-		"title": "Logs",
-		"order": 5,
-		"action": {
-			"type": "template",
-			"path": "openstream/logs"
+			"path": "openstream/updates"
 		}
 	},
 	"admin/services/openstream/diagnostics": {
 		"title": "Diagnostics",
-		"order": 6,
+		"order": 7,
+		"action": {
+			"type": "view",
+			"path": "openstream/diagnostics"
+		}
+	},
+	"admin/services/openstream/logs": {
+		"title": "Logs",
+		"order": 8,
 		"action": {
 			"type": "template",
-			"path": "openstream/diagnostics"
+			"path": "openstream/logs"
 		}
 	}
 }

@@ -4,19 +4,33 @@
 		"read": {
 			"uci": [ "openstream" ],
 			"ubus": {
-				"openstream": [ "status", "get_routing", "test_route" ],
+				"openstream": [
+					"status",
+					"get_routing",
+					"test_route",
+					"get_monitor_flows",
+					"get_singbox_info",
+					"check_updates",
+					"get_update_log"
+				],
 				"luci": [ "getInitList" ]
 			},
 			"file": {
 				"/etc/openstream/rules/*": [ "read" ],
 				"/tmp/dhcp.leases": [ "read" ],
-				"/tmp/dnsmasq.d/openstream-rules.conf": [ "read" ]
+				"/tmp/dnsmasq.d/openstream-rules.conf": [ "read" ],
+				"/tmp/openstream_update.log": [ "read" ]
 			}
 		},
 		"write": {
 			"uci": [ "openstream" ],
 			"ubus": {
-				"openstream": [ "save_routing" ]
+				"openstream": [
+					"save_routing",
+					"clear_monitor_flows",
+					"switch_singbox_variant",
+					"perform_update"
+				]
 			},
 			"file": {
 				"/etc/openstream/rules/*": [ "write" ]

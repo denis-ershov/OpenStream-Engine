@@ -51,6 +51,10 @@ impl NetworkBackend for DesktopBackend {
             blocked = compiled.blocked_domains.len(),
             proxied = compiled.proxy_domains.len(),
             dpi_evasive = compiled.dpi_evasive_domains.len(),
+            bypass = compiled.bypass_domains.len(),
+            disable_quic = compiled.disable_quic,
+            block_doh = compiled.block_doh,
+            exclude_ntp = compiled.exclude_ntp,
             "Applied ruleset to DesktopBackend"
         );
         Ok(())

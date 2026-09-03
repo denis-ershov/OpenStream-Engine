@@ -29,6 +29,14 @@ sealed interface TunnelEvent {
 }
 
 object OpenStreamCore {
+    const val ACTION_DIRECT = 0
+    const val ACTION_DPI_EVASIVE = 1
+    const val ACTION_PROXY = 2
+    const val ACTION_DNS_OVERRIDE = 3
+    const val ACTION_BLOCK = 4
+    const val ACTION_STREAMPROXY = 5
+    const val ACTION_BYPASS = 6
+
     init {
         try {
             System.loadLibrary("openstream_jni")

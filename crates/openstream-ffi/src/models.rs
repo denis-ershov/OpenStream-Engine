@@ -15,12 +15,23 @@ pub enum MobileError {
 #[derive(uniffi::Enum, Debug, Clone, PartialEq)]
 pub enum MobileVerdict {
     Direct,
+    Bypass,
     DpiEvasiveDirect,
     Zapret2 { preset: String },
     StreamProxy { mode: String },
     Proxy { gateway_id: String },
     DnsOverride { ips: Vec<String> },
     Block { reason: Option<String> },
+}
+
+#[derive(uniffi::Record, Debug, Clone, PartialEq)]
+pub struct MobileServerInfo {
+    pub tag: String,
+    pub protocol: String,
+    pub server: String,
+    pub port: u16,
+    pub latency_ms: Option<u32>,
+    pub country_code: Option<String>,
 }
 
 #[derive(uniffi::Record, Debug, Clone, PartialEq)]

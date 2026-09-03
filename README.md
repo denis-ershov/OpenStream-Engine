@@ -8,14 +8,27 @@
 
 ---
 
-## 🌟 Видение OpenStream 2.0: «One Rule. Every Platform. Zero Overhead.»
+## 🌟 Видение OpenStream 2.1: «One Rule. Every Platform. Zero Overhead.»
 
 Большинство существующих сетевых утилит делятся на две крайности: либо тяжелые VPN-клиенты, перенаправляющие весь трафик в один туннель, либо узкоспециализированные скрипты под конкретную ОС.
 
-**OpenStream Engine 2.0** — это универсальный кроссплатформенный движок **декларативных сервисных политик (Service-Based Policy Routing)**:
+**OpenStream Engine 2.1** — это универсальный кроссплатформенный оркестратор трафика и движок **декларативных сервисных политик (Service-Based Policy Routing)**:
 * **Единый формат правил (`.osrule.yaml`)**: одно и то же правило сервиса детерминированно исполняется на **OpenWrt, iOS, Android, macOS, Windows и Linux**.
-* **Сверхлегкое Rust-ядро (`openstream-core`)**: прямое сопоставление FQDN через Zero-Allocation Reverse Suffix Trie ($O(k)$) и подсетей CIDR. Потребление памяти $< 2$ МБ RAM без сборщика мусора (Garbage Collector), что делает ядро идеальным как для бюджетных роутеров с 128 МБ RAM, так и для жесткой песочницы Apple iOS NetworkExtension (лимит 15–50 МБ).
-* **Гибридные стратегии выхода**: в рамках одного правила один домен может идти в туннель (`Proxy`), второй — напрямую с локальным разделением ClientHello (`DpiEvasiveDirect`), третий — на полной скорости провайдера (`Direct`), а трекеры — в `Block` (0.0.0.0).
+* **Сверхлегкое Rust-ядро (`openstream-core`)**: прямое сопоставление FQDN через Zero-Allocation Reverse Suffix Trie ($O(k)$) и подсетей CIDR. Потребление памяти $< 2$ МБ RAM без сборщика мусора (Garbage Collector), что делает ядро идеальным как для бюджетных роутеров со 128 МБ RAM, так и для жесткой песочницы Apple iOS NetworkExtension (лимит 15–50 МБ).
+* **Гибридные стратегии выхода**: в рамках одного правила домен может направляться:
+  * `Bypass` (Пропуск) — приоритетный прямой выход к провайдеру в обход Zapret2 и VPN (правило `return` в начале цепочки);
+  * `Zapret2` — локальная десинхронизация TCP/UDP пакетов через NFQUEUE 1088 (с готовыми пресетами или ручными `custom_args`);
+  * `Proxy` — маршрутизация в зашифрованный туннель sing-box (с автовыбором самого быстрого узла через `urltest`);
+  * `StreamProxy` — локальная очистка стримов HLS/DASH от рекламы (:8888);
+  * `Block` — моментальная блокировка на уровне DNS (Sinkhole 0.0.0.0 / ::).
+* **Multi-DNS Failover & Bootstrap**: каскадный опрос DoH/DoT серверов с автопереключением при сбоях и защитой от дедлоков через выделенные Bootstrap-резолверы.
+* **4 варианта sing-box**: Stable, Extended (xHTTP/Reality), Tiny (<8 МБ для 64–128 МБ RAM), Extended Compress (UPX сжатие для экономии 65% Flash).
+* **Раздельные обновления и Cron**: точечное обновление каждого компонента по отдельности и фоновое автообновление по расписанию с безопасным откатом (Safe Fallback).
+* **Реализация на ВСЕХ системах**:
+  * **OpenWrt / Linux Routers**: Rust ядро + ucode RPC + LuCI JS (адаптивные карточки OLED Dark без HTML-таблиц);
+  * **Desktop (Windows, macOS, Linux)**: `openstream-backend-desktop`, CLI `streamproxyd`;
+  * **Android**: `openstream-jni`, Jetpack Compose Material 3, NDK bridge;
+  * **iOS**: `openstream-ffi`, Swift 6 Strict Concurrency, PacketTunnelProvider.
 
 ---
 

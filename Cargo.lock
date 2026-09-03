@@ -1196,6 +1196,7 @@ dependencies = [
  "async-trait",
  "openstream-core",
  "openstream-rule",
+ "serde",
  "thiserror 2.0.19",
  "tracing",
 ]

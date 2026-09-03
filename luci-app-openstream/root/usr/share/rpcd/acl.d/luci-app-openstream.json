@@ -1,13 +1,17 @@
 {
 	"luci-app-openstream": {
-		"description": "Grant access to OpenStream Engine configuration",
+		"description": "Grant access to OpenStream Engine configuration and RPC",
 		"read": {
 			"ubus": {
-				"service": [ "list" ]
+				"service": [ "list" ],
+				"openstream": [ "*" ]
 			},
 			"uci": [ "openstream" ]
 		},
 		"write": {
+			"ubus": {
+				"openstream": [ "*" ]
+			},
 			"uci": [ "openstream" ]
 		}
 	}

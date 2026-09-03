@@ -90,6 +90,7 @@ return view.extend({
 			.os-badge-purple { background: rgba(168,85,247,0.2); color: var(--os-purple); border: 1px solid rgba(168,85,247,0.4); }
 			.os-badge-rose { background: rgba(244,63,94,0.2); color: var(--os-rose); border: 1px solid rgba(244,63,94,0.4); }
 			.os-badge-amber { background: rgba(245,158,11,0.2); color: var(--os-amber); border: 1px solid rgba(245,158,11,0.4); }
+			.os-badge-cyan { background: rgba(6, 182, 212, 0.15); color: #06b6d4; border: 1px solid rgba(6, 182, 212, 0.3); }
 
 			.os-pills {
 				display: grid;
@@ -345,8 +346,11 @@ return view.extend({
 
 			state.rules.forEach(function(rule, idx) {
 				var badgeClass = 'os-badge-amber';
-				var badgeText = '⏩ Direct (WAN)';
-				if (rule.action === 'zapret2') {
+				var badgeText = '➡️ Direct (WAN)';
+				if (rule.action === 'bypass') {
+					badgeClass = 'os-badge-cyan';
+					badgeText = '⏩ Bypass / Исключение';
+				} else if (rule.action === 'zapret2') {
 					badgeClass = 'os-badge-purple';
 					badgeText = '🚀 Zapret2 (Anti-DPI)';
 				} else if (rule.action === 'streamproxy') {
@@ -428,10 +432,11 @@ return view.extend({
 									renderCards();
 								}
 							}, [
+								E('option', { 'value': 'bypass', 'selected': rule.action === 'bypass' }, '⏩ Пропустить / Bypass (Исключение в WAN)'),
 								E('option', { 'value': 'zapret2', 'selected': rule.action === 'zapret2' }, '🚀 Zapret2 (nfqws2 Anti-DPI)'),
 								E('option', { 'value': 'streamproxy', 'selected': rule.action === 'streamproxy' }, '🛡️ StreamProxy (Twitch/AdBlock)'),
 								E('option', { 'value': 'vpn', 'selected': rule.action === 'vpn' }, '🌐 VPN / sing-box Gateway'),
-								E('option', { 'value': 'direct', 'selected': rule.action === 'direct' }, '⏩ Прямой интернет (Bypass)'),
+								E('option', { 'value': 'direct', 'selected': rule.action === 'direct' }, '➡️ Direct / WAN'),
 								E('option', { 'value': 'block', 'selected': rule.action === 'block' }, '⛔ Блокировка (0.0.0.0)')
 							])
 						]),
@@ -450,12 +455,24 @@ return view.extend({
 							E('label', { 'class': 'os-label' }, 'Пресет десинхронизации Zapret2'),
 							E('select', {
 								'class': 'os-select',
-								'change': function(ev) { rule.preset = ev.target.value; }
+								'change': function(ev) {
+									rule.preset = ev.target.value;
+									renderCards();
+								}
 							}, [
 								E('option', { 'value': 'youtube_4k', 'selected': rule.preset === 'youtube_4k' }, 'YouTube 4K (split2 badseq)'),
 								E('option', { 'value': 'discord_voice', 'selected': rule.preset === 'discord_voice' }, 'Discord Voice (UDP fake 50000:65535)'),
-								E('option', { 'value': 'general_multisplit', 'selected': rule.preset === 'general_multisplit' }, 'General (multisplit midsld)')
-							])
+								E('option', { 'value': 'general_multisplit', 'selected': rule.preset === 'general_multisplit' }, 'General (multisplit midsld)'),
+								E('option', { 'value': 'custom', 'selected': rule.preset === 'custom' }, '⚙️ Пользовательские аргументы (Custom Flags)')
+							]),
+							(rule.preset === 'custom') ? E('input', {
+								'type': 'text',
+								'class': 'os-input',
+								'style': 'margin-top: 6px; font-family: monospace;',
+								'placeholder': '--dpi-desync=fake,split2 --dpi-desync-split-pos=3',
+								'value': rule.custom_args || '',
+								'input': function(ev) { rule.custom_args = ev.target.value; }
+							}) : E('div', {})
 						]) : E('div', {})
 					])
 				]);

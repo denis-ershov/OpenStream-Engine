@@ -22,6 +22,16 @@ public struct RuleItemModel: Identifiable, Sendable {
 public struct RulesCatalogView: View {
     @State private var rules: [RuleItemModel] = [
         RuleItemModel(
+            id: "org.openstream.rules.exclusions",
+            name: "Исключения Bypass (Direct WAN)",
+            version: "2.1.0",
+            category: "Network",
+            description: "Принудительный пропуск доменов и подсетей напрямую к провайдеру в обход Zapret2 и VPN-шлюзов.",
+            strategySummary: "Bypass Return (Direct WAN)",
+            accentColor: Color(hex: "06B6D4"),
+            isEnabled: SharedConfiguration.shared.isRuleEnabled(ruleId: "org.openstream.rules.exclusions")
+        ),
+        RuleItemModel(
             id: "org.openstream.rules.twitch",
             name: "Twitch Live Optimizer",
             version: "2.0.0",
