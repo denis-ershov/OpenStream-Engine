@@ -40,12 +40,12 @@ impl<T: Clone> IpTable<T> {
                 self.v4_routes.push(entry);
                 // Сортировка по убыванию префикса (LPM): /32 -> /24 -> /16 -> /8
                 self.v4_routes
-                    .sort_by(|a, b| b.net.prefix_len().cmp(&a.net.prefix_len()));
+                    .sort_by_key(|a| std::cmp::Reverse(a.net.prefix_len()));
             }
             IpNet::V6(_) => {
                 self.v6_routes.push(entry);
                 self.v6_routes
-                    .sort_by(|a, b| b.net.prefix_len().cmp(&a.net.prefix_len()));
+                    .sort_by_key(|a| std::cmp::Reverse(a.net.prefix_len()));
             }
         }
     }

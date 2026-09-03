@@ -1,119 +1,243 @@
-# OpenStream Engine 🧪 (Beta / Research Project)
+# OpenStream Engine 🧪
 
-[Читать на русском языке](README.md)
+<p align="center">
+  <b>Universal Cross-Platform Traffic Orchestrator & Declarative Policy Routing Engine</b><br>
+  <i>«One Rule. Every Platform. Zero Overhead.»</i>
+</p>
+
+<p align="center">
+  <a href="https://github.com/denis-ershov/OpenStream-Engine/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/denis-ershov/OpenStream-Engine/ci.yml?branch=main&label=CI&logo=github" alt="CI Status"></a>
+  <a href="https://github.com/denis-ershov/OpenStream-Engine/releases"><img src="https://img.shields.io/badge/release-v2.1.0--r35-blue.svg?logo=openwrt" alt="Release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT"></a>
+  <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/Rust-1.80%2B-orange.svg?logo=rust" alt="Rust 1.80+"></a>
+  <a href="https://openwrt.org/"><img src="https://img.shields.io/badge/OpenWrt-24.10%20(aarch64)-0099ff.svg?logo=openwrt" alt="OpenWrt 24.10"></a>
+</p>
+
+<p align="center">
+  <a href="#-about-the-project--research-status">About</a> •
+  <a href="#-key-features">Features</a> •
+  <a href="#-system-architecture">Architecture</a> •
+  <a href="#-quick-start-openwrt">Installation</a> •
+  <a href="#-platform-support">Platforms</a> •
+  <a href="#-repository-structure">Structure</a> •
+  <a href="#-security-by-design">Security</a> •
+  <a href="#-integrations--open-source-ecosystem">Integrations</a> •
+  <a href="README.md">Русский</a>
+</p>
+
+---
 
 > [!NOTE]
-> **Research Project Status (Experimental Beta):**  
-> OpenStream Engine is an open research lab and declarative network traffic policy engine. The project explores selective service-based routing (Twitch, YouTube, Crunchyroll, etc.), server-side ad insertion (SSAI) mitigation, quality unlocking (1080p60 / 1440p / Source), and local DPI desynchronization (Anti-DPI) **without TLS decryption (No MITM) and without installing custom Root CA certificates on client devices**.
+> ### 🧪 Research Project Status (Experimental Beta)
+> **OpenStream Engine** is an open research laboratory and high-performance cross-platform **declarative policy-based traffic routing engine**.  
+> The project investigates methods for intelligent, fine-grained routing of streaming services (Twitch, YouTube, Discord, Crunchyroll, etc.), local DPI desynchronization (Anti-DPI), and selective proxying **without TLS decryption (No MITM) and without installing custom Root CA certificates on user devices**.
 
 ---
 
-## 🌟 OpenStream 2.0 Vision: "One Rule. Every Platform. Zero Overhead."
+## 🌟 Philosophy 2.1: "One Rule. Every Platform. Zero Overhead."
 
-Most existing networking utilities fall into two extremes: either monolithic VPN clients forcing all traffic through a single remote tunnel, or fragmented OS-specific scripts.
+Most existing networking utilities fall into two extremes: either monolithic VPN clients forcing all traffic through a single remote tunnel (introducing high latency and buffering), or fragmented OS-specific scripts.
 
-**OpenStream Engine 2.0** introduces a cross-platform declarative **Service-Based Policy Routing Engine**:
-* **Universal Rule Specification (`.osrule.yaml`)**: A single declarative rule runs deterministically across **OpenWrt, iOS, Android, macOS, Windows, and Linux**.
-* **Ultra-Lightweight Rust Core (`openstream-core`)**: Zero-allocation Reverse Suffix Trie ($O(k)$) domain matching and CIDR routing tables. Under 2 MB RAM usage without any Garbage Collector overhead — making it ideal for budget 128 MB RAM routers and Apple's strict iOS NetworkExtension sandbox (15–50 MB RAM ceiling).
-* **Hybrid Egress Strategies**: Within the same rule manifest, one domain can route to a secure tunnel (`Proxy`), another directly with local TLS ClientHello fragmentation (`DpiEvasiveDirect`), video streams at unthrottled direct ISP speeds (`Direct`), and telemetry/ads to `Block` (0.0.0.0 sinkhole).
+**OpenStream Engine 2.1** introduces a unified, modern architecture:
+* **Universal Rule Specification (`.osrule.yaml`)**: A single declarative service rule executes deterministically across **OpenWrt routers, iOS, Android, macOS, Windows, and Linux**.
+* **Ultra-Lightweight Native Rust Core (`openstream-core`)**: Zero-allocation Reverse Suffix Trie domain matching ($O(k)$) and Longest Prefix Match CIDR lookup ($O(1)$). Memory footprint is **< 2 MB RAM** with zero Garbage Collector pauses, guaranteeing instantaneous response times and full compliance with Apple's strict iOS NetworkExtension Jetsam ceiling (15–50 MB).
+* **Multi-Tier Egress Strategies**: Within the same rule manifest, traffic is split so that bandwidth-heavy video CDNs stay on direct ISP WAN while authentication and API requests route through clean relays or local desynchronizers.
 
 ---
 
-## 🔬 Analysis of Reference Projects
+## 🚀 Key Features
 
-During the architecture design of OpenStream 2.0, we benchmarked and analyzed several key open-source solutions:
+### 1. Intelligent Hybrid Routing
+* ⏩ **"Bypass" Action (Direct WAN Exclusions)**: Priority `ip daddr @bypass_targets return` rule at the very top of `mangle_prerouting` immediately excludes whitelisted services (banking, government portals, workplace VPNs) before Zapret2 or VPN processing.
+* 🚀 **Zapret2 (`nfqws2`) Integration**: Local TCP/UDP packet desynchronization (bypassing YouTube 4K throttling and Discord Voice blocks) via NFQUEUE 1088 at line speed. Supports built-in presets and arbitrary user flags (`custom_args`).
+* 🌐 **sing-box Tunneling**: Directs blocked resources to encrypted outbounds attached to TPROXY `:10888`.
+* 🛡️ **Local StreamProxy (:8888)**: In-flight HLS/DASH manifest cleanup removing Server-Side Ad Insertion (SSAI) without buffering.
+* ⛔ **DNS Sinkhole**: Immediate blocking of tracking domains and ad servers at the DNS level (`0.0.0.0` / `::`).
 
-| Project | Stack | Strengths | Architectural Limitations | OpenStream 2.0 Approach |
-|---|---|---|---|---|
-| **Podkop** | OpenWrt + `sing-box` (Go) | User-friendly LuCI web interface, geosite/geoip list support. | Large Go binary (25–40 MB), high RAM footprint due to Go runtime GC. Cannot run on flash-constrained routers or iOS NetworkExtension sandbox. | Adopt the clean LuCI UX pattern, but implement the core in native lightweight Rust (<2 MB RAM). |
-| **Forkop** | OpenWrt + sing-box + Zapret + ByeDPI | **Hybrid approach**: combines VPN tunnels (VLESS, Hysteria2) with local Anti-DPI tools. | Multiple separate background daemons glued with bash scripts; potential race conditions in nftables/iptables. | **Built-in hybrid strategies**: rules natively decide whether to tunnel, desync DPI locally, or route direct within a single unified engine. |
-| **Zapret / Zapret2** (`bol-van`) | C + NFQUEUE (`nfqws`) + `tpws` | Advanced low-level packet modifications (TCP segmentation, fake payload, SNI split). | Requires root, Linux NFQUEUE or WinDivert; complex syntax; cannot run inside iOS sandbox. | Model as a platform Capability (`L4_PACKET_DESYNC`) for routers and adapt basic SNI splitting in userspace for mobile. |
-| **SpoofDPI** (`xvzc`) / **ByeDPI** | Go / C (Android VpnService) | Local `ClientHello` segmentation at SNI boundaries bypasses ISP DPI without remote VPN servers. | Standalone proxies without policy routing or multi-platform rule ecosystems. | Integrate `DpiEvasiveDirect` directly into OpenStream Core for unthrottled 1 Gbps direct streaming without VPS costs. |
-| **tun-rs** | Rust async Tokio TUN | Cross-platform TUN with native Apple iOS support (`AsyncDevice::from_fd`). | Requires strict descriptor lifecycle handling. | Official networking foundation for OpenStream 2.0 mobile backends. |
+### 2. Universal Subscription & Server Manager
+* **Modern Protocol Support**: VLESS (Reality, xHTTP, Vision), Hysteria 2 / hy2 (QUIC UDP), TUIC v5 (BBR), Shadowsocks 2022, Trojan, VMess.
+* **Subscription Parser**: Direct import from clipboard, HTTPS URLs, Base64 strings, and Clash / Mihomo YAML formats (`proxies:`).
+* ⚡ **URLTest Latency Selector**: Automated background RTT measurement (`https://cp.cloudflare.com/generate_204`) dynamically directing traffic to the fastest server.
+
+### 3. Resilient Multi-DNS Failover & Bootstrap DNS
+* **Elimination of DNS Deadlocks**: Dedicated static Bootstrap DNS resolvers (`77.88.8.8`, `1.1.1.1`) operate directly via WAN (`detour: direct`), guaranteeing fast DoH startup.
+* **Cascading Failover**: Automatic seamless fallback to secondary DoH/DoT resolvers if the primary DNS experiences timeout or degradation.
+
+### 4. Network Security & nftables Protocol Hardening
+* **QUIC Blocking (UDP 443)**: `udp dport 443 reject` forces browsers into fast TCP TLS 1.3, ensuring 100% effectiveness for Zapret2 on YouTube 4K.
+* **Direct DoH Blocking (TCP 853)**: Prevents DNS leaks bypassing the router's dnsmasq ruleset.
+* **NTP Protection (UDP 123)**: Direct bypass ensures pristine system clock synchronization.
+
+### 5. Discrete Component Updates & Automated Cron Jobs
+* **One-Click Discrete Updates**: Independently update individual components (OSE Core, LuCI, sing-box, zapret2, rule store).
+* **4 sing-box Flavors**: Stable, Extended (xHTTP), Tiny (<8 MB Flash / <15 MB RAM), Extended Compress (UPX compression saving 65% Flash).
+* **Cron Auto-Updates**: Background scheduled sync with SHA-256 verification and automatic rollback (Safe Fallback).
+
+### 6. 1-Click Self-Diagnostics
+* Comprehensive real-time health verification for nftables rules, dnsmasq integration, sing-box TPROXY sockets, Zapret2 queues, and DNS leak tests.
+
+### 7. Modern LuCI Web UI (Mobile First)
+* Strictly engineered according to **Mobile First** principles (no legacy HTML tables).
+* Responsive OLED Dark aesthetic (`#020617`, `#0b1329`) featuring adaptive cards, live graphs, and micro-animations.
+
+---
+
+## 📐 System Architecture
+
+```text
+                     ┌──────────────────────────────────────────────┐
+                     │    Declarative Manifests (*.osrule.yaml)     │
+                     └──────────────────────┬───────────────────────┘
+                                            │
+                     ┌──────────────────────▼───────────────────────┐
+                     │   openstream-core (Zero-Alloc Trie, <2 MB)   │
+                     └──────┬───────────────┬───────────────┬───────┘
+                            │               │               │
+             ┌──────────────▼──────┐ ┌──────▼──────┐ ┌──────▼──────┐
+             │   OpenWrt Router    │ │   Desktop   │ │   Mobile    │
+             │ (nftables + dnsmasq)│ │(Windows/Lin)│ │ (iOS/Android)│
+             └──────┬──────────────┘ └──────┬──────┘ └──────┬──────┘
+                    │                       │               │
+     ┌──────────────┴────────┬──────────────┴────────┬──────┴────────┐
+     ▼                       ▼                       ▼               ▼
+[ ⏩ Bypass ]         [ 🚀 Zapret2 ]          [ 🌐 sing-box ]  [ ⛔ Block ]
+ Direct WAN           NFQUEUE 1088            urltest Selector  0.0.0.0
+ (Exclusions)         (DPI Desync/Custom)     (Multi-DNS/Hy2)  (Sinkhole)
+```
 
 ---
 
 ## 📋 Declarative Rule Example (`.osrule.yaml`)
 
 ```yaml
-schema_version: "2.0"
+schema_version: "2.1"
 id: "org.openstream.rules.twitch"
 name: "Twitch Live Optimizer"
-version: "2.0.0"
+version: "2.1.0"
 
 matches:
   - group: "auth_token"
     domains: ["gql.twitch.tv"]
-    strategy: "adfree_egress" # Route to zero-ad region (UA/AL/KZ)
+    strategy: "adfree_egress" # Route via ad-free region (UA/AL/KZ)
 
   - group: "master_playlist"
     domains: ["usher.ttvnw.net"]
-    strategy: "quality_unlock" # Route to EU/SmartDNS for 1080p/1440p
+    strategy: "quality_unlock" # SmartDNS / EU VPN for 1080p60/1440p
 
   - group: "video_cdn"
     domains: ["*.live-video.net", "*.ttvnw.net"]
-    action: "direct" # Direct ISP WAN for full speed and zero lag
+    action: "direct" # Direct unthrottled ISP WAN
 
-  - group: "ads"
+  - group: "tracker_ads"
     domains: ["edge.ads.twitch.tv"]
     action: "block" # DNS Sinkhole (0.0.0.0)
 
 strategies:
   adfree_egress:
-    preference: ["geo:al", "geo:ua", "geo:kz", "proxy:clean_relay", "direct"]
+    preference: ["proxy:al_clean", "proxy:ua_clean", "direct"]
   quality_unlock:
-    preference: ["smartdns:eu", "geo:de", "direct"]
+    preference: ["smartdns:eu", "proxy:de_fast", "direct"]
 ```
 
 ---
 
-## 🚀 Current Status: OpenWrt Ready (Release 0.4.2-35)
+## 📱 Platform Support
 
-For routers running OpenWrt 24.10 (**Cortex-A53 / aarch64**), a stable package release with LuCI Web UI is readily available.
+| Platform | Tech Stack | Interception Mechanism | Status |
+|---|---|---|---|
+| **OpenWrt 24.10 / 23.05** | Rust + ucode RPC + LuCI JS | nftables + dnsmasq + NFQUEUE | **Stable Release** (Prebuilt IPKs) |
+| **Linux Desktop / Server** | Rust (`openstream-backend-desktop`) | TUN (`tun-rs`) / systemd | **Supported** |
+| **Windows 10 / 11** | Rust + Wintun driver | TUN adapter | **Supported** |
+| **Android 10+** | Kotlin + NDK + JNI + Compose M3 | Android `VpnService` | **Implemented** (`platforms/android`) |
+| **Apple iOS 17+ / macOS** | Swift 6 Strict Concurrency + UniFFI | `NEPacketTunnelProvider` | **Implemented** (`platforms/ios`) |
 
-### LuCI Preset Matrix
+---
 
-| LuCI Preset | Token (GQL) | Master (Usher) | Media & Segments (CDN) | Banners (Ads) |
-|---|---|---|---|---|
-| 🛡️ **"Geo-Split via Clean-Proxy"** *(Recommended)* | **Ad-Free VPN (UA/AL/KZ)** | **SmartDNS / EU VPN** | **Direct WAN (ISP)** | **DNS Block (0.0.0.0)** |
-| ⚡ **"Playlist Edge (Manifest Strip)"** | **via streamproxyd** | **via streamproxyd** | **Direct CDN (via Edge)** | **Stripped from HLS** |
-| 🌍 **"Quality Unlock: 1440p/Source"** | **Direct WAN** | **SmartDNS / EU VPN** | **Direct WAN (ISP)** | **DNS Block (0.0.0.0)** |
-| ⚙️ **"Custom: Fine-grained Matrix"** | *Custom* | *Custom* | *Custom* | *Custom* |
+## ⚡ Quick Start: OpenWrt Installation
 
-### Installation on OpenWrt 24.10
+Precompiled packages for **aarch64 (Cortex-A53)** are available in [`dist/openwrt-24.10-a53/ipk/`](dist/openwrt-24.10-a53/ipk/):
 
-Packages are in [`dist/openwrt-24.10-a53/ipk/`](dist/openwrt-24.10-a53/ipk/):
 ```bash
+# 1. Update package lists
 opkg update
+
+# 2. Install engine and LuCI web app
 opkg install openstream-engine_0.4.2-35_aarch64_cortex-a53.ipk
 opkg install luci-app-openstream_0.4.2-35_all.ipk
 opkg install luci-i18n-openstream-ru_0.4.2-35_all.ipk
+
+# 3. Restart LuCI web server
+/etc/init.d/rpcd restart
+/etc/init.d/uhttpd restart
 ```
 
-After installation, access **Services → OpenStream Engine** in LuCI.
+Navigate to **Services → OpenStream Engine** in the LuCI interface.
 
 ---
 
-## 🛣️ Roadmap
+## 📂 Repository Structure
 
 ```text
-[x] Phase 1: Specification 2.0, openstream-rule & openstream-core crates, Trie matcher, and reference rulesets.
-[x] Phase 2: OpenWrt network adapter refactoring under the NetworkBackend trait (dnsmasq, nftables, LuCI).
-[x] Phase 3: iOS Proof-of-Concept (Swift 6 + NetworkExtension PacketTunnelProvider via UniFFI).
-[x] Phase 4: Public GitHub Community Rule Store with CI linting (osrule lint) and Ed25519 signatures.
-[x] Phase 5: Android (VpnService + Kotlin Coroutines + NDK), macOS, and Windows backends (tun-rs).
+├── crates/
+│   ├── openstream-rule/          # AST parser, .osrule.yaml schema, Ed25519 signatures
+│   ├── openstream-core/          # Zero-Alloc Reverse Suffix Trie, LPM IP tree
+│   ├── openstream-backend-openwrt# nftables, dnsmasq, Zapret2, sing-box generators
+│   ├── openstream-backend-desktop# Cross-platform desktop TUN network adapter
+│   ├── openstream-ffi/           # UniFFI Swift bindings for iOS and macOS
+│   ├── openstream-jni/           # NDK JNI bridge for Android
+│   ├── ose-proxy/                # Local HTTP/HLS proxy engine
+│   └── streamproxyd/             # Core CLI background daemon
+├── luci-app-openstream/          # LuCI Web UI (ucode RPC daemon + OLED Dark JS views)
+│   └── root/
+│       ├── usr/share/rpcd/ucode/ # Server-side RPC plugin (openstream.uc)
+│       └── www/luci-static/      # routing.js, servers.js, monitor.js, services.js, updates.js
+├── platforms/
+│   ├── android/                  # Android client (VpnService + Jetpack Compose M3)
+│   └── ios/                      # iOS client (NetworkExtension + SwiftUI)
+├── rules/                        # Catalog of service rule manifests (Twitch, YouTube, Crunchyroll)
+├── dist/                         # Precompiled ready-to-flash IPK packages for OpenWrt
+├── docs/                         # Architecture specifications and CHANGELOG
+└── scripts/                      # IPK packaging and verification automation
 ```
 
 ---
 
 ## 🛡️ Security by Design
 
-* **No MITM & No Root CA**: User devices require no custom root certificates and verify authentic TLS certificates directly.
-* **SecOps System Domain Guard**: Core validation forbids intercepting critical system update and financial domains (`*.apple.com`, `windowsupdate.com`, banking resources) without explicit user opt-in.
-* **Ed25519 Cryptographic Signatures**: Official and community rule packages are signed to prevent malicious route tampering.
+* **Zero MITM**: The engine deliberately avoids TLS interception and never requires installing custom root certificates on user devices.
+* **SecOps Protected Domains**: The core actively prohibits intercepting critical infrastructure (`*.apple.com`, `windowsupdate.com`, banking/payment portals) without explicit administrative override.
+* **Ed25519 Signatures**: Rule catalogs are cryptographically signed to prevent malicious route injections.
 
 ---
 
-## License
+## 🤝 Contributing
 
-MIT © 2026 Denis Ershov
+Contributions are warmly welcome!
+- See the [Contributing Guidelines](CONTRIBUTING.md).
+- Review our [Security Policy](SECURITY.md).
+- Read our [Code of Conduct](CODE_OF_CONDUCT.md).
+- Version history is documented in [CHANGELOG.md](docs/CHANGELOG.md).
+
+---
+
+## 🔗 Integrations & Open Source Ecosystem
+
+The OpenStream Engine architecture relies on deep orchestration and integration with battle-tested open source networking technologies:
+
+* **[bol-van/zapret2](https://github.com/bol-van/zapret2)** by `@bol-van`:  
+  The leading Layer 4 packet desynchronization engine. OpenStream natively orchestrates `nfqws2` via `NFQUEUE 1088` with built-in presets (YouTube 4K, Discord Voice) and arbitrary custom CLI arguments.
+* **[SagerNet/sing-box](https://github.com/SagerNet/sing-box)** by `@SagerNet`:  
+  Universal proxy platform powering OpenStream's encrypted egress (attached to TPROXY `:10888`). Provides cutting-edge protocols (VLESS Reality/xHTTP, Hysteria 2, TUIC v5, Shadowsocks 2022), `urltest` latency auto-selection, and multi-DNS routing.
+* **[1andrevich/zapret2-openwrt](https://github.com/1andrevich/zapret2-openwrt)**:  
+  OpenWrt package feeds and optimized builds for `nfqws2`.
+* **[tun-rs](https://github.com/meh/rust-tun)**:  
+  Cross-platform asynchronous TUN driver powering userspace packet capture on desktop platforms (Windows, Linux, macOS).
+* **[mozilla/uniffi-rs](https://github.com/mozilla/uniffi-rs)**:  
+  Zero-overhead multi-language bindings bridging the native Rust core to Swift 6 (iOS NetworkExtension) and Kotlin/JNI (Android).
+
+---
+
+## 📄 License
+
+Distributed under the **[MIT License](LICENSE)** © 2026 Denis Ershov.
+

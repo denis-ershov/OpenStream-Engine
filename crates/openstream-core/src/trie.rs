@@ -99,9 +99,9 @@ impl<T: Clone> DomainTrie<T> {
         let mut curr = &self.root;
         let mut best_wildcard: Option<&T> = None;
 
-        let mut labels = clean_fqdn.rsplit('.');
+        let labels = clean_fqdn.rsplit('.');
 
-        while let Some(label) = labels.next() {
+        for label in labels {
             let lower_label = label.to_ascii_lowercase();
 
             // Если текущий узел задает wildcard (*.domain), то все его поддомены наследуют это правило

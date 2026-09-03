@@ -30,8 +30,11 @@
   - **Раздельное обновление компонентов и фоновое автообновление по Cron (`updates.js`, `openstream.uc`):**
     - Точечное обновление каждого компонента по отдельности (`core`, `luci`, `singbox`, `zapret2`, `lists`).
     - Автообновление по расписанию через Cron (ежедневно в 04:00, каждые 3 дня, еженедельно) с проверкой SHA-256 и безопасным откатом (Safe Fallback).
-  - **Самодиагностика системы (Self-Diagnostics, `diagnostics.js`, `openstream.uc`):**
-    - Комплексная проверка целостности правил nftables, сокетов sing-box TPROXY, очередей Zapret2 и отсутствия утечек DNS в 1 клик.
+  - **Оформление публичного репозитория GitHub и исправление проверок CI:**
+    - Устранены ошибки линтера `cargo clippy` (`-D warnings`): замена `sort_by` на `sort_by_key(|a| std::cmp::Reverse(...))` в `crates/openstream-core/src/ip_tree.rs`, замена `while let Some(label) = labels.next()` на `for label in labels` в `crates/openstream-core/src/trie.rs`, замена счетчика цикла на `enumerate()` в `crates/openstream-backend-openwrt/src/nftables.rs`.
+    - Полная переработка `README.md` и `README_EN.md`: удален блок сравнительного анализа типовых решений индустрии, сохранено и выделено описание исследовательского статуса проекта (Beta / Research Project, Zero MITM, отсутствие сторонних CA-сертификатов на клиентских устройствах), добавлены статус-бейджи GitHub Actions CI, архитектурная карта, пошаговая инструкция установки для OpenWrt 24.10, матрица платформ и карта каталогов репозитория.
+    - Добавлены стандарты открытого проекта: `CONTRIBUTING.md` (руководство контрибьютора), `SECURITY.md` (политика безопасности и ответственного раскрытия), `CODE_OF_CONDUCT.md` (кодекс поведения Contributor Covenant 2.1).
+    - Внедрены шаблоны для GitHub: `.github/pull_request_template.md` (чек-лист с требованиями к Mobile-First и тестам), `.github/ISSUE_TEMPLATE/bug_report.md`, `feature_request.md`, `rule_request.md`.
   - **Резервное копирование и восстановление (Backup & Restore):**
     - Экспорт и импорт архивов tar.gz конфигураций и правил прямо из веб-интерфейса `services.js`.
   - **Кроссплатформенная реализация клиентов:**

@@ -138,14 +138,12 @@ pub fn generate_nftables_rules(compiled: &CompiledRuleSet, table_family: &str, t
     }
 
     // Метки для VPN-туннелей
-    let mut mark_idx = 1;
-    for set_name in &vpn_sets {
-        let fwmark = OPENSTREAM_FWMARK_BASE | mark_idx;
+    for (idx, set_name) in vpn_sets.iter().enumerate() {
+        let fwmark = OPENSTREAM_FWMARK_BASE | (idx as u32 + 1);
         out.push_str(&format!(
             "        ip daddr @{} mark set {:#x}\n",
             set_name, fwmark
         ));
-        mark_idx += 1;
     }
 
     out.push_str("    }\n");
