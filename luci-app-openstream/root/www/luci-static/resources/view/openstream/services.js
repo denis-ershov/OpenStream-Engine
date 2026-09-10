@@ -18,7 +18,7 @@ var callGetDnsConfig = rpc.declare({
 var callSaveDnsConfig = rpc.declare({
 	object: 'openstream',
 	method: 'save_dns_config',
-	params: [ 'dns_servers', 'bootstrap_dns', 'failover_enabled', 'prefer_ipv4' ],
+	params: [ 'dns_servers', 'bootstrap_dns', 'failover_enabled', 'prefer_ipv4', 'failover_threshold', 'failover_recovery_sec', 'doh_client_cert', 'doh_client_key', 'dns_hosts' ],
 	expect: { success: true }
 });
 
@@ -31,7 +31,7 @@ var callGetSecurity = rpc.declare({
 var callSaveSecurity = rpc.declare({
 	object: 'openstream',
 	method: 'save_security_settings',
-	params: [ 'disable_quic', 'block_doh', 'exclude_ntp', 'download_via_proxy' ],
+	params: [ 'disable_quic', 'block_doh', 'exclude_ntp', 'torrent_bypass', 'download_via_proxy', 'bypass_cidrs', 'bypass_clients' ],
 	expect: { success: true }
 });
 
@@ -163,15 +163,38 @@ return view.extend({
 
 						var failover = document.getElementById('os-dns-failover') ? document.getElementById('os-dns-failover').checked : true;
 						var preferIpv4 = document.getElementById('os-dns-ipv4') ? document.getElementById('os-dns-ipv4').checked : true;
+						var threshold = document.getElementById('os-dns-threshold') ? parseInt(document.getElementById('os-dns-threshold').value) : 3;
+						var recovery = document.getElementById('os-dns-recovery') ? parseInt(document.getElementById('os-dns-recovery').value) : 30;
+						var cert = document.getElementById('os-dns-cert') ? document.getElementById('os-dns-cert').value.trim() : '';
+						var key = document.getElementById('os-dns-key') ? document.getElementById('os-dns-key').value.trim() : '';
+						var hostsRaw = document.getElementById('os-dns-hosts') ? document.getElementById('os-dns-hosts').value.trim() : '';
+						var hostsList = hostsRaw ? hostsRaw.split(/[\r\n]+/) : [];
 
 						var disQuic = document.getElementById('os-sec-quic') ? document.getElementById('os-sec-quic').checked : true;
 						var blkDoh = document.getElementById('os-sec-doh') ? document.getElementById('os-sec-doh').checked : true;
 						var exNtp = document.getElementById('os-sec-ntp') ? document.getElementById('os-sec-ntp').checked : true;
+						var torrentBypass = document.getElementById('os-sec-torrent') ? document.getElementById('os-sec-torrent').checked : true;
 						var dlProxy = document.getElementById('os-sec-dlproxy') ? document.getElementById('os-sec-dlproxy').checked : false;
+						var cidrsRaw = document.getElementById('os-sec-cidrs') ? document.getElementById('os-sec-cidrs').value.trim() : '';
+						var clientsRaw = document.getElementById('os-sec-clients') ? document.getElementById('os-sec-clients').value.trim() : '';
+						var cidrsList = [];
+						if (cidrsRaw) {
+							for (let item in cidrsRaw.split(/[\r\n,]+/)) {
+								let trimmed = trim(item);
+								if (trimmed) push(cidrsList, trimmed);
+							}
+						}
+						var clientsList = [];
+						if (clientsRaw) {
+							for (let item in clientsRaw.split(/[\r\n,]+/)) {
+								let trimmed = trim(item);
+								if (trimmed) push(clientsList, trimmed);
+							}
+						}
 
 						Promise.all([
-							callSaveDnsConfig(dnsList, bootList, failover, preferIpv4),
-							callSaveSecurity(disQuic, blkDoh, exNtp, dlProxy)
+							callSaveDnsConfig(dnsList, bootList, failover, preferIpv4, threshold, recovery, cert, key, hostsList),
+							callSaveSecurity(disQuic, blkDoh, exNtp, torrentBypass, dlProxy, cidrsList, clientsList)
 						]).then(function() {
 							btn.disabled = false;
 							btn.innerText = '💾 Сохранить все параметры';
@@ -187,7 +210,7 @@ return view.extend({
 		]);
 		viewRoot.appendChild(headerNode);
 
-		// Section 1: Multi-DNS Failover & Bootstrap DNS (forkop reference)
+		// Section 1: Multi-DNS Failover, Hysteresis, mTLS & Bootstrap DNS (forkop #64, #110, #60 reference)
 		var dnsServersStr = (dnsCfg.dns_servers || [
 			'https://1.1.1.1/dns-query',
 			'https://dns.google/dns-query',
@@ -199,10 +222,12 @@ return view.extend({
 			'1.1.1.1'
 		]).join('\n');
 
+		var dnsHostsStr = (dnsCfg.dns_hosts || []).join('\n');
+
 		var dnsCard = E('div', { 'class': 'os-card' }, [
-			E('h3', { 'style': 'margin: 0 0 6px 0; font-size: 18px; font-weight: 700; color: #fff;' }, '🛡️ Multi-DNS Failover & Bootstrap Resolver'),
+			E('h3', { 'style': 'margin: 0 0 6px 0; font-size: 18px; font-weight: 700; color: #fff;' }, '🛡️ Multi-DNS Failover, Гистерезис & Bootstrap Resolver'),
 			E('p', { 'style': 'margin: 0 0 16px 0; color: var(--os-muted); font-size: 13px;' },
-				'Если первый DNS-сервер не отвечает, запросы автоматически переключаются на резервный (Failover). Bootstrap DNS исключает дедлоки резолва DoH.'
+				'Автопереключение при сбоях (с защитой от флаппинга #64), Bootstrap DNS против дедлоков и mTLS авторизация DoH (#110).'
 			),
 			E('div', { 'style': 'display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px;' }, [
 				E('div', {}, [
@@ -221,6 +246,59 @@ return view.extend({
 						'rows': 4
 					}, bootstrapStr)
 				])
+			]),
+			E('div', { 'style': 'display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 14px;' }, [
+				E('div', {}, [
+					E('label', { 'style': 'display: block; font-size: 12px; font-weight: 600; color: var(--os-muted); margin-bottom: 6px;' }, 'ПОРОГ СБОЕВ ДЛЯ FAILOVER (ОТ ФЛАППИНГА #64)'),
+					E('input', {
+						'type': 'number',
+						'class': 'os-input',
+						'id': 'os-dns-threshold',
+						'min': '1',
+						'max': '10',
+						'value': dnsCfg.failover_threshold || 3
+					})
+				]),
+				E('div', {}, [
+					E('label', { 'style': 'display: block; font-size: 12px; font-weight: 600; color: var(--os-muted); margin-bottom: 6px;' }, 'ИНТЕРВАЛ ВОССТАНОВЛЕНИЯ PRIMARY (СЕК)'),
+					E('input', {
+						'type': 'number',
+						'class': 'os-input',
+						'id': 'os-dns-recovery',
+						'min': '5',
+						'max': '300',
+						'value': dnsCfg.failover_recovery_sec || 30
+					})
+				]),
+				E('div', {}, [
+					E('label', { 'style': 'display: block; font-size: 12px; font-weight: 600; color: var(--os-muted); margin-bottom: 6px;' }, 'mTLS DoH: КЛИЕНТСКИЙ СЕРТИФИКАТ (PEM / ПУТЬ #110)'),
+					E('input', {
+						'type': 'text',
+						'class': 'os-input',
+						'id': 'os-dns-cert',
+						'placeholder': '/etc/ssl/certs/client.crt',
+						'value': dnsCfg.doh_client_cert || ''
+					})
+				]),
+				E('div', {}, [
+					E('label', { 'style': 'display: block; font-size: 12px; font-weight: 600; color: var(--os-muted); margin-bottom: 6px;' }, 'mTLS DoH: ПРИВАТНЫЙ КЛЮЧ (PEM / ПУТЬ #110)'),
+					E('input', {
+						'type': 'text',
+						'class': 'os-input',
+						'id': 'os-dns-key',
+						'placeholder': '/etc/ssl/private/client.key',
+						'value': dnsCfg.doh_client_key || ''
+					})
+				])
+			]),
+			E('div', { 'style': 'margin-top: 14px;' }, [
+				E('label', { 'style': 'display: block; font-size: 12px; font-weight: 600; color: var(--os-muted); margin-bottom: 6px;' }, 'ЛОКАЛЬНЫЕ DNS-ПЕРЕОПРЕДЕЛЕНИЯ (HOSTS OVERRIDES: домен ip #60)'),
+				E('textarea', {
+					'class': 'os-textarea',
+					'id': 'os-dns-hosts',
+					'rows': 2,
+					'placeholder': 'router.local 192.168.1.1\nnas.home 192.168.1.200'
+				}, dnsHostsStr)
 			]),
 			E('div', { 'style': 'display: flex; gap: 20px; flex-wrap: wrap; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--os-border);' }, [
 				E('label', { 'style': 'display: flex; align-items: center; gap: 10px; cursor: pointer;' }, [
@@ -241,13 +319,28 @@ return view.extend({
 		]);
 		viewRoot.appendChild(dnsCard);
 
-		// Section 2: Сетевая безопасность и перехват
+		// Section 2: Сетевая безопасность, P2P Bypass & Исключения (#72, #88, #95)
+		var cidrsStr = (secCfg.bypass_cidrs || []).join(', ');
+		var clientsStr = (secCfg.bypass_clients || []).join(', ');
+
 		var secCard = E('div', { 'class': 'os-card' }, [
-			E('h3', { 'style': 'margin: 0 0 6px 0; font-size: 18px; font-weight: 700; color: #fff;' }, '🔒 Сетевая безопасность & Фильтрация протоколов'),
+			E('h3', { 'style': 'margin: 0 0 6px 0; font-size: 18px; font-weight: 700; color: #fff;' }, '🔒 Сетевая безопасность, P2P Bypass & Исключения'),
 			E('p', { 'style': 'margin: 0 0 16px 0; color: var(--os-muted); font-size: 13px;' },
-				'Оптимизация сетевого стека nftables: сброс QUIC для надёжного YouTube 4K в Zapret2, изоляция DoH и пропуск NTP.'
+				'Оптимизация nftables: прямой пропуск BitTorrent (#72), защита conntrack (#74), белые списки IP (#88) и клиентов (#95).'
 			),
 			E('div', { 'style': 'display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;' }, [
+				E('div', { 'style': 'background: #020617; border: 1px solid var(--os-border); border-radius: 8px; padding: 14px;' }, [
+					E('div', { 'style': 'display: flex; justify-content: space-between; align-items: center;' }, [
+						E('span', { 'style': 'font-weight: 700; font-size: 14px; color: #fff;' }, 'Прямой пропуск BitTorrent (#72)'),
+						E('label', { 'class': 'os-switch' }, [
+							E('input', { 'type': 'checkbox', 'id': 'os-sec-torrent', 'checked': secCfg.torrent_bypass !== false }),
+							E('span', { 'class': 'os-slider' })
+						])
+					]),
+					E('div', { 'style': 'font-size: 12px; color: var(--os-muted); margin-top: 6px;' },
+						'Порты 6881–6889 и 51413 выходят напрямую в WAN. Предотвращает перегрузку VPN и блокировки хостеров.'
+					)
+				]),
 				E('div', { 'style': 'background: #020617; border: 1px solid var(--os-border); border-radius: 8px; padding: 14px;' }, [
 					E('div', { 'style': 'display: flex; justify-content: space-between; align-items: center;' }, [
 						E('span', { 'style': 'font-weight: 700; font-size: 14px; color: #fff;' }, 'Блокировать QUIC (UDP 443)'),
@@ -295,6 +388,28 @@ return view.extend({
 					E('div', { 'style': 'font-size: 12px; color: var(--os-muted); margin-top: 6px;' },
 						'Использовать активный туннель sing-box для скачивания бинарников с GitHub при региональных блокировках.'
 					)
+				])
+			]),
+			E('div', { 'style': 'display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--os-border);' }, [
+				E('div', {}, [
+					E('label', { 'style': 'display: block; font-size: 12px; font-weight: 600; color: var(--os-muted); margin-bottom: 6px;' }, 'ИСКЛЮЧЕННЫЕ ПОДСЕТИ И IP (CIDR #88 - через запятую)'),
+					E('input', {
+						'type': 'text',
+						'class': 'os-input',
+						'id': 'os-sec-cidrs',
+						'placeholder': '192.168.1.0/24, 1.1.1.1, 91.108.4.0/22',
+						'value': cidrsStr
+					})
+				]),
+				E('div', {}, [
+					E('label', { 'style': 'display: block; font-size: 12px; font-weight: 600; color: var(--os-muted); margin-bottom: 6px;' }, 'ИСКЛЮЧЕННЫЕ КЛИЕНТЫ LAN (IP / MAC #95 - через запятую)'),
+					E('input', {
+						'type': 'text',
+						'class': 'os-input',
+						'id': 'os-sec-clients',
+						'placeholder': '192.168.1.150, 192.168.1.151, AA:BB:CC:DD:EE:FF',
+						'value': clientsStr
+					})
 				])
 			])
 		]);

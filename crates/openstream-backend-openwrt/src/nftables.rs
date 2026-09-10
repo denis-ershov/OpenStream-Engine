@@ -81,11 +81,21 @@ pub fn generate_nftables_rules(compiled: &CompiledRuleSet, table_family: &str, t
         ));
     }
 
+    if !compiled.bypass_clients.is_empty() {
+        out.push_str("    # Исключения конкретных клиентских устройств (решение #95)\n");
+        out.push_str("    set bypass_clients {\n        type ipv4_addr\n        flags interval\n");
+        out.push_str("        elements = { ");
+        out.push_str(&compiled.bypass_clients.join(", "));
+        out.push_str(" }\n    }\n\n");
+    }
+
     // 2. Цепочка openstream_tproxy для разрешения сокетов в гостевых зонах fw4 (решение #84)
     out.push_str("\n    # Защита сокетов в изолированных и гостевых сетях fw4 (решение #84)\n");
     out.push_str("    chain openstream_tproxy {\n");
     out.push_str("        type filter hook input priority filter - 1; policy accept;\n");
     out.push_str("        meta mark & 0x00ff0000 == 0x00880000 accept\n");
+    out.push_str("        tcp dport { 8888, 1088 } accept\n");
+    out.push_str("        udp dport { 8888, 1088 } accept\n");
     out.push_str("    }\n");
 
     // 3. Основная цепочка mangle prerouting
@@ -95,6 +105,11 @@ pub fn generate_nftables_rules(compiled: &CompiledRuleSet, table_family: &str, t
 
     out.push_str("        # Защита от петель зацикливания и conntrack exhaustion (решение #74)\n");
     out.push_str("        ct mark & 0x00ff0000 == 0x00880000 return\n\n");
+
+    if !compiled.bypass_clients.is_empty() {
+        out.push_str("        # Прямой пропуск трафика исключенных клиентских устройств LAN (#95)\n");
+        out.push_str("        ip saddr @bypass_clients return\n");
+    }
 
     out.push_str("        # Приоритетное исключение доменов из обработки (Bypass / Pass)\n");
     out.push_str("        ip daddr @bypass_targets return\n");
@@ -168,6 +183,7 @@ mod tests {
         compiled.zapret2_domains.push(("googlevideo.com".into(), "youtube_4k".into()));
         compiled.streamproxy_domains.push("live-video.net".into());
         compiled.bypass_p2p = true;
+        compiled.bypass_clients.push("192.168.1.150".into());
 
         let nft = generate_nftables_rules(&compiled, "inet", "openstream");
 
@@ -175,6 +191,7 @@ mod tests {
         assert!(nft.contains("table inet openstream {"));
         assert!(nft.contains("set bypass_cidrs {"));
         assert!(nft.contains("set bypass_p2p_ports {"));
+        assert!(nft.contains("set bypass_clients {"));
         assert!(nft.contains("set zapret2_targets {"));
         assert!(nft.contains("set streamproxy_targets {"));
         assert!(nft.contains("set vpn_us_west {"));
@@ -182,6 +199,8 @@ mod tests {
         // Проверка решения багов
         assert!(nft.contains("ct mark & 0x00ff0000 == 0x00880000 return")); // Защита от петель #74
         assert!(nft.contains("openstream_tproxy")); // Гостевые сети #84
+        assert!(nft.contains("tcp dport { 8888, 1088 } accept")); // Защита портов #84
+        assert!(nft.contains("ip saddr @bypass_clients return")); // Исключения клиентов #95
         assert!(nft.contains("queue num 1088 bypass")); // Сепарация Zapret2 #2, #85
         assert!(nft.contains("redirect to :8888")); // StreamProxy
         assert!(nft.contains("mark set 0x880001")); // Изолированная метка fwmark #87

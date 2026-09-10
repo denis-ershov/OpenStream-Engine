@@ -470,7 +470,7 @@ return {
 		},
 
 		import_subscription: {
-			args: { input: "" },
+			args: { input: "", user_agent: "", hwid: "" },
 			call: function(req) {
 				let input = trim(req.args.input || '');
 				if (!input) return { success: false, error: 'Входные данные подписки или ссылки пусты' };
@@ -478,7 +478,10 @@ return {
 				let raw_text = input;
 
 				if (match(input, /^https?:\/\//)) {
-					let pipe = fs.popen('curl -s -k -L --max-time 15 "' + input + '" 2>/dev/null', 'r');
+					let ua = trim(req.args.user_agent || '') || 'ClashMeta/v1.18.0';
+					let hwid = trim(req.args.hwid || '');
+					let hwid_hdr = hwid ? (' -H "X-HWID: ' + hwid + '"') : '';
+					let pipe = fs.popen('curl -s -k -L --max-time 15 -H "User-Agent: ' + ua + '"' + hwid_hdr + ' "' + input + '" 2>/dev/null', 'r');
 					if (pipe) {
 						let fetched = pipe.read('all');
 						pipe.close();
@@ -682,19 +685,30 @@ return {
 
 				let failover_enabled = uci.get('openstream', 'dns', 'failover') != '0';
 				let prefer_ipv4 = uci.get('openstream', 'dns', 'prefer_ipv4') != '0';
+				let failover_threshold = int(uci.get('openstream', 'dns', 'failover_threshold') || 3);
+				let failover_recovery_sec = int(uci.get('openstream', 'dns', 'failover_recovery_sec') || 30);
+				let doh_client_cert = uci.get('openstream', 'dns', 'doh_client_cert') || '';
+				let doh_client_key = uci.get('openstream', 'dns', 'doh_client_key') || '';
+				let hosts = uci.get('openstream', 'dns', 'hosts') || [];
+				if (type(hosts) == 'string') hosts = [hosts];
 
 				return {
 					success: true,
 					dns_servers: dns_servers,
 					bootstrap_dns: bootstrap_dns,
 					failover_enabled: failover_enabled,
-					prefer_ipv4: prefer_ipv4
+					prefer_ipv4: prefer_ipv4,
+					failover_threshold: failover_threshold,
+					failover_recovery_sec: failover_recovery_sec,
+					doh_client_cert: doh_client_cert,
+					doh_client_key: doh_client_key,
+					dns_hosts: hosts
 				};
 			}
 		},
 
 		save_dns_config: {
-			args: { dns_servers: [], bootstrap_dns: [], failover_enabled: true, prefer_ipv4: true },
+			args: { dns_servers: [], bootstrap_dns: [], failover_enabled: true, prefer_ipv4: true, failover_threshold: 3, failover_recovery_sec: 30, doh_client_cert: '', doh_client_key: '', dns_hosts: [] },
 			call: function(req) {
 				let uci = cursor();
 				uci.set('openstream', 'dns', 'dns');
@@ -702,42 +716,62 @@ return {
 				uci.set('openstream', 'dns', 'bootstrap', req.args.bootstrap_dns);
 				uci.set('openstream', 'dns', 'failover', req.args.failover_enabled ? '1' : '0');
 				uci.set('openstream', 'dns', 'prefer_ipv4', req.args.prefer_ipv4 ? '1' : '0');
+				uci.set('openstream', 'dns', 'failover_threshold', sprintf("%d", req.args.failover_threshold || 3));
+				uci.set('openstream', 'dns', 'failover_recovery_sec', sprintf("%d", req.args.failover_recovery_sec || 30));
+				uci.set('openstream', 'dns', 'doh_client_cert', req.args.doh_client_cert || '');
+				uci.set('openstream', 'dns', 'doh_client_key', req.args.doh_client_key || '');
+				if (req.args.dns_hosts) {
+					uci.set('openstream', 'dns', 'hosts', req.args.dns_hosts);
+				}
 				uci.commit('openstream');
 
+				system('/usr/bin/ucode /usr/share/openstream/openstream-render.uc 2>/dev/null || true');
 				system('/etc/init.d/dnsmasq restart 2>/dev/null || true');
 				system('/etc/init.d/sing-box reload 2>/dev/null || true');
 
-				return { success: true, message: 'Параметры Multi-DNS Failover и Bootstrap успешно сохранены.' };
+				return { success: true, message: 'Параметры Multi-DNS Failover, mTLS и Bootstrap успешно сохранены.' };
 			}
 		},
 
-		// --- 4. Безопасность: QUIC, DoH, NTP, Egress ---
+		// --- 4. Безопасность: QUIC, DoH, NTP, Torrent Bypass, CIDRs ---
 		get_security_settings: {
 			call: function(req) {
 				let uci = cursor();
+				let bypass_cidrs = uci.get('openstream', 'security', 'bypass_cidrs') || [];
+				if (type(bypass_cidrs) == 'string') bypass_cidrs = [bypass_cidrs];
+				let bypass_clients = uci.get('openstream', 'security', 'bypass_clients') || [];
+				if (type(bypass_clients) == 'string') bypass_clients = [bypass_clients];
+
 				return {
 					success: true,
 					disable_quic: uci.get('openstream', 'security', 'disable_quic') != '0',
 					block_doh: uci.get('openstream', 'security', 'block_doh') != '0',
 					exclude_ntp: uci.get('openstream', 'security', 'exclude_ntp') != '0',
-					download_via_proxy: uci.get('openstream', 'security', 'download_via_proxy') == '1'
+					torrent_bypass: uci.get('openstream', 'security', 'torrent_bypass') != '0',
+					download_via_proxy: uci.get('openstream', 'security', 'download_via_proxy') == '1',
+					bypass_cidrs: bypass_cidrs,
+					bypass_clients: bypass_clients
 				};
 			}
 		},
 
 		save_security_settings: {
-			args: { disable_quic: true, block_doh: true, exclude_ntp: true, download_via_proxy: false },
+			args: { disable_quic: true, block_doh: true, exclude_ntp: true, torrent_bypass: true, download_via_proxy: false, bypass_cidrs: [], bypass_clients: [] },
 			call: function(req) {
 				let uci = cursor();
 				uci.set('openstream', 'security', 'security');
 				uci.set('openstream', 'security', 'disable_quic', req.args.disable_quic ? '1' : '0');
 				uci.set('openstream', 'security', 'block_doh', req.args.block_doh ? '1' : '0');
 				uci.set('openstream', 'security', 'exclude_ntp', req.args.exclude_ntp ? '1' : '0');
+				uci.set('openstream', 'security', 'torrent_bypass', req.args.torrent_bypass ? '1' : '0');
 				uci.set('openstream', 'security', 'download_via_proxy', req.args.download_via_proxy ? '1' : '0');
+				if (req.args.bypass_cidrs) uci.set('openstream', 'security', 'bypass_cidrs', req.args.bypass_cidrs);
+				if (req.args.bypass_clients) uci.set('openstream', 'security', 'bypass_clients', req.args.bypass_clients);
 				uci.commit('openstream');
 
+				system('/usr/bin/ucode /usr/share/openstream/openstream-render.uc 2>/dev/null || true');
 				system('/etc/init.d/openstream reload 2>/dev/null || true');
-				return { success: true, message: 'Параметры сетевой защиты успешно обновлены.' };
+				return { success: true, message: 'Параметры сетевой защиты и исключений успешно обновлены.' };
 			}
 		},
 
@@ -833,6 +867,18 @@ return {
 					name: 'Анти-DPI демон Zapret2 (NFQUEUE 1088)',
 					status: z2_inst ? 'pass' : 'warn',
 					details: z2_inst ? 'Бинарник обнаружен в /usr/bin/nfqws2' : 'Пакет zapret2 не установлен (десинхронизация отключена)'
+				});
+
+				let ipv6_ok = access('/proc/sys/net/ipv6');
+				let ipv6_disabled = false;
+				let disable_val = readfile('/proc/sys/net/ipv6/conf/all/disable_ipv6');
+				if (disable_val && trim(disable_val) == '1') ipv6_disabled = true;
+
+				push(checks, {
+					id: 'ipv6_stack',
+					name: 'Сетевой стек IPv6 (Dual-Stack / IPv4-only)',
+					status: 'pass',
+					details: (ipv6_ok && !ipv6_disabled) ? 'Стек IPv6 активен, двухстековая маршрутизация включена' : 'IPv6 отключен в ядре: активен безопасный режим IPv4-only (без сбоев маршрутизации)'
 				});
 
 				push(checks, {

@@ -25,7 +25,7 @@ var callSaveServers = rpc.declare({
 var callImportSubscription = rpc.declare({
 	object: 'openstream',
 	method: 'import_subscription',
-	params: [ 'input' ],
+	params: [ 'input', 'user_agent', 'hwid' ],
 	expect: { success: true }
 });
 
@@ -236,7 +236,28 @@ return view.extend({
 				'rows': 3,
 				'placeholder': 'Вставьте ссылку на подписку (https://...), Base64 код или ссылки vless://, hysteria2://, tuic://, ss://, trojan://'
 			}),
-			E('div', { 'style': 'display: flex; justify-content: flex-end; margin-top: 10px;' }, [
+			E('div', { 'style': 'display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 10px;' }, [
+				E('div', {}, [
+					E('label', { 'style': 'display: block; font-size: 11px; font-weight: 600; color: var(--os-muted); margin-bottom: 4px;' }, 'USER-AGENT ПОДПИСКИ (ПО УМОЛЧАНИЮ: ClashMeta)'),
+					E('input', {
+						'type': 'text',
+						'class': 'os-input',
+						'id': 'os-subscription-ua',
+						'placeholder': 'ClashMeta/v1.18.0, sing-box/1.10, v2rayN',
+						'value': 'ClashMeta/v1.18.0'
+					})
+				]),
+				E('div', {}, [
+					E('label', { 'style': 'display: block; font-size: 11px; font-weight: 600; color: var(--os-muted); margin-bottom: 4px;' }, 'АППАРАТНЫЙ ID (X-HWID ДЛЯ ПРИВАТНЫХ ПОДПИСОК #50, #63)'),
+					E('input', {
+						'type': 'text',
+						'class': 'os-input',
+						'id': 'os-subscription-hwid',
+						'placeholder': 'Опционально: d41d8cd98f00b204e9800998ecf8427e'
+					})
+				])
+			]),
+			E('div', { 'style': 'display: flex; justify-content: flex-end; margin-top: 12px;' }, [
 				E('button', {
 					'class': 'os-btn os-btn-primary',
 					'click': function(ev) {
@@ -246,10 +267,15 @@ return view.extend({
 							ui.addNotification(null, E('p', {}, 'Поле ввода ссылки или подписки пусто.'), 'warning');
 							return;
 						}
+						var uaElem = document.getElementById('os-subscription-ua');
+						var hwidElem = document.getElementById('os-subscription-hwid');
+						var uaVal = uaElem ? uaElem.value.trim() : '';
+						var hwidVal = hwidElem ? hwidElem.value.trim() : '';
+
 						var btn = ev.target;
 						btn.disabled = true;
 						btn.innerText = 'Загрузка и парсинг...';
-						callImportSubscription(val).then(function(res) {
+						callImportSubscription(val, uaVal, hwidVal).then(function(res) {
 							btn.disabled = false;
 							btn.innerText = '📥 Импортировать узлы';
 							if (res && res.success) {

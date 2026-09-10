@@ -33,7 +33,7 @@ pub struct BackendMetrics {
 }
 
 /// Скомпилированный набор правил, готовый к выгрузке в платформенный бэкенд
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct CompiledRuleSet {
     pub direct_domains: Vec<String>,
     pub bypass_domains: Vec<String>,
@@ -44,10 +44,42 @@ pub struct CompiledRuleSet {
     pub blocked_domains: Vec<String>,
     pub dns_overrides: Vec<(String, Vec<std::net::IpAddr>)>,
     pub bypass_cidrs: Vec<ipnet::IpNet>,
+    pub bypass_clients: Vec<String>,
     pub bypass_p2p: bool,
     pub disable_quic: bool,
     pub block_doh: bool,
     pub exclude_ntp: bool,
+    pub failover_threshold: u32,
+    pub failover_recovery_sec: u64,
+    pub doh_client_cert: Option<String>,
+    pub doh_client_key: Option<String>,
+    pub ipv4_only: bool,
+}
+
+impl Default for CompiledRuleSet {
+    fn default() -> Self {
+        Self {
+            direct_domains: Vec::new(),
+            bypass_domains: Vec::new(),
+            dpi_evasive_domains: Vec::new(),
+            zapret2_domains: Vec::new(),
+            streamproxy_domains: Vec::new(),
+            proxy_domains: Vec::new(),
+            blocked_domains: Vec::new(),
+            dns_overrides: Vec::new(),
+            bypass_cidrs: Vec::new(),
+            bypass_clients: Vec::new(),
+            bypass_p2p: true,
+            disable_quic: false,
+            block_doh: false,
+            exclude_ntp: true,
+            failover_threshold: 3,
+            failover_recovery_sec: 30,
+            doh_client_cert: None,
+            doh_client_key: None,
+            ipv4_only: false,
+        }
+    }
 }
 
 /// Универсальный контракт платформенного сетевого адаптера
