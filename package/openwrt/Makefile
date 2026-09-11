@@ -23,7 +23,16 @@ define Package/openstream-engine
   SECTION:=net
   CATEGORY:=Network
   TITLE:=OpenStream Engine HLS/DASH proxy
-  DEPENDS:=+ca-bundle
+  # Зависимости обязательны для заявленной функциональности:
+  #  * dnsmasq-full    — единственная сборка с поддержкой `nftset=` (базовый
+  #                      dnsmasq её НЕ умеет, без неё не наполняется ни один сет);
+  #  * kmod-nft-queue  — NFQUEUE 1088 для Zapret2 (nfqws2);
+  #  * kmod-nft-tproxy — statement `tproxy` в mangle_prerouting для sing-box;
+  #  * ip-full         — `ip rule` / `ip route` для policy routing по fwmark
+  #                      (busybox ip не гарантирует поддержку `rule`);
+  #  * ucode-mod-*     — модули fs/uci, импортируемые openstream-render.uc.
+  DEPENDS:=+ca-bundle +dnsmasq-full +kmod-nft-queue +kmod-nft-tproxy +ip-full \
+	   +ucode +ucode-mod-fs +ucode-mod-uci
   URL:=https://github.com/denis-ershov/OpenStream-Engine
 endef
 
@@ -64,12 +73,21 @@ define Package/openstream-engine/install
 	$(INSTALL_BIN) ./files/openstream-refresh-hls-set $(1)/usr/libexec/openstream-refresh-hls-set
 	$(INSTALL_BIN) ./files/openstream-refresh-opkg-list $(1)/usr/libexec/openstream-refresh-opkg-list
 	$(INSTALL_BIN) ./files/openstream-resolve-smartdns $(1)/usr/libexec/openstream-resolve-smartdns
+	# Рендерер конфигураций (ucode). Ранее не устанавливался, из-за чего init
+	# всегда уходил в fallback, а RPC вызывал несуществующий файл.
+	$(INSTALL_BIN) ./files/openstream-render.uc $(1)/usr/libexec/openstream-render.uc
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ./files/streamproxyd.init $(1)/etc/init.d/streamproxyd
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_CONF) ./files/openstream.config $(1)/etc/config/openstream
 	$(INSTALL_DIR) $(1)/etc/openstream
 	$(INSTALL_CONF) ./files/config.yaml $(1)/etc/openstream/config.yaml
+	# Каталог декларативных правил. Единый путь для init, RPC и рендерера:
+	# /etc/openstream/rules (ранее init читал /usr/share/openstream/rules,
+	# куда правила не устанавливались вообще).
+	$(INSTALL_DIR) $(1)/etc/openstream/rules
+	$(INSTALL_CONF) ../../rules/streaming/*.osrule.yaml $(1)/etc/openstream/rules/
+	$(INSTALL_CONF) ../../rules/privacy/*.osrule.yaml $(1)/etc/openstream/rules/
 	$(INSTALL_DIR) $(1)/usr/share/openstream/nft
 	$(INSTALL_DATA) ./files/openstream.nft $(1)/usr/share/openstream/nft/openstream.nft
 	$(INSTALL_DATA) ./files/hostlist-hls.txt $(1)/usr/share/openstream/hostlist-hls.txt

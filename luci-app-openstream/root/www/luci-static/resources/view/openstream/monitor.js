@@ -327,6 +327,7 @@ return view.extend({
 		}
 
 		filtered.forEach(function(flow) {
+			// Маршрут из конфигурации; счётчики пакетов не выдумываются.
 			var card = E('div', { 'class': 'os-flow-card' }, [
 				E('div', { 'style': 'display: flex; align-items: center; gap: 14px; min-width: 240px;' }, [
 					E('div', {}, [
@@ -334,19 +335,12 @@ return view.extend({
 							E('span', { 'class': 'os-live-pulse', 'style': 'background: ' + flow.badge_color + '; box-shadow: 0 0 8px ' + flow.badge_color + ';' }),
 							flow.domain
 						]),
-						E('div', { 'style': 'font-size: 12px; color: #94a3b8; margin-top: 3px;' }, [
-							E('span', { 'style': 'color: #cbd5e1; font-weight: 600;' }, flow.client_name || 'Устройство LAN'),
-							' • ',
-							flow.client_ip || '192.168.1.x'
-						])
+						E('div', { 'style': 'font-size: 12px; color: #94a3b8; margin-top: 3px;' },
+							'Применяется ко всем клиентам LAN')
 					])
 				]),
 
 				E('div', { 'style': 'display: flex; align-items: center; gap: 14px; flex-wrap: wrap;' }, [
-					E('div', { 'style': 'text-align: right; font-size: 12px; color: #94a3b8;' }, [
-						E('div', { 'style': 'font-weight: 700; color: #e2e8f0;' }, (flow.packets || 0) + ' пакетов'),
-						E('div', {}, (flow.bytes ? (flow.bytes / 1024).toFixed(1) + ' KB' : '0 KB'))
-					]),
 					E('span', {
 						'style': 'padding: 6px 14px; border-radius: 9999px; font-weight: 700; font-size: 12px; background: ' +
 							flow.badge_color + '20; color: ' + flow.badge_color + '; border: 1px solid ' + flow.badge_color + '40;'

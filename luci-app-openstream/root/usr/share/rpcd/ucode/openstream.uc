@@ -1,7 +1,128 @@
 'use strict';
 
-import { readfile, writefile, access, dir, stat, unlink } from 'fs';
+// Модуль `fs` экспортирует lsdir(); функции `dir` в нём нет.
+// Ранее импортировался несуществующий символ — плагин падал при загрузке.
+import { readfile, writefile, access, lsdir, stat, unlink, popen } from 'fs';
 import { cursor } from 'uci';
+
+//
+// --- Безопасность: исполнение внешних команд ---
+//
+// RPC-плагин выполняется демоном rpcd от имени root. Любая конкатенация
+// пользовательского ввода в строку shell-команды означает выполнение
+// произвольного кода с правами root. Поэтому ниже:
+//   1) весь пользовательский ввод проходит строгую валидацию по allowlist;
+//   2) аргументы экранируются одинарными кавычками перед передачей в popen().
+//
+// В регулярных выражениях дефис внутри класса символов размещён ПОСЛЕДНИМ и
+// не экранируется: рантайм ucode отвергает `\-` в классе, хотя `ucode -c`
+// такую ошибку не выявляет.
+//
+
+/// Управляющие символы и пробелы: рантайм ucode НЕ поддерживает диапазоны вида
+/// \x00-\x1f внутри класса символов, поэтому используем POSIX-класс [[:cntrl:]].
+function has_control_or_space(value) {
+	return match(value, /[[:cntrl:]]/) != null || match(value, /[\s]/) != null;
+}
+
+/// Экранирование одного аргумента для POSIX-шелла.
+/// Одинарные кавычки нейтрализуют ВСЕ метасимволы; внутренняя кавычка
+/// закрывается, экранируется и открывается заново: ' -> '\''
+function shell_quote(value) {
+	let s = '' + (value ?? '');
+	return "'" + replace(s, /'/g, "'\\''") + "'";
+}
+
+/// Сборка безопасной командной строки из массива аргументов.
+function shell_command(argv) {
+	let parts = [];
+	for (let a in argv) push(parts, shell_quote(a));
+	return join(' ', parts);
+}
+
+/// HTTP(S) URL без управляющих символов. Используется для подписок.
+function valid_http_url(value) {
+	if (!value || length(value) > 2048) return false;
+	// Явный запрет пробельных и управляющих символов до проверки формы
+	if (has_control_or_space(value)) return false;
+	return match(value, /^https?:\/\/[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]+$/) != null;
+}
+
+/// Имя хоста (FQDN) или IPv4/IPv6-литерал — для проверки доступности узла.
+function valid_host(value) {
+	if (!value || length(value) > 253) return false;
+	if (has_control_or_space(value)) return false;
+	// FQDN
+	if (match(value, /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*$/)) return true;
+	// IPv6-литерал
+	if (match(value, /^[0-9a-fA-F:]+$/) && index(value, ':') >= 0) return true;
+	return false;
+}
+
+/// Заголовок HTTP: печатаемый ASCII без CR/LF (защита от header injection).
+function valid_header_value(value) {
+	if (value == null || value == '') return true;
+	if (length(value) > 256) return false;
+	return match(value, /^[A-Za-z0-9 ._/():;,+-]+$/) != null;
+}
+
+/// Проверка наличия исполняемой команды в PATH.
+function command_ok(argv) {
+	let p = popen(shell_command(argv) + ' >/dev/null 2>&1', 'r');
+	if (!p) return false;
+	p.close();
+	return true;
+}
+
+/// Версия установленного пакета по данным opkg.
+function opkg_installed_version(package_name) {
+	if (!match(package_name, /^[a-z0-9][a-z0-9+._-]*$/)) return null;
+
+	let p = popen(shell_command(['opkg', 'status', package_name]) + ' 2>/dev/null', 'r');
+	if (!p) return null;
+
+	let out = p.read('all');
+	p.close();
+	if (!out) return null;
+
+	let m = match(out, /Version:\s*(\S+)/);
+	return m ? m[1] : null;
+}
+
+/// Первая строка вывода `<binary> version` — фактическая версия бинарника.
+function binary_version(bin_path) {
+	if (!bin_path || !access(bin_path)) return null;
+
+	let p = popen(shell_command([bin_path, 'version']) + ' 2>/dev/null', 'r');
+	if (!p) return null;
+
+	let out = p.read('all');
+	p.close();
+	if (!out) return null;
+
+	let first = trim(split(out, '\n')[0]);
+	return length(first) > 0 ? first : null;
+}
+
+/// Дозапись в лог обновлений.
+///
+/// Ранее применялся writefile() (перезапись), поэтому в логе оставалась только
+/// последняя строка — история операций терялась.
+function update_log_append(message) {
+	let path = '/tmp/openstream_update.log';
+	let existing = readfile(path) || '';
+	// Ограничиваем размер, чтобы лог не рос бесконечно на роутере с малым /tmp.
+	if (length(existing) > 32768) {
+		existing = slice(existing, -16384);
+	}
+	writefile(path, existing + sprintf('[%s] %s\n', date(), message));
+}
+
+/// Единый каталог декларативных правил. Тот же путь используют
+/// streamproxyd.init и openstream-render.uc.
+const RULES_DIR = '/etc/openstream/rules';
+/// Рендерер конфигураций устанавливается пакетом в /usr/libexec.
+const RENDER_UC = '/usr/libexec/openstream-render.uc';
 
 function url_decode(s) {
 	if (!s) return '';
@@ -91,7 +212,7 @@ return {
 						if (match(filename, /\.osrule\.ya?ml$/)) {
 							let content = readfile(rules_dir + '/' + filename);
 							if (content) {
-								let id_m = match(content, /id:\s*["']?([a-zA-Z0-9_\.\-]+)/);
+								let id_m = match(content, /id:\s*["']?([a-zA-Z0-9_.-]+)/);
 								let name_m = match(content, /name:\s*["']?([^"'\n\r]+)/);
 								let desc_m = match(content, /description:\s*["']?([^"'\n\r]+)/);
 								let enabled = !match(content, /enabled:\s*false/);
@@ -193,30 +314,58 @@ return {
 					return { success: false, error: 'Отсутствуют правила для сохранения' };
 				}
 
-				let rules_dir = '/etc/openstream/rules';
-				system('rm -rf /tmp/openstream_rules_bak && cp -r ' + rules_dir + ' /tmp/openstream_rules_bak 2>/dev/null');
+				let rules_dir = RULES_DIR;
+				let backup_dir = '/tmp/openstream_rules_bak';
 
+				system(shell_command(['rm', '-rf', backup_dir]));
+				system(shell_command(['mkdir', '-p', rules_dir]));
+				system(shell_command(['cp', '-r', rules_dir, backup_dir]) + ' 2>/dev/null');
+
+				let written = 0;
 				for (let r in rules) {
 					if (r.file && r.raw_yaml) {
+						// Имя файла по allowlist: защищает от path traversal.
 						let safe_name = replace(r.file, /^.*[\/\\]/, '');
-						if (!match(safe_name, /^[a-zA-Z0-9_\-]+\.osrule\.ya?ml$/)) {
+						if (!match(safe_name, /^[a-zA-Z0-9_-]+\.osrule\.ya?ml$/)) {
 							continue;
 						}
 						writefile(rules_dir + '/' + safe_name, r.raw_yaml);
+						written++;
 					}
 				}
 
-				let compile_res = system('/usr/bin/streamproxyd --compile-rules --rules-dir ' + rules_dir + ' 2>&1');
-				if (compile_res != 0) {
-					system('cp -r /tmp/openstream_rules_bak/* ' + rules_dir + '/ 2>/dev/null');
+				if (written == 0) {
+					return { success: false, error: 'Ни одно правило не прошло проверку имени файла' };
+				}
+
+				// Компиляция проверяет синтаксис и SecOps-ограничения правил.
+				let compile_res = system(shell_command([
+					'/usr/bin/streamproxyd', '--compile-rules',
+					'--rules-dir', rules_dir,
+					'--out-dnsmasq', '/tmp/dnsmasq.d/openstream-rules.conf',
+					'--out-nft', '/tmp/openstream-rules.nft'
+				]) + ' >/dev/null 2>&1');
+
+				// Дополнительно проверяем валидность сгенерированного nft-файла:
+				// синтаксически некорректный набор не должен доходить до применения.
+				let nft_res = 0;
+				if (compile_res == 0 && access('/tmp/openstream-rules.nft')) {
+					nft_res = system('nft -c -f /tmp/openstream-rules.nft >/dev/null 2>&1');
+				}
+
+				if (compile_res != 0 || nft_res != 0) {
+					system(shell_command(['rm', '-rf', rules_dir]));
+					system(shell_command(['cp', '-r', backup_dir, rules_dir]) + ' 2>/dev/null');
 					return {
 						success: false,
-						error: 'Ошибка компиляции правил. Выполнен автоматический откат к рабочей версии.'
+						error: compile_res != 0
+							? 'Ошибка компиляции правил. Выполнен автоматический откат к рабочей версии.'
+							: 'Сгенерированный набор nftables не прошёл проверку. Выполнен откат.'
 					};
 				}
 
-				system('/etc/init.d/streamproxyd reload 2>/dev/null || /etc/init.d/openstream reload 2>/dev/null');
-				return { success: true, message: 'Маршруты успешно скомпилированы и применены в ucode.' };
+				system('/etc/init.d/streamproxyd reload >/dev/null 2>&1 || /etc/init.d/openstream reload >/dev/null 2>&1');
+				return { success: true, message: sprintf('Применено правил: %d.', written) };
 			}
 		},
 
@@ -227,7 +376,7 @@ return {
 				if (!domain) return { success: false, error: 'Домен не указан' };
 
 				domain = trim(domain);
-				if (!match(domain, /^[a-zA-Z0-9\.\-]+$/) || length(domain) > 253) {
+				if (!match(domain, /^[a-zA-Z0-9.-]+$/) || length(domain) > 253) {
 					return { success: false, error: 'Недопустимый формат доменного имени' };
 				}
 
@@ -273,14 +422,21 @@ return {
 			}
 		},
 
+		// Возвращает НАСТРОЕННЫЕ маршруты (по конфигурации dnsmasq), а не потоки
+		// реального трафика: счётчиков пакетов здесь нет и они не выдумываются.
 		get_monitor_flows: {
 			call: function(req) {
-				let clients_map = {};
+				// Реальные клиенты LAN из таблицы аренд DHCP.
+				let clients = [];
 				let leases_raw = readfile('/tmp/dhcp.leases') || '';
 				for (let line in split(leases_raw, '\n')) {
 					let parts = split(trim(line), ' ');
 					if (length(parts) >= 4) {
-						clients_map[parts[2]] = (parts[3] != '*') ? parts[3] : parts[1];
+						push(clients, {
+							ip: parts[2],
+							name: (parts[3] != '*') ? parts[3] : parts[1],
+							mac: parts[1]
+						});
 					}
 				}
 
@@ -289,7 +445,7 @@ return {
 				let seen = {};
 
 				for (let line in split(dns_cfg, '\n')) {
-					let m = match(line, /nftset=\/([a-zA-Z0-9\.\-]+)\/4#inet#openstream#([a-zA-Z0-9_]+)/);
+					let m = match(line, /nftset=\/([a-zA-Z0-9.-]+)\/4#inet#openstream#([a-zA-Z0-9_]+)/);
 					if (m) {
 						let dom = m[1];
 						let target_set = m[2];
@@ -312,7 +468,7 @@ return {
 						} else if (index(target_set, 'vpn_') == 0) {
 							section = 'singbox';
 							badge_color = '#a855f7';
-							details = 'Туннель sing-box (таблица 1088)';
+							details = 'Туннель sing-box (' + target_set + ')';
 						}
 
 						if (!seen[dom]) {
@@ -321,57 +477,38 @@ return {
 								domain: dom,
 								section: section,
 								badge_color: badge_color,
-								details: details,
-								client_ip: '192.168.1.100',
-								client_name: clients_map['192.168.1.100'] || 'Master PC / SmartTV',
-								packets: 120 + int(rand() % 400),
-								bytes: 184000 + int(rand() % 950000),
-								status: 'Active'
+								details: details
 							});
 						}
 					}
 				}
 
-				if (!length(flows)) {
-					push(flows, {
-						domain: 'mail.google.com',
-						section: 'bypass',
-						badge_color: '#06b6d4',
-						details: 'Исключение Bypass (Прямой WAN)',
-						client_ip: '192.168.1.100',
-						client_name: 'Living Room TV',
-						packets: 520,
-						bytes: 142000,
-						status: 'Bypass'
-					});
-					push(flows, {
-						domain: 'googlevideo.com',
-						section: 'zapret2',
-						badge_color: '#10b981',
-						details: 'Пресет youtube_4k (nfqws2)',
-						client_ip: '192.168.1.100',
-						client_name: 'Living Room TV',
-						packets: 4820,
-						bytes: 12582912,
-						status: 'Active'
-					});
-					push(flows, {
-						domain: 'gql.twitch.tv',
-						section: 'streamproxy',
-						badge_color: '#38bdf8',
-						details: 'Ad-Free Token Splitter (:8888)',
-						client_ip: '192.168.1.102',
-						client_name: 'Desktop PC',
-						packets: 840,
-						bytes: 491520,
-						status: 'Active'
-					});
+				// Сколько адресов реально попало в динамические сеты nftables.
+				let set_counts = {};
+				if (command_ok(['nft', 'list', 'table', 'inet', 'openstream'])) {
+					let p = popen(shell_command(['nft', '-j', 'list', 'table', 'inet', 'openstream']) + ' 2>/dev/null', 'r');
+					if (p) {
+						let raw = p.read('all');
+						p.close();
+						try {
+							let data = json(raw);
+							for (let obj in (data.nftables ?? [])) {
+								if (obj.set && obj.set.name) {
+									set_counts[obj.set.name] = length(obj.set.elem ?? []);
+								}
+							}
+						} catch(e) {}
+					}
 				}
 
 				return {
 					success: true,
+					// Явно сообщаем, что это конфигурация, а не измеренный трафик.
+					data_kind: 'configured_routes',
 					total_flows: length(flows),
 					flows: flows,
+					clients: clients,
+					set_counts: set_counts,
 					timestamp: time()
 				};
 			}
@@ -478,10 +615,37 @@ return {
 				let raw_text = input;
 
 				if (match(input, /^https?:\/\//)) {
+					// Строгая валидация URL: значение уходит во внешнюю команду.
+					if (!valid_http_url(input)) {
+						return { success: false, error: 'Недопустимый URL подписки' };
+					}
+
 					let ua = trim(req.args.user_agent || '') || 'ClashMeta/v1.18.0';
 					let hwid = trim(req.args.hwid || '');
-					let hwid_hdr = hwid ? (' -H "X-HWID: ' + hwid + '"') : '';
-					let pipe = fs.popen('curl -s -k -L --max-time 15 -H "User-Agent: ' + ua + '"' + hwid_hdr + ' "' + input + '" 2>/dev/null', 'r');
+
+					if (!valid_header_value(ua)) {
+						return { success: false, error: 'Недопустимое значение User-Agent' };
+					}
+					if (hwid != '' && !valid_header_value(hwid)) {
+						return { success: false, error: 'Недопустимое значение HWID' };
+					}
+
+					// Аргументы собираются массивом и экранируются: конкатенация
+					// пользовательского ввода в строку shell исключена.
+					// Флаг -k намеренно НЕ используется: подписка может содержать
+					// учётные данные, отключать проверку TLS недопустимо.
+					let argv = [
+						'curl', '-s', '-L', '--max-time', '15',
+						'--proto', '=https',
+						'-H', 'User-Agent: ' + ua
+					];
+					if (hwid != '') {
+						push(argv, '-H');
+						push(argv, 'X-HWID: ' + hwid);
+					}
+					push(argv, input);
+
+					let pipe = popen(shell_command(argv), 'r');
 					if (pipe) {
 						let fetched = pipe.read('all');
 						pipe.close();
@@ -624,8 +788,16 @@ return {
 				let port = int(req.args.port || 443);
 
 				if (srv) {
+					// Хост уходит во внешнюю команду — строгая валидация обязательна.
+					if (!valid_host(srv)) {
+						return { success: false, error: 'Недопустимое имя хоста или IP-адрес' };
+					}
+					if (port < 1 || port > 65535) {
+						return { success: false, error: 'Недопустимый номер порта' };
+					}
+
 					let start_t = clock();
-					let pipe = fs.popen('nc -z -w 2 ' + srv + ' ' + port + ' 2>/dev/null && echo OK', 'r');
+					let pipe = popen(shell_command(['nc', '-z', '-w', '2', srv, '' + port]) + ' && echo OK', 'r');
 					let ok = false;
 					if (pipe) {
 						let res = pipe.read('all');
@@ -634,7 +806,7 @@ return {
 					}
 					let end_t = clock();
 					let delta_ms = int((end_t[0] - start_t[0]) * 1000 + (end_t[1] - start_t[1]) / 1000000);
-					if (delta_ms <= 0) delta_ms = 18 + int(rand() % 40);
+					if (delta_ms < 0) delta_ms = 0;
 
 					return {
 						success: true,
@@ -654,9 +826,30 @@ return {
 
 				let results = [];
 				for (let s in servers) {
-					let ms = 20 + int(rand() % 80);
+					// Реальный замер вместо выдуманного значения: пользователь
+					// должен видеть фактическую доступность узла.
+					let host = s.server ?? s.host ?? s.address;
+					let sport = int(s.port ?? 443);
+					let online = false;
+					let ms = null;
+
+					if (host && valid_host(host) && sport >= 1 && sport <= 65535) {
+						let t0 = clock();
+						let p = popen(shell_command(['nc', '-z', '-w', '2', host, '' + sport]) + ' && echo OK', 'r');
+						if (p) {
+							let r = p.read('all');
+							p.close();
+							if (r && index(r, 'OK') >= 0) online = true;
+						}
+						let t1 = clock();
+						if (online) {
+							ms = int((t1[0] - t0[0]) * 1000 + (t1[1] - t0[1]) / 1000000);
+							if (ms < 0) ms = 0;
+						}
+					}
+
 					s.latency_ms = ms;
-					s.status = 'online';
+					s.status = online ? 'online' : 'offline';
 					push(results, s);
 				}
 
@@ -725,7 +918,7 @@ return {
 				}
 				uci.commit('openstream');
 
-				system('/usr/bin/ucode /usr/share/openstream/openstream-render.uc 2>/dev/null || true');
+				system(RENDER_UC + ' >/dev/null 2>&1 || true');
 				system('/etc/init.d/dnsmasq restart 2>/dev/null || true');
 				system('/etc/init.d/sing-box reload 2>/dev/null || true');
 
@@ -769,7 +962,7 @@ return {
 				if (req.args.bypass_clients) uci.set('openstream', 'security', 'bypass_clients', req.args.bypass_clients);
 				uci.commit('openstream');
 
-				system('/usr/bin/ucode /usr/share/openstream/openstream-render.uc 2>/dev/null || true');
+				system(RENDER_UC + ' >/dev/null 2>&1 || true');
 				system('/etc/init.d/openstream reload 2>/dev/null || true');
 				return { success: true, message: 'Параметры сетевой защиты и исключений успешно обновлены.' };
 			}
@@ -804,19 +997,43 @@ return {
 				uci.set('openstream', 'updates', 'update_core', req.args.update_core ? '1' : '0');
 				uci.commit('openstream');
 
-				let cron_line = "0 4 * * * /usr/bin/openstream-autoupdate >/dev/null 2>&1";
-				let cur_cron = readfile('/etc/crontabs/root') || '';
+				// Расписание cron инициирует ОБНОВЛЕНИЕ СПИСКОВ — это единственная
+				// реализованная часть автообновления.
+				//
+				// Ранее здесь прописывался /usr/bin/openstream-autoupdate, которого
+				// нет в пакете: задание ежедневно падало с «not found».
+				let cron_line = "0 4 * * * /usr/libexec/openstream-update-hostlists --force # openstream-autoupdate";
+
+				let cron_path = '/etc/crontabs/root';
+				let marker = /openstream-autoupdate/;
+
+				// Защита от потери чужих заданий: перезаписываем только если файл
+				// действительно прочитан.
+				let cur_cron = readfile(cron_path);
+				if (cur_cron == null) {
+					return {
+						success: false,
+						error: 'Не удалось прочитать ' + cron_path + '. Расписание не изменено.'
+					};
+				}
+
 				let new_cron = [];
 				for (let cl in split(cur_cron, '\n')) {
-					if (!match(cl, /openstream-autoupdate/)) push(new_cron, cl);
+					if (!match(cl, marker)) push(new_cron, cl);
 				}
 				if (req.args.auto_update_enabled) {
 					push(new_cron, cron_line);
 				}
-				writefile('/etc/crontabs/root', join('\n', new_cron) + '\n');
-				system('/etc/init.d/cron restart 2>/dev/null || true');
 
-				return { success: true, message: 'Настройки автообновления и расписание cron успешно сохранены.' };
+				writefile(cron_path, join('\n', new_cron) + '\n');
+				system('/etc/init.d/cron restart >/dev/null 2>&1 || true');
+
+				return {
+					success: true,
+					message: req.args.auto_update_enabled
+						? 'Автообновление списков включено (ежедневно в 04:00). Пакеты обновляются вручную через opkg.'
+						: 'Автообновление списков выключено.'
+				};
 			}
 		},
 
@@ -828,7 +1045,7 @@ return {
 				let nft_ok = access('/usr/sbin/nft');
 				let nft_loaded = false;
 				if (nft_ok) {
-					let p = fs.popen('nft list table inet openstream 2>/dev/null', 'r');
+					let p = popen('nft list table inet openstream 2>/dev/null', 'r');
 					if (p) {
 						let out = p.read('all');
 						p.close();
@@ -956,7 +1173,7 @@ return {
 						is_upx = true;
 					}
 
-					let p = fs.popen(bin_path + ' version 2>/dev/null', 'r');
+					let p = popen(shell_command([bin_path, 'version']) + ' 2>/dev/null', 'r');
 					if (p) {
 						let out = p.read('all');
 						p.close();
@@ -994,67 +1211,81 @@ return {
 				uci.set('openstream', 'singbox', 'variant', v);
 				uci.commit('openstream');
 
-				let log_file = '/tmp/openstream_update.log';
-				writefile(log_file, sprintf("[%s] Запрос на переключение варианта sing-box: %s\n", date(), v));
-				writefile(log_file, sprintf("[%s] Вариант сохранен в UCI openstream.singbox.variant=%s\n", date(), v));
+				// Сохраняем ВЫБОР варианта. Замена бинарника sing-box не
+				// реализована, поэтому не сообщаем о «переключении» —
+				// иначе пользователь считает сборку сменённой.
+				update_log_append(sprintf('Выбран вариант sing-box: %s', v));
 
 				return {
 					success: true,
-					message: 'Вариант sing-box успешно переключен на ' + v
+					applied: false,
+					message: sprintf('Вариант "%s" сохранён в настройках. Замена бинарника sing-box не выполнена: установите соответствующую сборку вручную.', v)
 				};
 			}
 		},
 
-		// --- 9. Менеджер обновлений и раздельное обновление ---
+		// --- 9. Менеджер обновлений ---
+		//
+		// Версии определяются по фактическому состоянию системы (opkg + сами
+		// бинарники). Ранее возвращались захардкоженные строки, из-за чего
+		// интерфейс всегда показывал доступность обновлений независимо от реальности.
 		check_updates: {
 			call: function(req) {
-				let updates = [
-					{
-						id: 'openstream_engine',
-						name: 'OpenStream Engine (Ядро Rust + ucode)',
-						installed_version: '0.4.2-35',
-						latest_version: '0.4.2-35',
+				let components = [];
+
+				for (let pkg in ['openstream-engine', 'luci-app-openstream']) {
+					push(components, {
+						id: replace(pkg, /-/g, '_'),
+						name: pkg,
+						installed_version: opkg_installed_version(pkg) ?? 'Не установлен',
+						latest_version: null,
 						update_available: false,
-						description: 'Основной демон потоковой фильтрации и C-интерпретатор ucode'
-					},
-					{
-						id: 'luci_app',
-						name: 'LuCI Web UI (Modern JS Views)',
-						installed_version: '0.4.2-35',
-						latest_version: '0.4.2-35',
-						update_available: false,
-						description: 'Интерфейс управления маршрутизацией без таблиц (OLED Dark)'
-					},
-					{
-						id: 'singbox',
-						name: 'sing-box Universal Proxy Core',
-						installed_version: access('/usr/bin/sing-box') ? '1.11.4' : 'Не установлен',
-						latest_version: '1.12.1',
-						update_available: true,
-						description: 'Высокоскоростной прокси-клиент (Stable, Extended, Tiny, Extended Compress)'
-					},
-					{
-						id: 'zapret2',
-						name: 'Zapret2 (nfqws2 Anti-DPI)',
-						installed_version: access('/usr/bin/nfqws2') ? '2.1.2' : (access('/usr/bin/nfqws') ? '1.8.x' : 'Не установлен'),
-						latest_version: '2.1.4',
-						update_available: true,
-						description: 'Десинхронизация TLS ClientHello и обход ТСПУ без VPN'
-					},
-					{
-						id: 'rules_catalog',
-						name: 'Каталог сервисных правил & GeoIP',
-						installed_version: 'rev. 2026-09-01 (6 правил)',
-						latest_version: 'rev. 2026-09-03 (актуален)',
-						update_available: false,
-						description: 'Правила .osrule.yaml для YouTube 4K, Discord Voice, Twitch и блокировок'
+						description: 'Версия из opkg. Обновление выполняется через opkg.'
+					});
+				}
+
+				push(components, {
+					id: 'singbox',
+					name: 'sing-box Universal Proxy Core',
+					installed_version: binary_version('/usr/bin/sing-box') ?? 'Не установлен',
+					latest_version: null,
+					update_available: false,
+					description: 'Прокси-клиент. Версия считана из бинарника.'
+				});
+
+				let nfqws_path = access('/usr/bin/nfqws2') ? '/usr/bin/nfqws2'
+					: (access('/usr/bin/nfqws') ? '/usr/bin/nfqws' : null);
+				push(components, {
+					id: 'zapret2',
+					name: 'Zapret2 (nfqws2 Anti-DPI)',
+					installed_version: nfqws_path ? (opkg_installed_version('zapret2') ?? 'установлен') : 'Не установлен',
+					latest_version: null,
+					update_available: false,
+					description: 'Десинхронизация DPI. Обновляется через фид zapret2-openwrt.'
+				});
+
+				let rule_count = 0;
+				let rule_entries = lsdir(RULES_DIR);
+				if (rule_entries) {
+					for (let f in rule_entries) {
+						if (match(f, /\.osrule\.ya?ml$/)) rule_count++;
 					}
-				];
+				}
+				push(components, {
+					id: 'rules_catalog',
+					name: 'Каталог сервисных правил',
+					installed_version: sprintf('%d правил', rule_count),
+					latest_version: null,
+					update_available: false,
+					description: 'Файлы .osrule.yaml в ' + RULES_DIR
+				});
 
 				return {
 					success: true,
-					has_updates: true,
-					components: updates,
+					// Удалённая проверка версий не реализована: сравнивать не с чем.
+					remote_check_supported: false,
+					has_updates: false,
+					components: components,
 					checked_at: time()
 				};
 			}
@@ -1064,33 +1295,24 @@ return {
 			args: { component: "all" },
 			call: function(req) {
 				let comp = req.args.component || 'all';
-				let log_file = '/tmp/openstream_update.log';
-
-				writefile(log_file, sprintf("[%s] Запуск обновления компонента: %s\n", date(), comp));
-				writefile(log_file, sprintf("[%s] Проверка свободного места во Flash (/overlay)... OK\n", date()));
-				writefile(log_file, sprintf("[%s] Загрузка проверочных контрольных сумм SHA256... OK\n", date()));
-
-				if (comp == 'all' || comp == 'singbox') {
-					writefile(log_file, sprintf("[%s] Обновление sing-box до последней версии... Успешно.\n", date()));
-				}
-				if (comp == 'all' || comp == 'zapret2') {
-					writefile(log_file, sprintf("[%s] Обновление Zapret2 (nfqws2)... Успешно.\n", date()));
-				}
-				if (comp == 'all' || comp == 'rules_catalog') {
-					writefile(log_file, sprintf("[%s] Синхронизация каталога правил .osrule.yaml... 6 правил обновлено.\n", date()));
-				}
-				if (comp == 'all' || comp == 'openstream_engine') {
-					writefile(log_file, sprintf("[%s] OpenStream Engine актуален (v2.1.0-r35).\n", date()));
-				}
-				if (comp == 'all' || comp == 'luci_app') {
-					writefile(log_file, sprintf("[%s] LuCI Web UI актуален (v2.1.0-r35).\n", date()));
+				if (!match(comp, /^(all|openstream_engine|luci_app|singbox|zapret2|rules_catalog)$/)) {
+					return { success: false, error: 'Неизвестный компонент' };
 				}
 
-				writefile(log_file, sprintf("[%s] Компонент [%s] успешно обновлен и синхронизирован!\n", date(), comp));
+				// Автоматическая установка пакетов НЕ реализована.
+				//
+				// Ранее функция писала в лог «Загрузка SHA256... OK» и «успешно
+				// обновлён», не выполняя никаких действий: пользователь оставался
+				// на старой версии, считая, что обновился.
+				update_log_append(sprintf('Запрошено обновление компонента: %s', comp));
+				update_log_append('Автоматическая установка не реализована в этой версии.');
+				update_log_append('Обновите компонент вручную: opkg update && opkg upgrade <package>');
 
 				return {
-					success: true,
-					message: 'Обновление успешно выполнено: ' + comp
+					success: false,
+					not_implemented: true,
+					error: 'Автоматическое обновление не реализовано. ' +
+						'Выполните обновление вручную: opkg update && opkg upgrade <пакет>.'
 				};
 			}
 		},

@@ -77,7 +77,9 @@ VPNSET_CUSTOM="$(echo "$VPNSET_CUSTOM" | tr -cd 'a-zA-Z0-9#_-')"
 	echo "nft_file: \"$NFT\""
 	echo "hostlist_file: \"$HOSTLIST\""
 	echo "hostlist_refresh_secs: $HLREFRESH"
-	[ -n "$VPNSET" ] && echo "geo_split_vpn_set: \"$VPNSET\""
+	# Ранее здесь проверялась несуществующая переменная $VPNSET, из-за чего
+	# geo_split_vpn_set никогда не попадал в config.yaml.
+	[ -n "$VPNSET_EU" ] && echo "geo_split_vpn_set: \"$VPNSET_EU\""
 	# Списки: всегда явный [] — иначе YAML `key:` = null и serde падает
 	# dedupe hostlist_services
 	echo "hostlist_services:"

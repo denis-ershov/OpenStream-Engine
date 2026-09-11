@@ -7,21 +7,22 @@
 
 <p align="center">
   <a href="https://github.com/denis-ershov/OpenStream-Engine/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/denis-ershov/OpenStream-Engine/ci.yml?branch=main&label=CI&logo=github" alt="CI Status"></a>
-  <a href="https://github.com/denis-ershov/OpenStream-Engine/releases"><img src="https://img.shields.io/badge/release-v2.1.0--r35-blue.svg?logo=openwrt" alt="Release"></a>
+  <a href="https://github.com/denis-ershov/OpenStream-Engine/releases"><img src="https://img.shields.io/badge/package-0.4.2--r36-blue.svg?logo=openwrt" alt="Package release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT"></a>
-  <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/Rust-1.80%2B-orange.svg?logo=rust" alt="Rust 1.80+"></a>
+  <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/Rust-stable-orange.svg?logo=rust" alt="Rust"></a>
   <a href="https://openwrt.org/"><img src="https://img.shields.io/badge/OpenWrt-24.10%20(aarch64)-0099ff.svg?logo=openwrt" alt="OpenWrt 24.10"></a>
 </p>
 
 <p align="center">
-  <a href="#-о-проекте-и-исследовательский-статус">О проекте</a> •
+  <a href="#-исследовательский-статус-experimental-beta--research-project">О проекте</a> •
   <a href="#-ключевые-возможности">Возможности</a> •
-  <a href="#-архитектура">Архитектура</a> •
-  <a href="#-быстрый-старт-openwrt">Установка</a> •
-  <a href="#-платформы">Платформы</a> •
+  <a href="#-архитектура-системы">Архитектура</a> •
+  <a href="#-быстрый-старт-установка-на-openwrt">Установка</a> •
+  <a href="#-кроссплатформенная-поддержка">Платформы</a> •
   <a href="#-структура-репозитория">Структура</a> •
-  <a href="#-безопасность">Безопасность</a> •
+  <a href="#-безопасность-security-by-design">Безопасность</a> •
   <a href="#-интеграции-и-используемые-компоненты">Интеграции</a> •
+  <a href="#-документация">Документация</a> •
   <a href="README_EN.md">English</a>
 </p>
 
@@ -40,7 +41,7 @@
 
 **OpenStream Engine 2.1** предлагает унифицированный подход:
 * **Единый формат правил (`.osrule.yaml`)**: одно и то же правило сервиса детерминированно исполняется на **OpenWrt-роутерах, iOS, Android, macOS, Windows и Linux**.
-* **Сверхлегкое нативное Rust-ядро (`openstream-core`)**: прямое сопоставление FQDN через Zero-Allocation Reverse Suffix Trie ($O(k)$) и поиск подсетей по Longest Prefix Match ($O(1)$). Потребление памяти **< 2 МБ RAM** без сборщика мусора (Zero GC), что гарантирует мгновенный отклик и совместимость с жестким лимитом Apple NetworkExtension Jetsam (15–50 МБ).
+* **Сверхлегкое нативное Rust-ядро (`openstream-core`)**: прямое сопоставление FQDN через Reverse Suffix Trie ($O(k)$, где $k$ — число меток домена) и поиск подсетей по Longest Prefix Match. Аллокаций в hot-path нет, сборщик мусора отсутствует (Zero GC) — это даёт предсказуемый отклик и совместимость с жестким лимитом Apple NetworkExtension Jetsam (15–50 МБ). Замеренный VmRSS idle процесса `streamproxyd` — **≈ 2.8 МБ** на GL-MT6000 ([методика](docs/PERFORMANCE.md)).
 * **Многоуровневые стратегии выхода**: в рамках одного правила домен может направляться по оптимальному сетевому пути без перегрузки VPN-каналов.
 
 ---
@@ -155,23 +156,74 @@ strategies:
 
 ## ⚡ Быстрый старт: Установка на OpenWrt
 
-Готовые пакеты для архитектуры **aarch64 (Cortex-A53)** доступны в каталоге [`dist/openwrt-24.10-a53/ipk/`](dist/openwrt-24.10-a53/ipk/):
+### Требования
+
+Пакет рассчитан на **OpenWrt 24.10 / 23.05**, архитектура **aarch64 (Cortex-A53)**.
+
+Обязательные зависимости устанавливаются автоматически через `Depends`, но
+важно понимать, что именно они дают:
+
+| Пакет | Зачем нужен |
+|---|---|
+| `dnsmasq-full` | Только эта сборка умеет `nftset=`. **Базовый `dnsmasq` её не поддерживает** — без него не наполнится ни один сет адресов. |
+| `kmod-nft-queue` | NFQUEUE 1088 — направление трафика в Zapret2 (`nfqws2`). |
+| `kmod-nft-tproxy` | Statement `tproxy` — перехват в sing-box. |
+| `ip-full` | `ip rule` / `ip route` для policy routing по метке (busybox `ip` не гарантирует поддержку `rule`). |
+| `ucode`, `ucode-mod-fs`, `ucode-mod-uci` | Исполнение рендерера `openstream-render.uc`. |
+
+### Установка
+
+Готовые пакеты лежат в каталоге [`dist/openwrt-24.10-a53/ipk/`](dist/openwrt-24.10-a53/ipk/).
+Сначала скопируйте их на роутер, затем установите:
 
 ```bash
-# 1. Обновите список пакетов роутера
+# 1. Скопируйте пакеты на роутер (выполняется на локальной машине)
+scp dist/openwrt-24.10-a53/ipk/openstream-engine_*.ipk \
+    dist/openwrt-24.10-a53/ipk/luci-app-openstream_*.ipk \
+    dist/openwrt-24.10-a53/ipk/luci-i18n-openstream-ru_*.ipk \
+    root@192.168.1.1:/tmp/
+
+# 2. Проверьте целостность (файл лежит рядом с пакетами)
+ssh root@192.168.1.1 'cd /tmp && sha256sum -c /dev/stdin' \
+    < dist/openwrt-24.10-a53/SHA256SUMS
+
+# 3. На роутере: обновите индексы (нужны для зависимостей) и установите
 opkg update
+opkg install /tmp/openstream-engine_*.ipk
+opkg install /tmp/luci-app-openstream_*.ipk
+opkg install /tmp/luci-i18n-openstream-ru_*.ipk
 
-# 2. Установите ядро и веб-интерфейс
-opkg install openstream-engine_0.4.2-35_aarch64_cortex-a53.ipk
-opkg install luci-app-openstream_0.4.2-35_all.ipk
-opkg install luci-i18n-openstream-ru_0.4.2-35_all.ipk
-
-# 3. Перезапустите веб-сервер LuCI
+# 4. Перезапустите RPC и веб-сервер LuCI
 /etc/init.d/rpcd restart
 /etc/init.d/uhttpd restart
 ```
 
-После установки перейдите в веб-интерфейс: **Службы → OpenStream Engine**.
+> Указывайте полный путь (`/tmp/...` или `./пакет.ipk`). `opkg install имя.ipk`
+> без пути ищет пакет в удалённых фидах и завершится ошибкой.
+
+### Проверка работоспособности
+
+```bash
+# Сервис запущен и слушает
+/etc/init.d/streamproxyd status
+wget -qO- http://127.0.0.1:18080/api/status
+
+# Правила применились: таблица существует и сеты наполнены
+nft list table inet openstream | head -40
+nft -j list table inet openstream | grep -c '"elem"'
+
+# Отобраны ли ваши правила
+ls -1 /etc/openstream/rules/
+
+# Если правила не применились — смотрите журнал
+logread -e openstream
+```
+
+При ошибке синтаксиса сгенерированного набора в журнал попадёт строка
+`nft check FAILED` с указанием причины, а текущий рабочий набор **не будет
+изменён** (перед применением выполняется `nft -c`).
+
+После установки откройте веб-интерфейс: **Службы → OpenStream Engine**.
 
 ---
 
@@ -180,13 +232,16 @@ opkg install luci-i18n-openstream-ru_0.4.2-35_all.ipk
 ```text
 ├── crates/
 │   ├── openstream-rule/          # AST парсер, схема .osrule.yaml, Ed25519 подписи
-│   ├── openstream-core/          # Zero-Alloc Reverse Suffix Trie, LPM IP-дерево
-│   ├── openstream-backend-openwrt# Генераторы nftables, dnsmasq, Zapret2, sing-box
-│   ├── openstream-backend-desktop# TUN сетевой адаптер для настольных ОС
+│   ├── openstream-core/          # Reverse Suffix Trie, LPM IP-дерево, PolicyEngine
+│   ├── openstream-backend-openwrt/  # Генераторы nftables, dnsmasq, Zapret2, sing-box
+│   ├── openstream-backend-desktop/  # TUN сетевой адаптер для настольных ОС
 │   ├── openstream-ffi/           # UniFFI Swift-биндинги для iOS и macOS
 │   ├── openstream-jni/           # NDK JNI-мост для Android
-│   ├── ose-proxy/                # Локальный HTTP/HLS прокси-движок
-│   └── streamproxyd/             # Системный демон CLI
+│   ├── openstream-cli/           # CLI: линтер правил, keygen/sign/verify, индексатор каталога
+│   ├── streamproxyd/             # Системный демон (HLS/DASH прокси, компиляция правил)
+│   └── ose-*/                    # Слой обработки медиа: ose-proxy, ose-manifest, ose-dash,
+│                                 #   ose-plugin-{twitch,hls,dash}, ose-detector, ose-cache,
+│                                 #   ose-rules, ose-api, ose-config, ose-observe и др.
 ├── luci-app-openstream/          # LuCI Web UI (ucode RPC демон + LuCI JS OLED Dark)
 │   └── root/
 │       ├── usr/share/rpcd/ucode/ # Серверный RPC плагин (openstream.uc)
@@ -194,10 +249,12 @@ opkg install luci-i18n-openstream-ru_0.4.2-35_all.ipk
 ├── platforms/
 │   ├── android/                  # Android приложение (VpnService + Jetpack Compose M3)
 │   └── ios/                      # iOS приложение (NetworkExtension + SwiftUI)
-├── rules/                        # Каталог декларативных правил (Twitch, YouTube, Crunchyroll)
+├── package/openwrt/              # Метаданные пакета и файлы для установки на роутер
+├── rules/                        # Каталог декларативных правил (streaming/, privacy/)
 ├── dist/                         # Готовые скомпилированные IPK пакеты для OpenWrt
-├── docs/                         # Полная архитектурная документация и CHANGELOG
-└── scripts/                      # Скрипты упаковки IPK и верификации
+├── docs/                         # Архитектурная документация, ADR, CHANGELOG, аудиты
+├── research/                     # Исследовательские материалы и референсные реализации
+└── scripts/                      # Упаковка IPK, проверка nftables и ucode
 ```
 
 ---
@@ -205,8 +262,39 @@ opkg install luci-i18n-openstream-ru_0.4.2-35_all.ipk
 ## 🛡️ Безопасность (Security by Design)
 
 * **Zero MITM**: Движок принципиально не расшифровывает TLS-трафик и не требует установки сторонних CA-сертификатов на клиентские устройства. Все SSL/TLS соединения проверяются напрямую конечными серверами.
-* **SecOps защита системных зон**: На уровне ядра запрещен перехват критических зон (`*.apple.com`, `windowsupdate.com`, банковские и платежные домены) без явного подтверждения администратором.
-* **Криптографические подписи**: Пакеты каталога правил подписываются ключами Ed25519 для защиты от подмены маршрутов.
+* **SecOps защита системных зон**: На уровне ядра запрещен перехват критических зон (`*.apple.com`, `windowsupdate.com`, банковские и платежные домены) без явного подтверждения администратором (`allow_sensitive: true`).
+* **Подписание правил**: Подпись и проверка манифестов Ed25519 реализованы в CLI (`openstream-cli keygen|sign|verify`). **Проверка подписи при загрузке правил в рантайме пока не выполняется** — не рассматривайте её как действующий контроль целостности.
+* **Обработка ввода в RPC**: Параметры RPC валидируются по allowlist, внешние команды формируются из массива аргументов с экранированием (без конкатенации в строку shell). В версиях до `0.4.2-r36` в методах импорта подписок и проверки задержки присутствовали уязвимости выполнения команд от root — см. [CHANGELOG](docs/CHANGELOG.md).
+* **Юридическая ответственность**: Инструмент предназначен для управления собственным сетевым трафиком на собственном оборудовании. Использование может регулироваться законодательством вашей юрисдикции и условиями вашего провайдера — ответственность за применение лежит на пользователе.
+
+---
+
+## 📚 Документация
+
+| Документ | Содержание |
+|---|---|
+| [docs/INDEX.md](docs/INDEX.md) | Полный индекс документации |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Архитектура: слои, матрица действий, кроссплатформенная модель |
+| [docs/POLICY_ROUTING_ARCHITECTURE.md](docs/POLICY_ROUTING_ARCHITECTURE.md) | Детальная спецификация маршрутизации: nftables, dnsmasq, sing-box, Zapret2 |
+| [docs/BUILD_OPENWRT.md](docs/BUILD_OPENWRT.md) | Сборка пакетов `.ipk` и `.apk` из исходников |
+| [docs/PERFORMANCE.md](docs/PERFORMANCE.md) | Замеры потребления памяти и размера артефактов |
+| [docs/COEXISTENCE.md](docs/COEXISTENCE.md) | Сосуществование с Podkop / Forkop / Zapret / PassWall |
+| [docs/CHANGELOG.md](docs/CHANGELOG.md) | История изменений |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | План развития и исследовательские задачи |
+| [docs/adr/](docs/adr/) | Architecture Decision Records |
+
+### Разработка
+
+```bash
+cargo test --workspace                 # тесты
+cargo clippy --workspace -- -D warnings # линтер (как в CI)
+cargo build -p streamproxyd            # демон
+
+# Проверка генерируемых конфигураций реальным парсером (требуется nft)
+scripts/check-nft-syntax.sh
+# Проверка ucode-скриптов компиляцией И исполнением (требуется ucode)
+scripts/check-ucode.sh
+```
 
 ---
 

@@ -1,19 +1,26 @@
-# OpenStream Engine — ONLY table inet openstream
+# OpenStream Engine — таблица transparent-divert (режим proxy.mode=transparent).
+#
+# ВАЖНО: таблица намеренно называется `openstream_divert`, а НЕ `openstream`.
+# Основную таблицу `inet openstream` генерирует движок правил (render.uc /
+# streamproxyd --compile-rules) и пересоздаёт её целиком через `delete table`.
+# Если divert жил бы в той же таблице, применение правил маршрутизации удаляло
+# бы сет openstream_hls и цепочку redirect (см. аудит, пункт M3).
+#
 # Не изменяет inet zapret / inet fw4 / podkop.
-# Set openstream_hls наполняется hostlist refresh / dnsmasq nftset.
+# Сет openstream_hls наполняется скриптом openstream-refresh-hls-set.
 
-add table inet openstream
+add table inet openstream_divert
 
-add set inet openstream openstream_hls {
+add set inet openstream_divert openstream_hls {
 	type ipv4_addr
 	flags interval
 	comment "Twitch/HLS CDN IPs for transparent divert"
 }
 
-add chain inet openstream prerouting {
+add chain inet openstream_divert prerouting {
 	type nat hook prerouting priority dstnat - 5
 	policy accept
 }
 
-# Только HLS CDN IP → local MITM (не весь 443)
-add rule inet openstream prerouting tcp dport 443 ip daddr @openstream_hls redirect to :18080
+# Только HLS CDN IP → локальный Edge/MITM (не весь 443)
+add rule inet openstream_divert prerouting tcp dport 443 ip daddr @openstream_hls redirect to :18080

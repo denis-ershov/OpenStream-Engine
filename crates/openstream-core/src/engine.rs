@@ -170,6 +170,9 @@ impl PolicyEngine {
 
         let mut state = self.state.write();
         state.domain_trie = trie;
+        // Сортировка LPM выполняется один раз после массовой загрузки —
+        // иначе она повторялась бы на каждой вставке (O(n² log n)).
+        iptable.finalize();
         state.ip_table = iptable;
     }
 

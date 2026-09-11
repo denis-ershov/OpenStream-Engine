@@ -89,7 +89,11 @@ impl<T: Clone> DomainTrie<T> {
     }
 
     /// Поиск наиболее специфичного правила для запрашиваемого FQDN
-    /// Выполняется без динамических аллокаций памяти в hot-path
+    ///
+    /// Аллокаций в hot-path нет: `insert` уже приводит метки к нижнему регистру,
+    /// а `HashMap<String, _>::get` принимает `&str` без создания `String`.
+    /// Понижение регистра выполняется только для меток, где он действительно
+    /// присутствует (в DNS-именах это редкий случай).
     pub fn find(&self, fqdn: &str) -> Option<&T> {
         let clean_fqdn = fqdn.trim().trim_end_matches('.');
         if clean_fqdn.is_empty() {
@@ -102,18 +106,23 @@ impl<T: Clone> DomainTrie<T> {
         let labels = clean_fqdn.rsplit('.');
 
         for label in labels {
-            let lower_label = label.to_ascii_lowercase();
-
             // Если текущий узел задает wildcard (*.domain), то все его поддомены наследуют это правило
             if let Some(ref w_val) = curr.wildcard_value {
                 best_wildcard = Some(w_val);
             }
 
-            if let Some(next) = curr.children.get(&lower_label) {
-                curr = next;
+            // Быстрый путь без аллокации: метка уже в нижнем регистре.
+            let next = if label.bytes().any(|b| b.is_ascii_uppercase()) {
+                let lower_label = label.to_ascii_lowercase();
+                curr.children.get(lower_label.as_str())
             } else {
+                curr.children.get(label)
+            };
+
+            match next {
+                Some(node) => curr = node,
                 // Дочерней ветки нет — возвращаем последнее подходящее wildcard-правило
-                return best_wildcard;
+                None => return best_wildcard,
             }
         }
 

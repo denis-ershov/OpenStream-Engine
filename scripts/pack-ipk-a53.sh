@@ -287,6 +287,7 @@ pack_engine() {
     "$ENGINE_PKG/etc/init.d" \
     "$ENGINE_PKG/etc/config" \
     "$ENGINE_PKG/etc/openstream" \
+    "$ENGINE_PKG/etc/openstream/rules" \
     "$ENGINE_PKG/etc/uci-defaults" \
     "$ENGINE_PKG/usr/share/openstream/nft" \
     "$ENGINE_PKG/usr/share/openstream/hostlists" \
@@ -299,9 +300,18 @@ pack_engine() {
   install -m 0755 "$ROOT/package/openwrt/files/openstream-refresh-hls-set" "$ENGINE_PKG/usr/libexec/openstream-refresh-hls-set"
   install -m 0755 "$ROOT/package/openwrt/files/openstream-refresh-opkg-list" "$ENGINE_PKG/usr/libexec/openstream-refresh-opkg-list"
   install -m 0755 "$ROOT/package/openwrt/files/openstream-resolve-smartdns" "$ENGINE_PKG/usr/libexec/openstream-resolve-smartdns"
+  # Рендерер конфигураций. Ранее не попадал в пакет: init всегда уходил в
+  # fallback, а RPC вызывал несуществующий файл (путь /usr/share/... вместо
+  # /usr/libexec/...). Без него декларативные правила не применялись.
+  install -m 0755 "$ROOT/package/openwrt/files/openstream-render.uc" "$ENGINE_PKG/usr/libexec/openstream-render.uc"
   install -m 0755 "$ROOT/package/openwrt/files/streamproxyd.init" "$ENGINE_PKG/etc/init.d/streamproxyd"
   install -m 0644 "$ROOT/package/openwrt/files/openstream.config" "$ENGINE_PKG/etc/config/openstream"
   install -m 0644 "$ROOT/package/openwrt/files/config.yaml" "$ENGINE_PKG/etc/openstream/config.yaml"
+  # Каталог декларативных правил: единый путь /etc/openstream/rules для init,
+  # RPC и рендерера. Ранее правила не устанавливались вообще, из-за чего
+  # компиляция правил не запускалась ни при каких условиях.
+  install -m 0644 "$ROOT/rules/streaming/"*.osrule.yaml "$ENGINE_PKG/etc/openstream/rules/"
+  install -m 0644 "$ROOT/rules/privacy/"*.osrule.yaml "$ENGINE_PKG/etc/openstream/rules/"
   install -m 0644 "$ROOT/package/openwrt/files/openstream.nft" "$ENGINE_PKG/usr/share/openstream/nft/openstream.nft"
   install -m 0644 "$ROOT/package/openwrt/files/hostlist-hls.txt" "$ENGINE_PKG/usr/share/openstream/hostlist-hls.txt"
   install -m 0644 "$ROOT/package/openwrt/files/hostlists/"*.txt "$ENGINE_PKG/usr/share/openstream/hostlists/"
@@ -309,10 +319,16 @@ pack_engine() {
   install -m 0755 "$ROOT/package/openwrt/files/uci-defaults-openstream-transparent" \
     "$ENGINE_PKG/etc/uci-defaults/41_openstream-transparent"
 
+  # Зависимости обязательны для заявленной функциональности:
+  #  * dnsmasq-full    — единственная сборка с `nftset=` (базовый dnsmasq не умеет);
+  #  * kmod-nft-queue  — NFQUEUE 1088 для Zapret2;
+  #  * kmod-nft-tproxy — statement `tproxy` для sing-box;
+  #  * ip-full         — `ip rule`/`ip route` для policy routing по fwmark;
+  #  * ucode-mod-fs/uci — модули, импортируемые openstream-render.uc.
   cat > "$ENGINE_PKG/CONTROL/control" <<EOF
 Package: ${PKG_NAME}
 Version: ${VERSION}-${RELEASE}
-Depends: ca-bundle
+Depends: ca-bundle, dnsmasq-full, kmod-nft-queue, kmod-nft-tproxy, ip-full, ucode, ucode-mod-fs, ucode-mod-uci
 License: MIT
 Section: net
 Architecture: ${ARCH}
@@ -322,8 +338,7 @@ EOF
   printf '%s\n' \
     /etc/config/openstream \
     /etc/openstream/config.yaml \
-    > "$ENGINE_PKG/CONTROL/conffiles"
-  write_default_scripts "$ENGINE_PKG/CONTROL"
+    > "$ENGINE_PKG/CONTROL/conffiles"  write_default_scripts "$ENGINE_PKG/CONTROL"
   [[ "$with_feed" == "1" ]] && install_opkg_list_meta "$ENGINE_PKG"
 
   pack_via_ipkg_build "$ENGINE_PKG" "$IPK_OUT"

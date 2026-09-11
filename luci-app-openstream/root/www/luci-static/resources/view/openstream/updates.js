@@ -172,15 +172,28 @@ return view.extend({
 						E('button', {
 							'class': 'os-hero-btn',
 							'click': function() {
-								ui.showModal('Обновление компонентов в 1 клик', [
-									E('p', { 'class': 'spinning' }, 'Выполняется безопасное обновление всех компонентов с проверкой SHA256...')
+								ui.showModal('Обновление компонентов', [
+									E('p', { 'class': 'spinning' }, 'Запрос на обновление компонентов...')
 								]);
-								callPerformUpdate('all').then(function() {
-									setTimeout(function() {
-										ui.hideModal();
-										ui.addNotification(null, E('p', {}, 'Все компоненты успешно обновлены!'), 'info');
+								// Результат определяется ответом демона: автоматическая
+								// установка в этой версии не реализована, поэтому
+								// сообщать об «успехе» без проверки нельзя.
+								callPerformUpdate('all').then(function(res) {
+									ui.hideModal();
+									if (res && res.not_implemented) {
+										ui.addNotification(null, E('p', {},
+											'Автоматическое обновление не реализовано в этой версии. ' +
+											'Обновите пакеты вручную: opkg update && opkg upgrade <пакет>.'), 'warning');
+									} else if (res && res.success) {
+										ui.addNotification(null, E('p', {}, 'Обновление выполнено.'), 'info');
 										window.location.reload();
-									}, 1500);
+									} else {
+										ui.addNotification(null, E('p', {},
+											'Обновление не выполнено: ' + ((res && res.error) || 'неизвестная ошибка')), 'error');
+									}
+								}).catch(function(err) {
+									ui.hideModal();
+									ui.addNotification(null, E('p', {}, 'Ошибка запроса обновления: ' + err), 'error');
 								});
 							}
 						}, '⚡ Обновить всё в 1 клик')
@@ -219,7 +232,7 @@ return view.extend({
 							'disabled': singboxInfo.configured_variant === 'stable',
 							'click': function() {
 								callSwitchSingboxVariant('stable').then(function() {
-									ui.addNotification(null, E('p', {}, 'Вариант sing-box переключен на Stable'), 'info');
+									ui.addNotification(null, E('p', {}, 'Выбран вариант Stable. Бинарник sing-box не заменён: установите соответствующую сборку вручную.'), 'warning');
 									window.location.reload();
 								});
 							}
@@ -244,7 +257,7 @@ return view.extend({
 							'disabled': singboxInfo.configured_variant === 'extended',
 							'click': function() {
 								callSwitchSingboxVariant('extended').then(function() {
-									ui.addNotification(null, E('p', {}, 'Вариант sing-box переключен на Extended (xHTTP)'), 'info');
+									ui.addNotification(null, E('p', {}, 'Выбран вариант Extended (xHTTP). Бинарник sing-box не заменён: установите соответствующую сборку вручную.'), 'warning');
 									window.location.reload();
 								});
 							}
@@ -269,7 +282,7 @@ return view.extend({
 							'disabled': singboxInfo.configured_variant === 'tiny',
 							'click': function() {
 								callSwitchSingboxVariant('tiny').then(function() {
-									ui.addNotification(null, E('p', {}, 'Вариант sing-box переключен на Tiny'), 'info');
+									ui.addNotification(null, E('p', {}, 'Выбран вариант Tiny. Бинарник sing-box не заменён: установите соответствующую сборку вручную.'), 'warning');
 									window.location.reload();
 								});
 							}
@@ -294,7 +307,7 @@ return view.extend({
 							'disabled': singboxInfo.configured_variant === 'extended_compress',
 							'click': function() {
 								callSwitchSingboxVariant('extended_compress').then(function() {
-									ui.addNotification(null, E('p', {}, 'Вариант sing-box переключен на Extended Compress'), 'info');
+									ui.addNotification(null, E('p', {}, 'Выбран вариант Extended Compress. Бинарник sing-box не заменён: установите соответствующую сборку вручную.'), 'warning');
 									window.location.reload();
 								});
 							}
@@ -404,17 +417,26 @@ return view.extend({
 							'style': 'margin-top: 14px; background: #1e293b; color: #38bdf8; border: 1px solid #334155;',
 							'click': function() {
 								ui.showModal('Обновление компонента', [
-									E('p', { 'class': 'spinning' }, 'Обновление ' + comp.name + '...')
+									E('p', { 'class': 'spinning' }, 'Запрос на обновление ' + comp.name + '...')
 								]);
-								callPerformUpdate(comp.id).then(function() {
-									setTimeout(function() {
-										ui.hideModal();
-										ui.addNotification(null, E('p', {}, comp.name + ' успешно обновлен.'), 'info');
+								callPerformUpdate(comp.id).then(function(res) {
+									ui.hideModal();
+									if (res && res.not_implemented) {
+										ui.addNotification(null, E('p', {},
+											'Автоматическое обновление не реализовано. Обновите вручную: opkg update && opkg upgrade <пакет>.'), 'warning');
+									} else if (res && res.success) {
+										ui.addNotification(null, E('p', {}, comp.name + ': обновление выполнено.'), 'info');
 										window.location.reload();
-									}, 1000);
+									} else {
+										ui.addNotification(null, E('p', {},
+											comp.name + ': ' + ((res && res.error) || 'не удалось выполнить обновление')), 'error');
+									}
+								}).catch(function(err) {
+									ui.hideModal();
+									ui.addNotification(null, E('p', {}, 'Ошибка запроса: ' + err), 'error');
 								});
 							}
-						}, comp.update_available ? 'Обновить до ' + comp.latest_version : 'Переустановить / Проверить')
+						}, comp.update_available ? 'Обновить до ' + comp.latest_version : 'Проверить')
 					]);
 				}))
 			]),

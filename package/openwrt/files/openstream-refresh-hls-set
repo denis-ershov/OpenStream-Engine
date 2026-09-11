@@ -3,7 +3,9 @@
 # Usage: openstream-refresh-hls-set [/path/to/hostlist]
 
 HOSTLIST="${1:-/var/run/openstream/hostlist-effective.txt}"
-SET="inet openstream openstream_hls"
+# Таблица divert отделена от основной `inet openstream`, которую пересоздаёт
+# движок правил (иначе сет удалялся бы при каждом применении маршрутов).
+SET="inet openstream_divert openstream_hls"
 
 if [ ! -f "$HOSTLIST" ]; then
 	# fallback shipped / compose

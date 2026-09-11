@@ -141,23 +141,38 @@ fn query_binary_capabilities(path: &Path) -> (Option<String>, bool) {
     }
 }
 
-/// Генерация безопасной конфигурации inbound для интеграции sing-box с OpenStream
-/// Направляет трафик по порту TPROXY 10888 с изолированной меткой fwmark 0x00880001
+/// Генерация безопасной конфигурации inbound для интеграции sing-box с OpenStream.
+///
+/// Важно:
+/// * TPROXY-сокет обязан слушать `0.0.0.0`, а не `127.0.0.1`: ядро отдаёт ему пакеты
+///   с чужим (удалённым) адресом назначения через `IP_TRANSPARENT`. На loopback
+///   такой трафик не придёт, и перехват молча не работает.
+/// * `route.default_mark` помечает исходящий трафик самого sing-box меткой
+///   0x00880002, по которой правило `meta mark ... return` в `mangle_prerouting`
+///   исключает его из повторного перехвата. Без этого возникает петля (решение #74).
 pub fn generate_singbox_inbound_config(tproxy_port: u16) -> String {
+    let routing_mark = crate::nftables::OPENSTREAM_SINGBOX_MARK;
     format!(
         r#"{{
   "inbounds": [
     {{
       "type": "tproxy",
       "tag": "openstream-tproxy-in",
-      "listen": "127.0.0.1",
+      "listen": "0.0.0.0",
       "listen_port": {tproxy_port},
       "sniff": true,
       "sniff_override_destination": false
     }}
   ],
+  "outbounds": [
+    {{
+      "type": "direct",
+      "tag": "direct"
+    }}
+  ],
   "route": {{
-    "auto_detect_interface": true
+    "auto_detect_interface": true,
+    "default_mark": {routing_mark}
   }}
 }}"#
     )
@@ -256,6 +271,24 @@ mod tests {
         assert!(cfg.contains(r#""listen_port": 10888"#));
         assert!(cfg.contains(r#""tag": "openstream-tproxy-in""#));
         assert!(cfg.contains(r#""type": "tproxy""#));
+    }
+
+    /// TPROXY обязан слушать 0.0.0.0: пакеты приходят с чужим destination-адресом.
+    #[test]
+    fn test_tproxy_listens_on_wildcard_not_loopback() {
+        let cfg = generate_singbox_inbound_config(10888);
+        assert!(cfg.contains(r#""listen": "0.0.0.0""#));
+        assert!(!cfg.contains(r#""listen": "127.0.0.1""#));
+    }
+
+    /// Без routing mark исходящий трафик sing-box снова попадёт в tproxy (петля #74).
+    #[test]
+    fn test_singbox_config_sets_routing_mark() {
+        let cfg = generate_singbox_inbound_config(10888);
+        assert!(cfg.contains(&format!(
+            r#""default_mark": {}"#,
+            crate::nftables::OPENSTREAM_SINGBOX_MARK
+        )));
     }
 
     #[test]

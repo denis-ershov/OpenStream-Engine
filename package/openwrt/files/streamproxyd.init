@@ -11,11 +11,25 @@ UCI2YAML=/usr/libexec/openstream-uci2yaml
 COMPOSE=/usr/libexec/openstream-compose-hostlist
 UPDATE_HL=/usr/libexec/openstream-update-hostlists
 REFRESH_SET=/usr/libexec/openstream-refresh-hls-set
+RENDER_UC=/usr/libexec/openstream-render.uc
 CONFIG=/etc/openstream/config.yaml
 NFT_FILE=/usr/share/openstream/nft/openstream.nft
+# Единый каталог правил для init, RPC и рендерера.
+RULES_DIR=/etc/openstream/rules
 CRON_FILE=/etc/crontabs/root
+# Маркер строк cron, принадлежащих OpenStream. Ранее переменная не была
+# определена, из-за чего sed получал пустой шаблон, а строки cron дублировались
+# при каждом reload. Значение должно совпадать с маркером в RPC-плагине
+# (openstream.uc, метод save_auto_update_config) — иначе init и LuCI не видят
+# записи друг друга и создают дубликаты.
+CRON_MARK="# openstream-autoupdate"
 HOSTS_FILE=/etc/hosts
 HOSTS_MARK="# openstream"
+
+# Policy routing для TPROXY: метка должна совпадать с OPENSTREAM_TPROXY_MARK
+# в crates/openstream-backend-openwrt/src/nftables.rs и в openstream-render.uc.
+TPROXY_MARK=0x00880001
+TPROXY_TABLE=8801
 
 remove_hosts_routes() {
 	if [ -f "$HOSTS_FILE" ] && grep -q "$HOSTS_MARK" "$HOSTS_FILE" 2>/dev/null; then
@@ -182,6 +196,103 @@ safe_dnsmasq_reload() {
 	fi
 }
 
+# Безопасное применение nft-файла.
+#
+# Ранее применение выглядело как `nft -f file 2>/dev/null || true`: любая ошибка
+# синтаксиса приводила к тому, что НИ ОДНО правило не загружалось, и это никак
+# не логировалось. Теперь сначала выполняется проверка `nft -c` (dry-run), и при
+# ошибке причина попадает в системный журнал.
+safe_nft_apply() {
+	local file="$1" what="$2"
+	[ -f "$file" ] || return 1
+
+	command -v nft >/dev/null 2>&1 || {
+		logger -t openstream -p daemon.err "nft not found — $what not applied"
+		return 1
+	}
+
+	local err
+	if ! err="$(nft -c -f "$file" 2>&1)"; then
+		logger -t openstream -p daemon.err "nft check FAILED for $what: ${err}"
+		logger -t openstream -p daemon.err "Ruleset left unchanged; fix the rule set and reload."
+		return 1
+	fi
+
+	if ! err="$(nft -f "$file" 2>&1)"; then
+		logger -t openstream -p daemon.err "nft apply failed for $what: ${err}"
+		return 1
+	fi
+
+	logger -t openstream "applied $what"
+	return 0
+}
+
+# Policy routing для TPROXY.
+#
+# Statement `tproxy ... meta mark set <mark>` в nftables только помечает пакет.
+# Чтобы помеченный пакет попал в локальный TPROXY-сокет sing-box, ядру нужен
+# отдельный маршрут через loopback. Без этих двух строк перехват не работает —
+# пакет уходит обычным маршрутом в WAN.
+setup_tproxy_routing() {
+	command -v ip >/dev/null 2>&1 || {
+		logger -t openstream -p daemon.err "ip utility not found — TPROXY policy routing skipped"
+		return 1
+	}
+
+	if ! ip rule list 2>/dev/null | grep -q "fwmark $TPROXY_MARK"; then
+		ip rule add fwmark "$TPROXY_MARK" lookup "$TPROXY_TABLE" 2>/dev/null || \
+			logger -t openstream -p daemon.err "failed to add ip rule for TPROXY mark"
+	fi
+
+	if ! ip route show table "$TPROXY_TABLE" 2>/dev/null | grep -q "local default"; then
+		ip route add local default dev lo table "$TPROXY_TABLE" 2>/dev/null || \
+			logger -t openstream -p daemon.err "failed to add local route for TPROXY table"
+	fi
+}
+
+teardown_tproxy_routing() {
+	command -v ip >/dev/null 2>&1 || return 0
+	# Удаляем только собственные записи; чужие таблицы маршрутизации не трогаем.
+	while ip rule list 2>/dev/null | grep -q "fwmark $TPROXY_MARK"; do
+		ip rule del fwmark "$TPROXY_MARK" lookup "$TPROXY_TABLE" 2>/dev/null || break
+	done
+	ip route flush table "$TPROXY_TABLE" 2>/dev/null || true
+}
+
+# Рендеринг правил .osrule.yaml в конфигурации dnsmasq и nftables.
+render_rules() {
+	[ -d "$RULES_DIR" ] || {
+		logger -t openstream "rules dir $RULES_DIR is absent — skipping rule rendering"
+		return 0
+	}
+
+	if [ -x "$RENDER_UC" ]; then
+		if "$RENDER_UC" >/dev/null 2>&1; then
+			safe_nft_apply "/tmp/openstream.nft" "openstream ruleset (ucode)"
+		else
+			logger -t openstream -p daemon.err "openstream-render.uc failed — rules not rendered"
+		fi
+	elif [ -x "$PROG" ]; then
+		if "$PROG" --compile-rules \
+			--rules-dir "$RULES_DIR" \
+			--out-dnsmasq "/tmp/dnsmasq.d/openstream-rules.conf" \
+			--out-nft "/tmp/openstream-rules.nft" >/dev/null 2>&1; then
+			safe_nft_apply "/tmp/openstream-rules.nft" "openstream ruleset (rust)"
+		else
+			logger -t openstream -p daemon.err "streamproxyd --compile-rules failed — rules not rendered"
+		fi
+	else
+		logger -t openstream -p daemon.err "no renderer available (neither $RENDER_UC nor $PROG)"
+	fi
+
+	# Policy routing нужен только при наличии TPROXY-правил.
+	if grep -q "tproxy to" /tmp/openstream.nft /tmp/openstream-rules.nft 2>/dev/null; then
+		setup_tproxy_routing
+	else
+		teardown_tproxy_routing
+	fi
+}
+
 apply_dnsmasq() {
 	local has_nft=0
 	dnsmasq --version 2>/dev/null | grep -q "nftset" && has_nft=1
@@ -282,22 +393,7 @@ apply_dnsmasq() {
 	} > "$CONF_TMP"
 
 	# OpenStream 2.1: компиляция сервисных правил .osrule.yaml в dnsmasq и nftables
-	if [ -x /usr/libexec/openstream-render.uc ]; then
-		/usr/libexec/openstream-render.uc >/dev/null 2>&1 || true
-		if [ -f "/tmp/openstream.nft" ] && command -v nft >/dev/null 2>&1; then
-			nft -f "/tmp/openstream.nft" 2>/dev/null || true
-		fi
-		logger -t openstream "rendered .osrule packages via ucode"
-	elif [ -x "$PROG" ] && [ -d "/usr/share/openstream/rules" ]; then
-		"$PROG" --compile-rules \
-			--rules-dir "/usr/share/openstream/rules" \
-			--out-dnsmasq "/tmp/dnsmasq.d/openstream-rules.conf" \
-			--out-nft "/tmp/openstream-rules.nft" >/dev/null 2>&1 || true
-		if [ -f "/tmp/openstream-rules.nft" ] && command -v nft >/dev/null 2>&1; then
-			nft -f "/tmp/openstream-rules.nft" 2>/dev/null || true
-		fi
-		logger -t openstream "compiled .osrule packages from /usr/share/openstream/rules"
-	fi
+	render_rules
 
 	# Перезапускаем dnsmasq только если конфиг изменился
 	if ! cmp -s "$CONF_TMP" "$CONF_LIVE" 2>/dev/null; then
@@ -329,14 +425,15 @@ apply_transparent_nft() {
 	config_get mode proxy mode edge
 	case "$mode" in
 		transparent|redirect_whitelist)
-			[ -f "$NFT_FILE" ] || return 0
-			nft -f "$NFT_FILE" 2>/dev/null || logger -t openstream "nft apply failed (fail-soft)"
+			# Divert живёт в отдельной таблице inet openstream_divert, чтобы
+			# пересоздание основной таблицы движком правил не удаляло его.
+			safe_nft_apply "$NFT_FILE" "transparent divert table"
 			[ -x "$COMPOSE" ] && "$COMPOSE" >/dev/null 2>&1 || true
 			[ -x "$REFRESH_SET" ] && "$REFRESH_SET" >/dev/null 2>&1 || true
 			;;
 		*)
 			# Edge/explicit/geo_split/off — не держим divert
-			nft delete table inet openstream 2>/dev/null || true
+			nft delete table inet openstream_divert 2>/dev/null || true
 			;;
 	esac
 }
@@ -400,7 +497,11 @@ service_triggers() {
 }
 
 stop_service() {
+	# Удаляем только собственные таблицы; inet fw4 / inet zapret не трогаем.
 	nft delete table inet openstream 2>/dev/null || true
+	nft delete table inet openstream_divert 2>/dev/null || true
+	# Снимаем policy routing, иначе метка продолжит уводить трафик на loopback.
+	teardown_tproxy_routing
 	# Точечно удаляем записи OpenStream из /etc/hosts
 	remove_hosts_routes
 	# Удаляем все сгенерированные файлы правил и конфигурации dnsmasq

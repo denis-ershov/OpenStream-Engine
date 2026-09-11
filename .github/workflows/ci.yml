@@ -25,6 +25,41 @@ jobs:
       - name: Slim Twitch build
         run: cargo build -p streamproxyd --no-default-features --features slim-twitch
 
+  # Проверка того, что генерируемые конфигурации действительно принимаются
+  # ядром. Юнит-тесты проверяют лишь наличие подстрок, поэтому пропустили
+  # правила с `redirect` в filter-цепочке и `reject` в prerouting: файл не
+  # загружался целиком, а ошибка глушилась `2>/dev/null`.
+  nft-syntax:
+    name: nftables syntax (real parser)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install nftables
+        run: sudo apt-get update && sudo apt-get install -y nftables
+      # nft -c требует CAP_NET_ADMIN; в непривилегированном user namespace
+      # тест выполняется без root-прав на раннере.
+      - name: Validate generated ruleset
+        run: unshare -rn sh scripts/check-nft-syntax.sh
+
+  # Проверка ucode-скриптов ИСПОЛНЕНИЕМ, а не только компиляцией: `ucode -c`
+  # не выявляет импорт несуществующих символов и часть ошибок в регексах.
+  ucode-check:
+    name: ucode scripts (compile + execute)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ucode
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ucode || {
+            echo "ucode отсутствует в репозиториях — проверка пропущена"
+            exit 0
+          }
+      - name: Validate ucode scripts
+        run: sh scripts/check-ucode.sh
+
   musl-aarch64:
     name: release aarch64-musl
     runs-on: ubuntu-latest
