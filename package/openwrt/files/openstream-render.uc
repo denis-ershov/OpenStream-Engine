@@ -171,10 +171,17 @@ for (let l in rule_lines) {
 
 // ------------------------------------------------------------ Генерация nft
 
-// Атомарное обновление таблицы inet openstream (не затрагивает inet zapret,
-// inet fw4 и inet openstream_divert).
-nft_buf += "table inet openstream\n";
-nft_buf += "delete table inet openstream\n";
+// Идемпотентное обновление таблицы inet openstream без сброса динамических сетов (M4).
+// Не затрагивает inet zapret, inet fw4 и inet openstream_divert.
+nft_buf += "add table inet openstream\n";
+if (sets_needed.streamproxy) {
+	nft_buf += "add chain inet openstream nat_prerouting { type nat hook prerouting priority dstnat - 5; policy accept; }\n";
+	nft_buf += "flush chain inet openstream nat_prerouting\n";
+}
+nft_buf += "add chain inet openstream mangle_prerouting { type filter hook prerouting priority mangle - 5; policy accept; }\n";
+nft_buf += "flush chain inet openstream mangle_prerouting\n";
+nft_buf += "add chain inet openstream openstream_tproxy { type filter hook input priority filter - 1; policy accept; }\n";
+nft_buf += "flush chain inet openstream openstream_tproxy\n";
 nft_buf += "table inet openstream {\n";
 
 nft_buf += "    set bypass_targets { type ipv4_addr; flags interval, timeout; timeout 1d; size 65536; }\n";

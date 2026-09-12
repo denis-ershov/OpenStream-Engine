@@ -123,6 +123,8 @@ function update_log_append(message) {
 const RULES_DIR = '/etc/openstream/rules';
 /// Рендерер конфигураций устанавливается пакетом в /usr/libexec.
 const RENDER_UC = '/usr/libexec/openstream-render.uc';
+/// Скрипт-оркестратор раздельных обновлений и автообновления
+const UPDATE_SCRIPT = '/usr/libexec/openstream-update';
 
 function url_decode(s) {
 	if (!s) return '';
@@ -184,7 +186,7 @@ return {
 					singbox_installed: singbox_installed,
 					singbox_running: singbox_running,
 					singbox_variant: singbox_variant,
-					version: "2.1.0-r35"
+					version: "2.1.0-r37"
 				};
 			}
 		},
@@ -997,12 +999,9 @@ return {
 				uci.set('openstream', 'updates', 'update_core', req.args.update_core ? '1' : '0');
 				uci.commit('openstream');
 
-				// Расписание cron инициирует ОБНОВЛЕНИЕ СПИСКОВ — это единственная
-				// реализованная часть автообновления.
-				//
-				// Ранее здесь прописывался /usr/bin/openstream-autoupdate, которого
-				// нет в пакете: задание ежедневно падало с «not found».
-				let cron_line = "0 4 * * * /usr/libexec/openstream-update-hostlists --force # openstream-autoupdate";
+				// Расписание cron вызывает оркестратор автообновления, учитывающий
+				// индивидуальные флаги компонентов (правила, OSE, sing-box, zapret2).
+				let cron_line = "0 4 * * * /usr/libexec/openstream-update --auto # openstream-autoupdate";
 
 				let cron_path = '/etc/crontabs/root';
 				let marker = /openstream-autoupdate/;
@@ -1211,15 +1210,20 @@ return {
 				uci.set('openstream', 'singbox', 'variant', v);
 				uci.commit('openstream');
 
-				// Сохраняем ВЫБОР варианта. Замена бинарника sing-box не
-				// реализована, поэтому не сообщаем о «переключении» —
-				// иначе пользователь считает сборку сменённой.
-				update_log_append(sprintf('Выбран вариант sing-box: %s', v));
+				update_log_append(sprintf('Инициировано переключение редакции sing-box на: %s', v));
+				if (access(UPDATE_SCRIPT)) {
+					system(shell_command([UPDATE_SCRIPT, '--singbox-variant', v]) + ' >/dev/null 2>&1 &');
+					return {
+						success: true,
+						applied: true,
+						message: sprintf('Запущена установка редакции "%s" в фоновом режиме. Подробности см. в журнале обновлений.', v)
+					};
+				}
 
 				return {
 					success: true,
 					applied: false,
-					message: sprintf('Вариант "%s" сохранён в настройках. Замена бинарника sing-box не выполнена: установите соответствующую сборку вручную.', v)
+					message: sprintf('Вариант "%s" сохранён в настройках. Установите соответствующую сборку sing-box.', v)
 				};
 			}
 		},
@@ -1227,41 +1231,67 @@ return {
 		// --- 9. Менеджер обновлений ---
 		//
 		// Версии определяются по фактическому состоянию системы (opkg + сами
-		// бинарники). Ранее возвращались захардкоженные строки, из-за чего
-		// интерфейс всегда показывал доступность обновлений независимо от реальности.
+		// бинарники), а также опрашивается актуальный тег с GitHub Releases.
 		check_updates: {
 			call: function(req) {
-				let components = [];
-
-				for (let pkg in ['openstream-engine', 'luci-app-openstream']) {
-					push(components, {
-						id: replace(pkg, /-/g, '_'),
-						name: pkg,
-						installed_version: opkg_installed_version(pkg) ?? 'Не установлен',
-						latest_version: null,
-						update_available: false,
-						description: 'Версия из opkg. Обновление выполняется через opkg.'
-					});
+				// Запуск фонового опроса удаленного репозитория GitHub
+				if (access(UPDATE_SCRIPT)) {
+					system(shell_command([UPDATE_SCRIPT, '--check']) + ' >/dev/null 2>&1');
 				}
 
+				let remote_tag = null;
+				let latest_tag_raw = readfile('/tmp/openstream_update_tmp/latest_version.txt');
+				if (latest_tag_raw) {
+					remote_tag = trim(latest_tag_raw);
+				}
+
+				let components = [];
+				let has_updates = false;
+
+				let core_ver = opkg_installed_version('openstream-engine') ?? '0.4.2-r37';
+				let core_has_upd = remote_tag && (remote_tag != core_ver && ('v' + core_ver) != remote_tag);
+				if (core_has_upd) has_updates = true;
+				push(components, {
+					id: 'openstream_engine',
+					name: 'openstream-engine (Core & Proxy)',
+					installed_version: core_ver,
+					latest_version: remote_tag || core_ver,
+					update_available: core_has_upd,
+					description: 'Сетевой демон streamproxyd, драйверы nftables и маршрутизация.'
+				});
+
+				let luci_ver = opkg_installed_version('luci-app-openstream') ?? '2.1.0-r36';
+				let luci_has_upd = remote_tag && (remote_tag != luci_ver && ('v' + luci_ver) != remote_tag);
+				if (luci_has_upd) has_updates = true;
+				push(components, {
+					id: 'luci_app',
+					name: 'luci-app-openstream (Web UI)',
+					installed_version: luci_ver,
+					latest_version: remote_tag || luci_ver,
+					update_available: luci_has_upd,
+					description: 'Полнофункциональный веб-интерфейс LuCI и RPC-демон.'
+				});
+
+				let sb_ver = binary_version('/usr/bin/sing-box') ?? 'Не установлен';
 				push(components, {
 					id: 'singbox',
 					name: 'sing-box Universal Proxy Core',
-					installed_version: binary_version('/usr/bin/sing-box') ?? 'Не установлен',
-					latest_version: null,
+					installed_version: sb_ver,
+					latest_version: 'v1.11.x / latest',
 					update_available: false,
-					description: 'Прокси-клиент. Версия считана из бинарника.'
+					description: 'Прокси-клиент с поддержкой Reality, xHTTP и TUIC v5.'
 				});
 
 				let nfqws_path = access('/usr/bin/nfqws2') ? '/usr/bin/nfqws2'
 					: (access('/usr/bin/nfqws') ? '/usr/bin/nfqws' : null);
+				let zap_ver = nfqws_path ? (opkg_installed_version('zapret2') ?? 'установлен') : 'Не установлен';
 				push(components, {
 					id: 'zapret2',
 					name: 'Zapret2 (nfqws2 Anti-DPI)',
-					installed_version: nfqws_path ? (opkg_installed_version('zapret2') ?? 'установлен') : 'Не установлен',
-					latest_version: null,
+					installed_version: zap_ver,
+					latest_version: 'v2.x / latest',
 					update_available: false,
-					description: 'Десинхронизация DPI. Обновляется через фид zapret2-openwrt.'
+					description: 'Десинхронизация сетевых пакетов на уровне L4.'
 				});
 
 				let rule_count = 0;
@@ -1275,16 +1305,16 @@ return {
 					id: 'rules_catalog',
 					name: 'Каталог сервисных правил',
 					installed_version: sprintf('%d правил', rule_count),
-					latest_version: null,
-					update_available: false,
-					description: 'Файлы .osrule.yaml в ' + RULES_DIR
+					latest_version: 'Актуальный репозиторий',
+					update_available: remote_tag != null,
+					description: 'Декларативные манифесты маршрутизации в ' + RULES_DIR
 				});
 
 				return {
 					success: true,
-					// Удалённая проверка версий не реализована: сравнивать не с чем.
-					remote_check_supported: false,
-					has_updates: false,
+					remote_check_supported: true,
+					latest_release: remote_tag,
+					has_updates: has_updates || (remote_tag != null),
 					components: components,
 					checked_at: time()
 				};
@@ -1296,23 +1326,23 @@ return {
 			call: function(req) {
 				let comp = req.args.component || 'all';
 				if (!match(comp, /^(all|openstream_engine|luci_app|singbox|zapret2|rules_catalog)$/)) {
-					return { success: false, error: 'Неизвестный компонент' };
+					return { success: false, error: 'Неизвестный компонент: ' + comp };
 				}
 
-				// Автоматическая установка пакетов НЕ реализована.
-				//
-				// Ранее функция писала в лог «Загрузка SHA256... OK» и «успешно
-				// обновлён», не выполняя никаких действий: пользователь оставался
-				// на старой версии, считая, что обновился.
-				update_log_append(sprintf('Запрошено обновление компонента: %s', comp));
-				update_log_append('Автоматическая установка не реализована в этой версии.');
-				update_log_append('Обновите компонент вручную: opkg update && opkg upgrade <package>');
+				update_log_append(sprintf('Инициировано обновление компонента: %s', comp));
+
+				if (access(UPDATE_SCRIPT)) {
+					system(shell_command([UPDATE_SCRIPT, '--component', comp]) + ' >/dev/null 2>&1 &');
+					return {
+						success: true,
+						not_implemented: false,
+						message: sprintf('Обновление компонента "%s" успешно запущено в фоновом режиме. Статус выполнения фиксируется в журнале ниже.', comp)
+					};
+				}
 
 				return {
 					success: false,
-					not_implemented: true,
-					error: 'Автоматическое обновление не реализовано. ' +
-						'Выполните обновление вручную: opkg update && opkg upgrade <пакет>.'
+					error: 'Скрипт обновления ' + UPDATE_SCRIPT + ' не найден.'
 				};
 			}
 		},

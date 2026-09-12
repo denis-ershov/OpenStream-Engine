@@ -37,16 +37,34 @@ pub fn compile_rules_dir(
                     let sub_entry = sub_entry?;
                     let sub_path = sub_entry.path();
                     if sub_path.is_file() && sub_path.to_string_lossy().ends_with(".osrule.yaml") {
-                        if let Ok(rule) = load_rule_file(&sub_path) {
-                            engine.add_rule(rule);
-                            loaded_count += 1;
+                        match load_rule_file(&sub_path) {
+                            Ok(rule) => {
+                                engine.add_rule(rule);
+                                loaded_count += 1;
+                            }
+                            Err(err) => {
+                                eprintln!(
+                                    "[openstream] Внимание: не удалось загрузить правило '{}': {}",
+                                    sub_path.display(),
+                                    err
+                                );
+                            }
                         }
                     }
                 }
             } else if path.is_file() && path.to_string_lossy().ends_with(".osrule.yaml") {
-                if let Ok(rule) = load_rule_file(&path) {
-                    engine.add_rule(rule);
-                    loaded_count += 1;
+                match load_rule_file(&path) {
+                    Ok(rule) => {
+                        engine.add_rule(rule);
+                        loaded_count += 1;
+                    }
+                    Err(err) => {
+                        eprintln!(
+                            "[openstream] Внимание: не удалось загрузить правило '{}': {}",
+                            path.display(),
+                            err
+                        );
+                    }
                 }
             }
         }

@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/denis-ershov/OpenStream-Engine/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/denis-ershov/OpenStream-Engine/ci.yml?branch=main&label=CI&logo=github" alt="CI Status"></a>
-  <a href="https://github.com/denis-ershov/OpenStream-Engine/releases"><img src="https://img.shields.io/badge/release-v2.1.0--r35-blue.svg?logo=openwrt" alt="Release"></a>
+  <a href="https://github.com/denis-ershov/OpenStream-Engine/releases"><img src="https://img.shields.io/badge/release-v2.1.0--r37-blue.svg?logo=openwrt" alt="Release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT"></a>
   <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/Rust-1.80%2B-orange.svg?logo=rust" alt="Rust 1.80+"></a>
   <a href="https://openwrt.org/"><img src="https://img.shields.io/badge/OpenWrt-24.10%20(aarch64)-0099ff.svg?logo=openwrt" alt="OpenWrt 24.10"></a>
@@ -40,7 +40,7 @@ Most existing networking utilities fall into two extremes: either monolithic VPN
 
 **OpenStream Engine 2.1** introduces a unified, modern architecture:
 * **Universal Rule Specification (`.osrule.yaml`)**: A single declarative service rule executes deterministically across **OpenWrt routers, iOS, Android, macOS, Windows, and Linux**.
-* **Ultra-Lightweight Native Rust Core (`openstream-core`)**: Zero-allocation Reverse Suffix Trie domain matching ($O(k)$) and Longest Prefix Match CIDR lookup ($O(1)$). Memory footprint is **< 2 MB RAM** with zero Garbage Collector pauses, guaranteeing instantaneous response times and full compliance with Apple's strict iOS NetworkExtension Jetsam ceiling (15–50 MB).
+* **Ultra-Lightweight Native Rust Core (`openstream-core`)**: Reverse Suffix Trie domain matching ($O(k)$, where $k$ is domain label count) and Longest Prefix Match CIDR lookup. Memory footprint is **< 3 MB RAM** with zero Garbage Collector pauses, guaranteeing instantaneous response times and full compliance with Apple's strict iOS NetworkExtension Jetsam ceiling (15–50 MB). Measured idle VmRSS of `streamproxyd` is **≈ 2.8 MB** on GL-MT6000 ([methodology](docs/PERFORMANCE.md)).
 * **Multi-Tier Egress Strategies**: Within the same rule manifest, traffic is split so that bandwidth-heavy video CDNs stay on direct ISP WAN while authentication and API requests route through clean relays or local desynchronizers.
 
 ---
@@ -203,10 +203,11 @@ Navigate to **Services → OpenStream Engine** in the LuCI interface.
 ---
 
 ## 🛡️ Security by Design
-
+ 
 * **Zero MITM**: The engine deliberately avoids TLS interception and never requires installing custom root certificates on user devices.
 * **SecOps Protected Domains**: The core actively prohibits intercepting critical infrastructure (`*.apple.com`, `windowsupdate.com`, banking/payment portals) without explicit administrative override.
-* **Ed25519 Signatures**: Rule catalogs are cryptographically signed to prevent malicious route injections.
+* **Rule Signing & Integrity**: Cryptographic manifest signing and verification are supported via CLI (`openstream-cli keygen|sign|verify`). Rule catalog runtime verification is on the roadmap.
+* **Hardened RPC & Strict ACL**: Server-side RPC methods enforce strict input allowlisting and POSIX argument quoting to prevent command injections. Access rights are strictly partitioned between read-only observability and privileged write operations.
 
 ---
 

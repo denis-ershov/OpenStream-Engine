@@ -60,19 +60,23 @@ OpenStream Engine трансформировался в **универсальн
 ### Слой 3: Платформенные адаптеры (Network Backends)
 1. **OpenWrt / Linux Routers (`openstream-backend-openwrt`)**:
    * **nftables**: таблица `inet openstream`, цепочка `mangle_prerouting`.
+   * **Сохранение динамических сетов (M4)**: создание таблицы через `add table` с атомарной очисткой цепочек `flush chain`, что гарантирует сохранение накопленных `dnsmasq` IP-адресов в `bypass_targets`, `zapret2_targets`, `vpn_default` при любых обновлениях конфигурации.
    * **Приоритет Bypass**: `ip daddr @bypass_targets return` выполняется в самом начале цепочки ДО очередей Zapret2 и VPN!
    * **dnsmasq**: директивы `nftset=/<domain>/4#inet#openstream#<set_name>`. Без перехвата порта 53.
    * **sing-box 4 сборок**: Stable, Extended (xHTTP/Reality), Tiny (<8 МБ), Extended Compress (UPX).
    * **Zapret2**: интеграция с `nfqws2` по очереди 1088, поддержка готовых пресетов и `custom_args`.
 2. **Desktop Windows, macOS, Linux (`openstream-backend-desktop`)**:
    * Адаптер на базе TUN и системных таблиц маршрутизации.
+   * Кроссплатформенный CLI инструмент `osrule` (`crates/openstream-cli`) с поддержкой команд `lint`, `keygen`, `sign`, `verify`, `index` и `update`.
 3. **Android (`openstream-jni`, `platforms/android/`)**:
    * JNI-мост к ядру `openstream-core`, служба `OpenStreamVpnService`, Jetpack Compose интерфейс.
 4. **iOS (`openstream-ffi`, `platforms/ios/`)**:
    * UniFFI Swift-биндинги, `PacketTunnelProvider` с акторной изоляцией Swift 6 Strict Concurrency.
 
 ### Слой 4: Пользовательские интерфейсы и RPC
-* **Серверный ucode RPC (`openstream.uc`)**: модульный RPC-слой без утечек памяти и с защитой от Command Injection.
+* **Серверный ucode RPC (`openstream.uc`)**: модульный RPC-слой без утечек памяти, со строгой валидацией входных данных и защитой от Command Injection.
+* **Строгая модель доступа ACL (S3)**: разделение на read-only методы наблюдения и привилегированные методы изменения конфигурации и управления службами.
+* **Оркестратор обновлений (`/usr/libexec/openstream-update`)**: раздельное обновление каталога правил, ядра OSE, веб-интерфейса LuCI, sing-box и zapret2 через GitHub Releases API, с поддержкой фонового расписания в cron.
 * **LuCI Web UI (`luci-app-openstream`)**:
   * Строгий принцип **Mobile First** (Правила 8–11): категорический запрет HTML-таблиц, карточный адаптивный дизайн OLED Dark (`#020617`, `#0b1329`).
   * Экраны: `routing.js` (политики маршрутизации), `servers.js` (управление серверами, замер задержки, импорт подписок), `monitor.js` (живой трафик), `services.js` (Multi-DNS, безопасность, бэкап), `updates.js` (раздельные обновления, автообновление cron), `diagnostics.js` (самодиагностика системы).

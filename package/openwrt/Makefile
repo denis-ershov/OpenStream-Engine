@@ -7,7 +7,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=openstream-engine
 PKG_VERSION:=0.4.2
-PKG_RELEASE:=35
+PKG_RELEASE:=37
 
 PKG_LICENSE:=MIT
 PKG_MAINTAINER:=Denis Ershov
@@ -73,6 +73,8 @@ define Package/openstream-engine/install
 	$(INSTALL_BIN) ./files/openstream-refresh-hls-set $(1)/usr/libexec/openstream-refresh-hls-set
 	$(INSTALL_BIN) ./files/openstream-refresh-opkg-list $(1)/usr/libexec/openstream-refresh-opkg-list
 	$(INSTALL_BIN) ./files/openstream-resolve-smartdns $(1)/usr/libexec/openstream-resolve-smartdns
+	# Оркестратор обновлений и автообновления по cron
+	$(INSTALL_BIN) ./files/openstream-update $(1)/usr/libexec/openstream-update
 	# Рендерер конфигураций (ucode). Ранее не устанавливался, из-за чего init
 	# всегда уходил в fallback, а RPC вызывал несуществующий файл.
 	$(INSTALL_BIN) ./files/openstream-render.uc $(1)/usr/libexec/openstream-render.uc

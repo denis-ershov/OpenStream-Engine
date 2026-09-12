@@ -1,5 +1,42 @@
 # Changelog
 
+## [0.4.2-r37] — 2026-09-12 — 100% Production Readiness & Component Updates
+
+Реализация полного комплекса задач по устранению остаточных замечаний аудита: внедрение строгой модели доступа ACL, структурированного логирования ошибок парсинга правил, бесшовного обновления nftables без сброса DNS-сетов и полноценной подсистемы раздельных обновлений и автообновления.
+
+### Безопасность и Access Control
+- **Ужесточение rpcd ACL (`luci-app-openstream.json` — S3):**
+  Полностью исключен wildcard `"openstream": ["*"]`. Права доступа разделены на явные списки допустимых методов:
+  - `read`: `["status", "get_routing", "test_route", "get_monitor_flows", "get_servers", "test_server_latency", "get_security_settings", "get_auto_update_config", "run_diagnostics", "create_backup", "get_singbox_info", "check_updates", "get_update_log"]`.
+  - `write`: `["save_routing", "clear_monitor_flows", "save_servers", "import_subscription", "save_dns_config", "save_security_settings", "save_auto_update_config", "restore_backup", "switch_singbox_variant", "perform_update"]`.
+
+### Надежность и бесшовность сетевого стека
+- **Сохранение динамических nftables-сетов при реконфигурации (M4):**
+  И в Rust-генераторе (`crates/openstream-backend-openwrt/src/nftables.rs`), и в ucode-рендерере (`package/openwrt/files/openstream-render.uc`) деструктивная замена `delete table inet openstream` заменена на идемпотентный `add table` с последующей атомарной очисткой цепочек `flush chain` (`mangle_prerouting`, `nat_prerouting`, `filter_forward`, `openstream_tproxy`).
+  Динамические сеты (`bypass_targets`, `zapret2_targets`, `streamproxy_targets`, `vpn_default`), наполненные `dnsmasq` в момент DNS-резолва, теперь сохраняют все IP-адреса в памяти ядра при изменении конфигурации правил.
+- **Логирование ошибок компиляции правил (M7):**
+  В `crates/openstream-backend-openwrt/src/lib.rs` устранен тихий пропуск поврежденных файлов `.osrule.yaml`: при ошибке парсинга путь к поврежденному файлу и подробная причина валидации выводятся в `eprintln!`.
+
+### Полноценная подсистема обновлений и автообновления
+- **Скрипт-оркестратор `openstream-update`:**
+  Создан исполняемый скрипт `/usr/libexec/openstream-update` (добавлен в `package/openwrt/Makefile`), поддерживающий:
+  - `--check`: опрос GitHub Releases API (`api.github.com/repos/denis-ershov/OpenStream-Engine/releases/latest`) с таймаутом;
+  - `--component <all|rules|core|luci|singbox|zapret2>`: независимое раздельное обновление каждого компонента;
+  - `--singbox-variant <variant>`: загрузка и переключение сборок sing-box;
+  - `--auto`: запуск автообновления по cron с учетом флагов конфигурации UCI (`openstream.updates.*`).
+- **Интеграция в ucode RPC (`openstream.uc`):**
+  - Метод `check_updates` теперь осуществляет фоновый опрос актуальных релизов GitHub и возвращает статус `update_available: true/false`.
+  - Метод `perform_update` запускает реальный процесс обновления выбранного компонента в фоновом режиме с записью в журнал.
+  - Метод `switch_singbox_variant` передает команду оркестратору на установку выбранной редакции sing-box.
+  - Метод `save_auto_update_config` прописывает запуск `/usr/libexec/openstream-update --auto # openstream-autoupdate` в crontab.
+- **Кроссплатформенный CLI (`crates/openstream-cli`):**
+  Добавлена команда `osrule update --dir <path> [--verify-hashes]`, позволяющая синхронизировать, валидировать и проверять SHA256 контрольные суммы каталогов правил на Windows, macOS и Linux.
+
+### Документация
+- **Синхронизация `README_EN.md`:** Исправлены описания алгоритма поиска LPM, статуса Ed25519 подписей каталога и архитектуры обновлений.
+
+---
+
 ## [0.4.2-r36] — 2026-09-11 — Production Hardening
 
 Аудит продакшн-готовности выявил разрыв между документацией и фактическим

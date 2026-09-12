@@ -12,7 +12,7 @@ DIST = ROOT / "dist" / "openwrt-24.10-a53"
 IPK_OUT = DIST / "ipk"
 BIN_OUT = DIST / "bin"
 VERSION = "0.4.2"
-RELEASE = "35"
+RELEASE = "37"
 ARCH = "aarch64_cortex-a53"
 
 def make_tar_gz(entries: list[tuple[str, bytes, int]]) -> bytes:
@@ -72,6 +72,7 @@ def build_packages():
         collect_file("/usr/libexec/openstream-refresh-hls-set", ROOT / "package/openwrt/files/openstream-refresh-hls-set", 0o755),
         collect_file("/usr/libexec/openstream-refresh-opkg-list", ROOT / "package/openwrt/files/openstream-refresh-opkg-list", 0o755),
         collect_file("/usr/libexec/openstream-resolve-smartdns", ROOT / "package/openwrt/files/openstream-resolve-smartdns", 0o755),
+        collect_file("/usr/libexec/openstream-update", ROOT / "package/openwrt/files/openstream-update", 0o755),
         collect_file("/etc/init.d/streamproxyd", ROOT / "package/openwrt/files/streamproxyd.init", 0o755),
         collect_file("/etc/config/openstream", ROOT / "package/openwrt/files/openstream.config", 0o644),
         collect_file("/etc/openstream/config.yaml", ROOT / "package/openwrt/files/config.yaml", 0o644),
@@ -85,10 +86,11 @@ def build_packages():
     for rf in (ROOT / "rules").rglob("*.osrule.yaml"):
         rel_sub = rf.relative_to(ROOT / "rules").as_posix()
         engine_data.append(collect_file(f"/usr/share/openstream/rules/{rel_sub}", rf, 0o644))
+        engine_data.append(collect_file(f"/etc/openstream/rules/{rel_sub}", rf, 0o644))
 
     engine_control = f"""Package: openstream-engine
 Version: {VERSION}-{RELEASE}
-Depends: ca-bundle, ucode, ucode-mod-fs, ucode-mod-uci
+Depends: ca-bundle, dnsmasq-full, kmod-nft-queue, kmod-nft-tproxy, ip-full, ucode, ucode-mod-fs, ucode-mod-uci
 License: MIT
 Section: net
 Architecture: {ARCH}

@@ -59,6 +59,15 @@ enum Commands {
         #[arg(short, long, default_value = "rules-index.json")]
         out: PathBuf,
     },
+    /// Синхронизировать и проверить целостность каталога правил
+    Update {
+        /// Каталог с файлами .osrule.yaml
+        #[arg(short, long, default_value = "rules")]
+        dir: PathBuf,
+        /// Проверять SHA256 контрольные суммы
+        #[arg(long, default_value_t = true)]
+        verify_hashes: bool,
+    },
 }
 
 fn main() -> Result<(), anyhow::Error> {
@@ -70,5 +79,6 @@ fn main() -> Result<(), anyhow::Error> {
         Commands::Sign { file, key, sig } => commands::sign::execute_sign(file, key, sig),
         Commands::Verify { file, pubkey, sig } => commands::verify::execute_verify(file, pubkey, sig),
         Commands::Index { dir, out } => commands::index::execute_index(dir, out),
+        Commands::Update { dir, verify_hashes } => commands::update::execute_update(dir, verify_hashes),
     }
 }

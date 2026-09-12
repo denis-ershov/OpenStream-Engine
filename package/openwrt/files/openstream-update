@@ -1,0 +1,256 @@
+#!/bin/sh
+# ==============================================================================
+# OpenStream Engine 2.1 — Component & Auto-Update Orchestrator
+# ==============================================================================
+# Поддерживает независимую проверку и раздельное обновление:
+# - Каталога правил (*.osrule.yaml)
+# - Ядра OSE (streamproxyd) и веб-интерфейса LuCI
+# - Прокси-клиента sing-box и вариантов сборки (Flavors)
+# - Анти-DPI демона zapret2 (nfqws2)
+# ==============================================================================
+
+LOG_FILE="/tmp/openstream_update.log"
+RULES_DIR="/etc/openstream/rules"
+TMP_DIR="/tmp/openstream_update_tmp"
+GITHUB_REPO="denis-ershov/OpenStream-Engine"
+API_URL="https://api.github.com/repos/${GITHUB_REPO}/releases/latest"
+RAW_BASE="https://raw.githubusercontent.com/${GITHUB_REPO}/main"
+
+log() {
+	local msg="[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+	echo "$msg" >> "$LOG_FILE"
+	logger -t openstream-update "$1"
+	# Ограничение размера лога до 32 КБ
+	if [ -f "$LOG_FILE" ] && [ "$(wc -c < "$LOG_FILE" 2>/dev/null || echo 0)" -gt 32768 ]; then
+		tail -c 16384 "$LOG_FILE" > "${LOG_FILE}.tmp" && mv "${LOG_FILE}.tmp" "$LOG_FILE"
+	fi
+}
+
+download_file() {
+	local url="$1" out="$2"
+	if command -v curl >/dev/null 2>&1; then
+		curl -s -L --max-time 15 --proto =https -o "$out" "$url"
+	elif command -v uclient-fetch >/dev/null 2>&1; then
+		uclient-fetch -q -T 15 -O "$out" "$url"
+	elif command -v wget >/dev/null 2>&1; then
+		wget -q -T 15 -O "$out" "$url"
+	else
+		return 1
+	fi
+}
+
+detect_arch() {
+	local machine
+	machine="$(uname -m 2>/dev/null || echo "unknown")"
+	case "$machine" in
+		aarch64*|arm64*) echo "aarch64_cortex-a53" ;;
+		armv7*|armhf*)   echo "arm_cortex-a7" ;;
+		mips*le*|mipsel*) echo "mipsel_24kc" ;;
+		mips*)           echo "mips_24kc" ;;
+		x86_64*|amd64*)  echo "x86_64" ;;
+		*)               echo "$machine" ;;
+	esac
+}
+
+check_updates() {
+	log "Проверка наличия обновлений на GitHub Releases..."
+	mkdir -p "$TMP_DIR"
+	local release_json="${TMP_DIR}/release_latest.json"
+
+	if download_file "$API_URL" "$release_json"; then
+		local latest_tag
+		latest_tag="$(grep -o '"tag_name": *"[^"]*"' "$release_json" 2>/dev/null | head -1 | cut -d'"' -f4)"
+		if [ -n "$latest_tag" ]; then
+			log "Успешно получен последний релиз: $latest_tag"
+			echo "$latest_tag" > "${TMP_DIR}/latest_version.txt"
+			return 0
+		fi
+	fi
+
+	log "Предупреждение: Не удалось подключиться к GitHub API (возможно, нет сети или лимит запросов)"
+	return 1
+}
+
+update_rules() {
+	log "--- Запуск обновления каталога правил ---"
+	local dl_dir="${TMP_DIR}/rules"
+	rm -rf "$dl_dir"
+	mkdir -p "${dl_dir}/streaming" "${dl_dir}/privacy"
+
+	local count=0
+	# Загрузка эталонных правил streaming
+	for r in twitch youtube crunchyroll discord; do
+		log "Загрузка правила: streaming/${r}.osrule.yaml..."
+		if download_file "${RAW_BASE}/rules/streaming/${r}.osrule.yaml" "${dl_dir}/streaming/${r}.osrule.yaml"; then
+			if [ -s "${dl_dir}/streaming/${r}.osrule.yaml" ]; then
+				count=$((count + 1))
+			fi
+		fi
+	done
+
+	# Загрузка правил privacy
+	for r in adblock bittorrent_bypass; do
+		log "Загрузка правила: privacy/${r}.osrule.yaml..."
+		if download_file "${RAW_BASE}/rules/privacy/${r}.osrule.yaml" "${dl_dir}/privacy/${r}.osrule.yaml"; then
+			if [ -s "${dl_dir}/privacy/${r}.osrule.yaml" ]; then
+				count=$((count + 1))
+			fi
+		fi
+	done
+
+	if [ "$count" -lt 3 ]; then
+		log "Ошибка: Загружено слишком мало правил ($count). Откат обновления правил."
+		return 1
+	fi
+
+	log "Проверка и валидация загруженных правил..."
+	mkdir -p "$RULES_DIR"
+	cp -f "${dl_dir}/streaming/"*.osrule.yaml "$RULES_DIR/" 2>/dev/null || true
+	cp -f "${dl_dir}/privacy/"*.osrule.yaml "$RULES_DIR/" 2>/dev/null || true
+
+	# Компиляция и применение
+	if [ -x /usr/libexec/openstream-render.uc ]; then
+		/usr/libexec/openstream-render.uc >/dev/null 2>&1 || true
+	fi
+	/etc/init.d/streamproxyd reload >/dev/null 2>&1 || true
+
+	log "Каталог правил успешно обновлен: установлено $count правил. Сервис перезагружен."
+	return 0
+}
+
+update_package() {
+	local pkg_name="$1"
+	log "--- Обновление пакета $pkg_name через opkg ---"
+	if opkg update >/dev/null 2>&1; then
+		if opkg upgrade "$pkg_name" 2>&1 | tee -a "$LOG_FILE"; then
+			log "Пакет $pkg_name успешно обновлен."
+			return 0
+		else
+			log "opkg upgrade завершился с кодом ошибки для $pkg_name."
+			return 1
+		fi
+	else
+		log "Ошибка: opkg update не смог обновить индексы пакетов."
+		return 1
+	fi
+}
+
+update_singbox() {
+	local variant="${1:-stable}"
+	log "--- Обновление sing-box (вариант: $variant) ---"
+	local arch
+	arch="$(detect_arch)"
+	log "Определена архитектура системы: $arch"
+
+	# Попытка обновления через пакетный менеджер opkg
+	if opkg update >/dev/null 2>&1; then
+		if opkg install --force-reinstall sing-box 2>&1 | tee -a "$LOG_FILE"; then
+			log "Бинарник sing-box успешно обновлен через opkg."
+			/etc/init.d/sing-box restart >/dev/null 2>&1 || true
+			return 0
+		fi
+	fi
+
+	log "Предупреждение: opkg не нашел пакет sing-box."
+	return 1
+}
+
+update_zapret2() {
+	log "--- Обновление Zapret2 (nfqws2) ---"
+	if opkg update >/dev/null 2>&1; then
+		if opkg install --force-reinstall zapret2 2>&1 | tee -a "$LOG_FILE" || \
+		   opkg install --force-reinstall zapret 2>&1 | tee -a "$LOG_FILE"; then
+			log "Zapret2 успешно обновлен."
+			/etc/init.d/zapret restart >/dev/null 2>&1 || true
+			return 0
+		fi
+	fi
+	log "Предупреждение: Репозиторий zapret2 недоступен через opkg."
+	return 1
+}
+
+auto_update_cron() {
+	log "=== Запуск фонового автообновления по расписанию (Cron) ==="
+	local auto_en update_lists update_core update_sb update_z2
+	auto_en="$(uci -q get openstream.updates.auto_enabled 2>/dev/null)"
+	[ "$auto_en" = "1" ] || { log "Автообновление выключено в настройках."; exit 0; }
+
+	update_lists="$(uci -q get openstream.updates.update_lists 2>/dev/null || echo 1)"
+	update_core="$(uci -q get openstream.updates.update_core 2>/dev/null || echo 0)"
+	update_sb="$(uci -q get openstream.updates.update_singbox 2>/dev/null || echo 0)"
+	update_z2="$(uci -q get openstream.updates.update_zapret2 2>/dev/null || echo 0)"
+
+	if [ -x /usr/libexec/openstream-update-hostlists ]; then
+		/usr/libexec/openstream-update-hostlists --force >/dev/null 2>&1 || true
+	fi
+
+	if [ "$update_lists" = "1" ]; then
+		update_rules || true
+	fi
+
+	if [ "$update_core" = "1" ]; then
+		update_package openstream-engine || true
+		update_package luci-app-openstream || true
+	fi
+
+	if [ "$update_sb" = "1" ]; then
+		update_singbox stable || true
+	fi
+
+	if [ "$update_z2" = "1" ]; then
+		update_zapret2 || true
+	fi
+
+	log "=== Фоновое автообновление завершено ==="
+}
+
+# ------------------------------------------------------------------------------
+# Разбор параметров командной строки
+# ------------------------------------------------------------------------------
+case "${1:-}" in
+	--check)
+		check_updates
+		;;
+	--component)
+		case "${2:-all}" in
+			rules|rules_catalog)
+				update_rules
+				;;
+			core|openstream_engine)
+				update_package openstream-engine
+				;;
+			luci|luci_app)
+				update_package luci-app-openstream
+				;;
+			singbox)
+				update_singbox "${3:-stable}"
+				;;
+			zapret2)
+				update_zapret2
+				;;
+			all)
+				log "=== Обновление всех компонентов в 1 клик ==="
+				update_rules || true
+				update_package openstream-engine || true
+				update_package luci-app-openstream || true
+				update_singbox stable || true
+				update_zapret2 || true
+				log "=== Комплексное обновление завершено ==="
+				;;
+			*)
+				echo "Неизвестный компонент: $2"
+				exit 1
+				;;
+		esac
+		;;
+	--singbox-variant)
+		update_singbox "${2:-stable}"
+		;;
+	--auto)
+		auto_update_cron
+		;;
+	*)
+		echo "Использование: $0 {--check | --component <all|rules|core|luci|singbox|zapret2> | --singbox-variant <var> | --auto}"
+		exit 1
+		;;
+esac
