@@ -10,84 +10,163 @@ var callStatus = rpc.declare({
 	expect: { '': {} }
 });
 
+var callApplyRules = rpc.declare({
+	object: 'openstream',
+	method: 'save_routing',
+	params: [ 'rules' ],
+	expect: { '': {} }
+});
+
+var callInitAction = rpc.declare({
+	object: 'luci',
+	method: 'setInitStatus',
+	params: [ 'name', 'action' ],
+	expect: { '': true }
+});
+
+function ensureStylesheet() {
+	var href = (window.L && L.resource) ? L.resource('openstream/openstream.css') : '/luci-static/resources/openstream/openstream.css';
+	if (!document.querySelector('link[href*="openstream.css"]')) {
+		document.head.appendChild(E('link', {
+			'rel': 'stylesheet',
+			'type': 'text/css',
+			'href': href
+		}));
+	}
+}
+
 return view.extend({
 	load: function() {
-		return callStatus();
+		ensureStylesheet();
+		return callStatus().catch(function() { return {}; });
 	},
 
 	render: function(data) {
+		ensureStylesheet();
+
 		var isRunning = data && data.running;
 		var zapret2Installed = data && data.zapret2_installed;
 		var zapret2Running = data && data.zapret2_running;
+		var singboxInstalled = data && data.singbox_installed;
+		var singboxRunning = data && data.singbox_running;
+		var singboxVariant = (data && data.singbox_variant) || 'stable';
+		var version = (data && data.version) || '2.1.0-r37';
 
-		var viewRoot = E('div', { 'style': 'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif; color: #f8fafc; max-width: 1280px; margin: 0 auto;' }, [
-			E('style', {}, `
-				.os-status-card {
-					background: #0f172a;
-					border: 1px solid #334155;
-					border-radius: 12px;
-					padding: 24px;
-					margin-bottom: 20px;
-					box-shadow: 0 10px 25px -5px rgba(0,0,0,0.4);
-				}
-				.os-grid {
-					display: grid;
-					grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-					gap: 16px;
-					margin-top: 20px;
-				}
-				.os-stat-box {
-					background: #020617;
-					border: 1px solid #1e293b;
-					border-radius: 10px;
-					padding: 18px;
-				}
-				.os-stat-title {
-					font-size: 12px;
-					color: #94a3b8;
-					text-transform: uppercase;
-					font-weight: 600;
-					letter-spacing: 0.05em;
-				}
-				.os-stat-value {
-					font-size: 18px;
-					font-weight: 700;
-					margin-top: 6px;
-				}
-			`),
-
-			E('div', { 'class': 'os-status-card' }, [
-				E('div', { 'style': 'display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;' }, [
-					E('div', {}, [
-						E('h2', { 'style': 'margin: 0 0 4px 0; font-size: 22px; font-weight: 700; color: #fff;' }, '⚡ OpenStream Engine 2.1 Status'),
-						E('div', { 'style': 'font-size: 13px; color: #94a3b8;' }, 'ucode High-Speed RPC & Orchestration Architecture')
+		var viewRoot = E('div', { 'class': 'os-container' }, [
+			// Hero Header Card
+			E('div', { 'class': 'os-hero' }, [
+				E('div', { 'class': 'os-hero-title-wrap' }, [
+					E('h2', { 'class': 'os-hero-title' }, [
+						E('span', {}, '⚡'),
+						_('OpenStream Engine'),
+						E('span', { 'class': 'os-badge os-badge-info' }, 'v' + version)
 					]),
+					E('p', { 'class': 'os-hero-subtitle' },
+						_('Universal Cross-Platform Traffic Orchestrator & Declarative Policy Routing Engine')
+					)
+				]),
+				E('div', { 'class': 'os-hero-actions' }, [
 					E('span', {
-						'style': 'padding: 6px 14px; border-radius: 9999px; font-weight: 700; font-size: 13px; background: ' +
-							(isRunning ? 'rgba(16,185,129,0.2); color: #10b981; border: 1px solid rgba(16,185,129,0.4);' : 'rgba(244,63,94,0.2); color: #f43f5e; border: 1px solid rgba(244,63,94,0.4);')
-					}, isRunning ? '● СЛУЖБА АКТИВНА' : '○ ОСТАНОВЛЕНО')
+						'class': 'os-badge ' + (isRunning ? 'os-badge-success' : 'os-badge-danger')
+					}, isRunning ? _('● Service Running') : _('○ Service Stopped')),
+					E('button', {
+						'class': 'os-btn os-btn-secondary',
+						'click': function(ev) {
+							var btn = ev.target;
+							btn.disabled = true;
+							ui.showIndicator('os-restart', _('Restarting streamproxyd…'));
+							callInitAction('streamproxyd', 'restart').then(function() {
+								setTimeout(function() {
+									ui.hideIndicator('os-restart');
+									window.location.reload();
+								}, 1500);
+							}).catch(function(e) {
+								ui.hideIndicator('os-restart');
+								ui.addNotification(null, E('p', {}, _('Failed to restart service: ') + (e.message || e)));
+								btn.disabled = false;
+							});
+						}
+					}, [ E('span', {}, '🔄'), _('Restart Service') ])
+				])
+			]),
+
+			// Key Status Indicators Grid
+			E('div', { 'class': 'os-grid' }, [
+				// Rust Daemon
+				E('div', { 'class': 'os-stat-box' }, [
+					E('div', { 'class': 'os-stat-label' }, _('Core Daemon (Rust)')),
+					E('div', { 'class': 'os-stat-value' }, isRunning ? 'streamproxyd' : _('Inactive')),
+					E('div', {}, [
+						E('span', {
+							'class': 'os-badge ' + (isRunning ? 'os-badge-success' : 'os-badge-danger')
+						}, isRunning ? _('Online (Port 8888)') : _('Stopped'))
+					])
 				]),
 
-				E('div', { 'class': 'os-grid' }, [
+				// Zapret2 Anti-DPI
+				E('div', { 'class': 'os-stat-box' }, [
+					E('div', { 'class': 'os-stat-label' }, _('Anti-DPI (Zapret2 nfqws2)')),
+					E('div', { 'class': 'os-stat-value' }, zapret2Running ? _('Active') : (zapret2Installed ? _('Ready') : _('Not Installed'))),
+					E('div', {}, [
+						E('span', {
+							'class': 'os-badge ' + (zapret2Running ? 'os-badge-success' : (zapret2Installed ? 'os-badge-info' : 'os-badge-muted'))
+						}, zapret2Running ? _('NFQUEUE 1088') : (zapret2Installed ? _('Installed') : _('Optional')))
+					])
+				]),
+
+				// sing-box TPROXY
+				E('div', { 'class': 'os-stat-box' }, [
+					E('div', { 'class': 'os-stat-label' }, _('Proxy Core (sing-box)')),
+					E('div', { 'class': 'os-stat-value' }, singboxRunning ? _('Active') : (singboxInstalled ? _('Standby') : _('Not Installed'))),
+					E('div', {}, [
+						E('span', {
+							'class': 'os-badge ' + (singboxRunning ? 'os-badge-success' : (singboxInstalled ? 'os-badge-purple' : 'os-badge-muted'))
+						}, singboxVariant.toUpperCase() + (singboxRunning ? ' (TPROXY 10888)' : ''))
+					])
+				]),
+
+				// Policy Routing Engine
+				E('div', { 'class': 'os-stat-box' }, [
+					E('div', { 'class': 'os-stat-label' }, _('Orchestration Layer')),
+					E('div', { 'class': 'os-stat-value' }, 'ucode / nftables'),
+					E('div', {}, [
+						E('span', { 'class': 'os-badge os-badge-cyan' }, _('Zero-Copy Routing'))
+					])
+				])
+			]),
+
+			// Architectural Overview Card
+			E('div', { 'class': 'os-card' }, [
+				E('div', { 'class': 'os-card-header' }, [
+					E('h3', { 'class': 'os-card-title' }, [
+						E('span', {}, '🛡️'),
+						_('System Architecture & Network Interfaces')
+					])
+				]),
+				E('div', { 'class': 'os-grid-2' }, [
 					E('div', { 'class': 'os-stat-box' }, [
-						E('div', { 'class': 'os-stat-title' }, 'Движок ядра (Rust daemon)'),
-						E('div', { 'class': 'os-stat-value', 'style': 'color: ' + (isRunning ? '#10b981' : '#f43f5e') },
-							isRunning ? 'Работает (streamproxyd)' : 'Остановлен'
+						E('div', { 'class': 'os-stat-label' }, _('Video Stream Proxy')),
+						E('p', { 'class': 'os-help' },
+							_('Transparent HTTP/HTTPS stream rewriter strips server-side inserted advertisements (SSAI) in HLS/DASH playlists without requiring root CA certificates on client devices.')
 						)
 					]),
 					E('div', { 'class': 'os-stat-box' }, [
-						E('div', { 'class': 'os-stat-title' }, 'Анти-DPI (Zapret2 nfqws2)'),
-						E('div', { 'class': 'os-stat-value', 'style': 'color: ' + (zapret2Running ? '#10b981' : (zapret2Installed ? '#38bdf8' : '#f59e0b')) },
-							zapret2Running ? 'Активен (Очередь 1088)' : (zapret2Installed ? 'Установлен (Готов)' : 'Не установлен')
+						E('div', { 'class': 'os-stat-label' }, _('Declarative Policy Routing')),
+						E('p', { 'class': 'os-help' },
+							_('Kernel-level fwmark packet dispatching via Linux nftables & IP rule sets routes targeted traffic across Direct, VPN, Anti-DPI, and Proxy egress interfaces.')
 						)
 					]),
 					E('div', { 'class': 'os-stat-box' }, [
-						E('div', { 'class': 'os-stat-title' }, 'Рантайм и протокол'),
-						E('div', { 'class': 'os-stat-value', 'style': 'color: #38bdf8;' }, 'ucode 1.0 / C API')
+						E('div', { 'class': 'os-stat-label' }, _('Multi-DNS & DoH Shield')),
+						E('p', { 'class': 'os-help' },
+							_('Automatic domain population into nftables dynamic sets with failover resolvers and automated DNS leak mitigation.')
+						)
 					]),
 					E('div', { 'class': 'os-stat-box' }, [
-						E('div', { 'class': 'os-stat-title' }, 'Расход памяти ядра'),
-						E('div', { 'class': 'os-stat-value', 'style': 'color: #10b981;' }, '< 2.5 МБ RAM (Zero-Copy)')
+						E('div', { 'class': 'os-stat-label' }, _('Ecosystem Coexistence')),
+						E('p', { 'class': 'os-help' },
+							_('Idempotent table management preserving dynamic sets across reloads with mutual conflict isolation alongside Forkop, Podkop, and Passwall.')
+						)
 					])
 				])
 			])

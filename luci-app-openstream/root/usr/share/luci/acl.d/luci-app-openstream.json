@@ -1,19 +1,26 @@
 {
 	"luci-app-openstream": {
-		"description": "Grant access to OpenStream Engine ucode RPC and configurations",
+		"description": "Grant access to OpenStream Engine configuration and RPC",
 		"read": {
 			"uci": [ "openstream" ],
 			"ubus": {
+				"service": [ "list" ],
+				"luci": [ "getInitList" ],
 				"openstream": [
 					"status",
 					"get_routing",
 					"test_route",
 					"get_monitor_flows",
+					"get_servers",
+					"test_server_latency",
+					"get_security_settings",
+					"get_auto_update_config",
+					"run_diagnostics",
+					"create_backup",
 					"get_singbox_info",
 					"check_updates",
 					"get_update_log"
-				],
-				"luci": [ "getInitList" ]
+				]
 			},
 			"file": {
 				"/etc/openstream/rules/*": [ "read" ],
@@ -28,6 +35,12 @@
 				"openstream": [
 					"save_routing",
 					"clear_monitor_flows",
+					"save_servers",
+					"import_subscription",
+					"save_dns_config",
+					"save_security_settings",
+					"save_auto_update_config",
+					"restore_backup",
 					"switch_singbox_variant",
 					"perform_update"
 				]

@@ -5,6 +5,23 @@
 'require dom';
 'require poll';
 
+/*
+ * OpenStream Engine 2.1 - Live Traffic & Flow Monitor
+ * Unified Linear/Apple Design System, Mobile-First, 100% i18n
+ */
+
+function ensureStylesheet() {
+	var id = 'openstream-css';
+	if (document.getElementById(id)) return;
+	var link = E('link', {
+		'id': id,
+		'rel': 'stylesheet',
+		'type': 'text/css',
+		'href': (window.L && L.resource) ? L.resource('openstream/openstream.css') : '/luci-static/resources/openstream/openstream.css'
+	});
+	document.head.appendChild(link);
+}
+
 var callMonitorFlows = rpc.declare({
 	object: 'openstream',
 	method: 'get_monitor_flows',
@@ -26,330 +43,275 @@ var callClearFlows = rpc.declare({
 
 return view.extend({
 	filterSection: 'all',
-	filterClient: 'all',
-	pollInterval: 3,
 
 	load: function() {
-		return callMonitorFlows();
-	},
-
-	formatBytes: function(bytes) {
-		if (!bytes || bytes === 0) return '0 B';
-		var k = 1024;
-		var sizes = ['B', 'KB', 'MB', 'GB'];
-		var i = Math.floor(Math.log(bytes) / Math.log(k));
-		return (bytes / Math.pow(k, i)).toFixed(1) + ' ' + sizes[i];
+		return callMonitorFlows().catch(function() {
+			return { flows: [] };
+		});
 	},
 
 	render: function(data) {
+		ensureStylesheet();
 		var self = this;
 		var flows = (data && data.flows) ? data.flows : [];
 
-		var viewRoot = E('div', { 'style': 'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif; color: #f8fafc; max-width: 1400px; margin: 0 auto;' }, [
-			E('style', {}, `
-				.os-card {
-					background: #0f172a;
-					border: 1px solid #1e293b;
-					border-radius: 12px;
-					padding: 22px;
-					margin-bottom: 20px;
-					box-shadow: 0 10px 25px -5px rgba(0,0,0,0.4);
-				}
-				.os-metric-grid {
-					display: grid;
-					grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-					gap: 14px;
-					margin-bottom: 22px;
-				}
-				.os-metric-box {
-					background: #020617;
-					border: 1px solid #1e293b;
-					border-radius: 10px;
-					padding: 16px;
-					display: flex;
-					flex-direction: column;
-					justify-content: space-between;
-				}
-				.os-metric-val {
-					font-size: 24px;
-					font-weight: 800;
-					margin-top: 6px;
-				}
-				.os-chip-group {
-					display: flex;
-					flex-wrap: wrap;
-					gap: 8px;
-					margin-top: 14px;
-				}
-				.os-chip {
-					padding: 6px 14px;
-					border-radius: 9999px;
-					font-size: 13px;
-					font-weight: 600;
-					cursor: pointer;
-					border: 1px solid transparent;
-					transition: all 0.2s ease;
-				}
-				.os-chip-active {
-					background: #38bdf8;
-					color: #020617;
-				}
-				.os-chip-inactive {
-					background: #1e293b;
-					color: #94a3b8;
-				}
-				.os-chip-inactive:hover {
-					background: #334155;
-					color: #fff;
-				}
-				.os-flow-card {
-					background: #020617;
-					border: 1px solid #1e293b;
-					border-radius: 10px;
-					padding: 18px;
-					margin-bottom: 12px;
-					display: flex;
-					justify-content: space-between;
-					align-items: center;
-					flex-wrap: wrap;
-					gap: 14px;
-					transition: border-color 0.2s, transform 0.2s;
-				}
-				.os-flow-card:hover {
-					border-color: #38bdf8;
-					transform: translateY(-2px);
-				}
-				.os-live-pulse {
-					display: inline-block;
-					width: 8px;
-					height: 8px;
-					border-radius: 50%;
-					margin-right: 6px;
-					background: #10b981;
-					box-shadow: 0 0 10px #10b981;
-				}
-				.os-inspector-input {
-					background: #020617;
-					border: 1px solid #334155;
-					color: #fff;
-					padding: 10px 14px;
-					border-radius: 8px;
-					font-size: 14px;
-					flex: 1;
-					min-width: 240px;
-				}
-				.os-inspector-input:focus {
-					border-color: #38bdf8;
-					outline: none;
-				}
-			`),
+		var viewRoot = E('div', { 'class': 'os-container' });
 
-			// 1. Верхняя панель управления
-			E('div', { 'class': 'os-card' }, [
-				E('div', { 'style': 'display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;' }, [
-					E('div', {}, [
-						E('h2', { 'style': 'margin: 0 0 4px 0; font-size: 22px; font-weight: 700; color: #fff;' }, '📡 Мониторинг маршрутизации и потоков (Live)'),
-						E('div', { 'style': 'font-size: 13px; color: #94a3b8;' }, 'Отслеживание активных соединений, клиентов LAN и секций ядра в реальном времени')
-					]),
-					E('div', { 'style': 'display: flex; gap: 10px; align-items: center; flex-wrap: wrap;' }, [
-						E('button', {
-							'class': 'btn cbi-button-action',
-							'style': 'background: #1e293b; color: #fff; border: 1px solid #334155;',
-							'click': function() {
-								callClearFlows().then(function() {
-									ui.addNotification(null, E('p', {}, 'История мониторинга очищена.'), 'info');
-									window.location.reload();
-								});
-							}
-						}, 'Очистить историю'),
-						E('button', {
-							'class': 'btn cbi-button-positive',
-							'style': 'background: #10b981; color: #020617; font-weight: 700;',
-							'click': function() {
-								window.location.reload();
-							}
-						}, '🔄 Обновить сейчас')
-					])
-				]),
-
-				// Метрики
-				E('div', { 'class': 'os-metric-grid', 'style': 'margin-top: 22px;' }, [
-					E('div', { 'class': 'os-metric-box' }, [
-						E('div', { 'style': 'font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700;' }, 'Всего потоков'),
-						E('div', { 'class': 'os-metric-val', 'style': 'color: #38bdf8;' }, String(flows.length))
-					]),
-					E('div', { 'class': 'os-metric-box' }, [
-						E('div', { 'style': 'font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700;' }, 'Zapret2 (nfqws2)'),
-						E('div', { 'class': 'os-metric-val', 'style': 'color: #10b981;' },
-							String(flows.filter(function(f) { return f.section === 'zapret2'; }).length)
-						)
-					]),
-					E('div', { 'class': 'os-metric-box' }, [
-						E('div', { 'style': 'font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700;' }, 'StreamProxy (:8888)'),
-						E('div', { 'class': 'os-metric-val', 'style': 'color: #38bdf8;' },
-							String(flows.filter(function(f) { return f.section === 'streamproxy'; }).length)
-						)
-					]),
-					E('div', { 'class': 'os-metric-box' }, [
-						E('div', { 'style': 'font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700;' }, 'sing-box / VPN'),
-						E('div', { 'class': 'os-metric-val', 'style': 'color: #a855f7;' },
-							String(flows.filter(function(f) { return f.section === 'singbox' || f.section === 'vpn'; }).length)
-						)
-					]),
-					E('div', { 'class': 'os-metric-box' }, [
-						E('div', { 'style': 'font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700;' }, 'DNS Sinkhole (Block)'),
-						E('div', { 'class': 'os-metric-val', 'style': 'color: #f43f5e;' },
-							String(flows.filter(function(f) { return f.section === 'block'; }).length)
-						)
-					])
-				])
+		// Hero Card
+		var heroNode = E('div', { 'class': 'os-hero' }, [
+			E('div', { 'class': 'os-hero-title-wrap' }, [
+				E('h2', { 'class': 'os-hero-title' }, [ '📡 ', _('Live Traffic & Routing Monitor') ]),
+				E('p', { 'class': 'os-hero-subtitle' },
+					_('Real-time inspection of active network flows, core engine classification, and client traffic mapping.')
+				)
 			]),
-
-			// 2. Инспектор маршрутов в реальном времени
-			E('div', { 'class': 'os-card' }, [
-				E('h3', { 'style': 'margin: 0 0 10px 0; font-size: 17px; font-weight: 700; color: #fff;' }, '🔍 Живой инспектор маршрутов (Live Domain Inspector)'),
-				E('div', { 'style': 'font-size: 13px; color: #94a3b8; margin-bottom: 14px;' }, 'Мгновенная проверка, через какую секцию ядра пойдет трафик для целевого домена:'),
-				E('div', { 'style': 'display: flex; gap: 10px; flex-wrap: wrap;' }, [
-					E('input', {
-						'id': 'os-inspector-input',
-						'class': 'os-inspector-input',
-						'type': 'text',
-						'placeholder': 'Например: googlevideo.com, discord.gg, twitch.tv, bank.ru'
-					}),
-					E('button', {
-						'class': 'btn cbi-button-action',
-						'style': 'background: #38bdf8; color: #020617; font-weight: 700;',
-						'click': function() {
-							var input = document.getElementById('os-inspector-input');
-							var resBox = document.getElementById('os-inspector-result');
-							if (!input || !input.value) return;
-
-							callTestRoute(input.value.trim()).then(function(res) {
-								if (res && res.result) {
-									var r = res.result;
-									var color = '#94a3b8';
-									if (r.route === 'zapret2') color = '#10b981';
-									else if (r.route === 'streamproxy') color = '#38bdf8';
-									else if (r.route === 'vpn') color = '#a855f7';
-									else if (r.route === 'block') color = '#f43f5e';
-
-									resBox.style.display = 'block';
-									resBox.innerHTML = `
-										<div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-											<div>
-												<span style="font-size: 16px; font-weight: 800; color: #fff;">${r.domain}</span>
-												<div style="font-size: 13px; color: #94a3b8; margin-top: 4px;">${r.details}</div>
-											</div>
-											<span style="padding: 6px 14px; border-radius: 9999px; font-weight: 700; font-size: 13px; background: ${color}20; color: ${color}; border: 1px solid ${color}40;">
-												● ${r.engine}
-											</span>
-										</div>
-									`;
-								}
-							});
-						}
-					}, 'Проверить маршрут')
-				]),
-				E('div', {
-					'id': 'os-inspector-result',
-					'style': 'display: none; margin-top: 14px; padding: 14px; background: #020617; border: 1px solid #1e293b; border-radius: 8px;'
-				})
-			]),
-
-			// 3. Список активных потоков (Mobile First: Карточки, без HTML-таблиц!)
-			E('div', { 'class': 'os-card' }, [
-				E('div', { 'style': 'display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;' }, [
-					E('h3', { 'style': 'margin: 0; font-size: 17px; font-weight: 700; color: #fff;' }, '⚡ Активные потоки и сопоставления секций'),
-					E('div', { 'style': 'font-size: 13px; color: #94a3b8;' }, 'Отображение правил и активных сетевых клиентов')
-				]),
-
-				// Фильтры-чипы
-				E('div', { 'class': 'os-chip-group' }, [
-					E('span', {
-						'class': 'os-chip ' + (self.filterSection === 'all' ? 'os-chip-active' : 'os-chip-inactive'),
-						'click': function() { self.filterSection = 'all'; self.renderFlowList(flows); }
-					}, 'Все секции'),
-					E('span', {
-						'class': 'os-chip ' + (self.filterSection === 'zapret2' ? 'os-chip-active' : 'os-chip-inactive'),
-						'click': function() { self.filterSection = 'zapret2'; self.renderFlowList(flows); }
-					}, '⚡ Zapret2 (nfqws2)'),
-					E('span', {
-						'class': 'os-chip ' + (self.filterSection === 'streamproxy' ? 'os-chip-active' : 'os-chip-inactive'),
-						'click': function() { self.filterSection = 'streamproxy'; self.renderFlowList(flows); }
-					}, '🛡️ StreamProxy (:8888)'),
-					E('span', {
-						'class': 'os-chip ' + (self.filterSection === 'singbox' ? 'os-chip-active' : 'os-chip-inactive'),
-						'click': function() { self.filterSection = 'singbox'; self.renderFlowList(flows); }
-					}, '🌐 sing-box / VPN'),
-					E('span', {
-						'class': 'os-chip ' + (self.filterSection === 'block' ? 'os-chip-active' : 'os-chip-inactive'),
-						'click': function() { self.filterSection = 'block'; self.renderFlowList(flows); }
-					}, '🚫 DNS Block')
-				]),
-
-				// Контейнер карточек потоков
-				E('div', { 'id': 'os-flows-container', 'style': 'margin-top: 18px;' })
+			E('div', { 'class': 'os-hero-actions' }, [
+				E('button', {
+					'class': 'os-btn os-btn-secondary',
+					'click': function() {
+						callClearFlows().then(function() {
+							ui.addNotification(null, E('p', {}, '✓ ' + _('Flow monitor history cleared.')), 'info');
+							flows = [];
+							self.renderStats(flows);
+							self.renderFlowList(flows);
+						});
+					}
+				}, [ '🗑️ ', _('Clear History') ]),
+				E('button', {
+					'class': 'os-btn os-btn-primary',
+					'click': function(ev) {
+						var btn = ev.target;
+						btn.disabled = true;
+						btn.innerText = '⏳ ' + _('Refreshing...');
+						callMonitorFlows().then(function(res) {
+							btn.disabled = false;
+							btn.innerText = '🔄 ' + _('Refresh Now');
+							flows = (res && res.flows) ? res.flows : [];
+							self.renderStats(flows);
+							self.renderFlowList(flows);
+						}).catch(function() {
+							btn.disabled = false;
+							btn.innerText = '🔄 ' + _('Refresh Now');
+						});
+					}
+				}, [ '🔄 ', _('Refresh Now') ])
 			])
 		]);
+		viewRoot.appendChild(heroNode);
+
+		// Stats Grid Card
+		var statsCard = E('div', { 'class': 'os-card' }, [
+			E('div', { 'class': 'os-card-header' }, [
+				E('h3', { 'class': 'os-card-title' }, [ '📊 ', _('Flow Distribution Metrics') ]),
+				E('span', { 'class': 'os-badge os-badge-success', 'id': 'os-mon-live-badge' }, [
+					E('span', { 'style': 'display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--os-success); margin-right: 4px;' }),
+					_('Engine Active')
+				])
+			]),
+			E('div', { 'class': 'os-grid', 'id': 'os-mon-stats-grid' })
+		]);
+		viewRoot.appendChild(statsCard);
+
+		// Live Domain Inspector Card
+		var inspectorResultBox;
+		var inspectorCard = E('div', { 'class': 'os-card' }, [
+			E('div', { 'class': 'os-card-header' }, [
+				E('h3', { 'class': 'os-card-title' }, [ '🔍 ', _('Live Domain Routing Inspector') ])
+			]),
+			E('p', { 'class': 'os-help', 'style': 'margin-bottom: 12px;' },
+				_('Query the active routing table in real-time to inspect which core subsystem will handle traffic for a specific domain:')
+			),
+			E('div', { 'style': 'display: flex; gap: 10px; flex-wrap: wrap;' }, [
+				E('input', {
+					'type': 'text',
+					'class': 'os-input',
+					'style': 'flex: 1; min-width: 240px;',
+					'id': 'os-inspector-input',
+					'placeholder': 'e.g. googlevideo.com, discord.gg, twitch.tv, rutracker.org'
+				}),
+				E('button', {
+					'class': 'os-btn os-btn-primary',
+					'click': function() {
+						var input = document.getElementById('os-inspector-input');
+						var val = input ? input.value.trim() : '';
+						if (!val) return;
+
+						callTestRoute(val).then(function(res) {
+							if (res && res.result) {
+								var r = res.result;
+								dom.content(inspectorResultBox, null);
+								inspectorResultBox.style.display = 'block';
+
+								var badgeClass = 'os-badge-muted';
+								if (r.route === 'zapret2') badgeClass = 'os-badge-success';
+								else if (r.route === 'streamproxy') badgeClass = 'os-badge-info';
+								else if (r.route === 'vpn') badgeClass = 'os-badge-purple';
+								else if (r.route === 'block') badgeClass = 'os-badge-danger';
+
+								inspectorResultBox.appendChild(E('div', { 'class': 'os-entity-row', 'style': 'margin-bottom: 0;' }, [
+									E('div', { 'class': 'os-entity-main' }, [
+										E('span', { 'style': 'font-size: 20px;' }, '🎯'),
+										E('div', { 'class': 'os-entity-details' }, [
+											E('span', { 'class': 'os-entity-name' }, r.domain),
+											E('span', { 'class': 'os-entity-desc' }, r.details || _('Matched routing rule'))
+										])
+									]),
+									E('div', { 'class': 'os-entity-actions' }, [
+										E('span', { 'class': 'os-badge ' + badgeClass }, [ '● ' + (r.engine || r.route) ])
+									])
+								]));
+							}
+						});
+					}
+				}, [ '🔍 ', _('Inspect Route') ])
+			]),
+			inspectorResultBox = E('div', {
+				'id': 'os-inspector-result',
+				'style': 'display: none; margin-top: 14px;'
+			})
+		]);
+		viewRoot.appendChild(inspectorCard);
+
+		// Active Flows Card
+		var flowsCard = E('div', { 'class': 'os-card' }, [
+			E('div', { 'class': 'os-card-header' }, [
+				E('h3', { 'class': 'os-card-title' }, [ '⚡ ', _('Active Flow Classifications') ]),
+				E('span', { 'class': 'os-badge os-badge-info', 'id': 'os-flows-count-badge' }, flows.length + ' ' + _('flows'))
+			]),
+
+			// Filter Bar
+			E('div', { 'class': 'os-filter-bar', 'id': 'os-filter-bar' }, [
+				E('button', {
+					'class': 'os-filter-item active',
+					'click': function(ev) { self.setFilter('all', ev.target, flows); }
+				}, _('All Subsystems')),
+				E('button', {
+					'class': 'os-filter-item',
+					'click': function(ev) { self.setFilter('zapret2', ev.target, flows); }
+				}, '⚡ ' + _('Zapret2 (nfqws2)')),
+				E('button', {
+					'class': 'os-filter-item',
+					'click': function(ev) { self.setFilter('streamproxy', ev.target, flows); }
+				}, '🛡️ ' + _('StreamProxy (:18080)')),
+				E('button', {
+					'class': 'os-filter-item',
+					'click': function(ev) { self.setFilter('singbox', ev.target, flows); }
+				}, '🌐 ' + _('sing-box / VPN')),
+				E('button', {
+					'class': 'os-filter-item',
+					'click': function(ev) { self.setFilter('block', ev.target, flows); }
+				}, '🚫 ' + _('Sinkhole (Block)'))
+			]),
+
+			// Container for Flows
+			E('div', { 'id': 'os-flows-container' })
+		]);
+		viewRoot.appendChild(flowsCard);
+
+		this.renderStats = function(dataFlows) {
+			var grid = document.getElementById('os-mon-stats-grid');
+			if (!grid) return;
+			dom.content(grid, null);
+
+			var total = dataFlows.length;
+			var zapretCount = dataFlows.filter(function(f) { return f.section === 'zapret2'; }).length;
+			var streamCount = dataFlows.filter(function(f) { return f.section === 'streamproxy'; }).length;
+			var vpnCount = dataFlows.filter(function(f) { return f.section === 'singbox' || f.section === 'vpn'; }).length;
+			var blockCount = dataFlows.filter(function(f) { return f.section === 'block'; }).length;
+
+			grid.appendChild(E('div', { 'class': 'os-stat-box' }, [
+				E('div', { 'class': 'os-stat-label' }, _('Total Tracked Flows')),
+				E('div', { 'class': 'os-stat-value', 'style': 'color: var(--os-primary);' }, String(total))
+			]));
+			grid.appendChild(E('div', { 'class': 'os-stat-box' }, [
+				E('div', { 'class': 'os-stat-label' }, _('Zapret2 (nfqws2)')),
+				E('div', { 'class': 'os-stat-value', 'style': 'color: var(--os-success);' }, String(zapretCount))
+			]));
+			grid.appendChild(E('div', { 'class': 'os-stat-box' }, [
+				E('div', { 'class': 'os-stat-label' }, _('StreamProxy (:18080)')),
+				E('div', { 'class': 'os-stat-value', 'style': 'color: var(--os-cyan);' }, String(streamCount))
+			]));
+			grid.appendChild(E('div', { 'class': 'os-stat-box' }, [
+				E('div', { 'class': 'os-stat-label' }, _('sing-box Outbound')),
+				E('div', { 'class': 'os-stat-value', 'style': 'color: var(--os-purple);' }, String(vpnCount))
+			]));
+			grid.appendChild(E('div', { 'class': 'os-stat-box' }, [
+				E('div', { 'class': 'os-stat-label' }, _('DNS Sinkhole Block')),
+				E('div', { 'class': 'os-stat-value', 'style': 'color: var(--os-danger);' }, String(blockCount))
+			]));
+		};
+
+		this.setFilter = function(filterName, btnTarget, currentFlows) {
+			self.filterSection = filterName;
+			var filterBar = document.getElementById('os-filter-bar');
+			if (filterBar) {
+				var btns = filterBar.querySelectorAll('.os-filter-item');
+				btns.forEach(function(b) { b.classList.remove('active'); });
+				if (btnTarget) btnTarget.classList.add('active');
+			}
+			self.renderFlowList(currentFlows);
+		};
+
+		this.renderFlowList = function(currentFlows) {
+			var container = document.getElementById('os-flows-container');
+			if (!container) return;
+
+			var badgeCount = document.getElementById('os-flows-count-badge');
+			if (badgeCount) badgeCount.textContent = currentFlows.length + ' ' + _('flows');
+
+			var filtered = currentFlows;
+			if (self.filterSection !== 'all') {
+				filtered = currentFlows.filter(function(f) {
+					if (self.filterSection === 'singbox') {
+						return f.section === 'singbox' || f.section === 'vpn';
+					}
+					return f.section === self.filterSection;
+				});
+			}
+
+			dom.content(container, null);
+
+			if (!filtered.length) {
+				container.appendChild(E('div', {
+					'style': 'text-align: center; padding: 40px 16px; color: var(--os-text-secondary);'
+				}, [
+					E('div', { 'style': 'font-size: 32px; margin-bottom: 8px;' }, '🔍'),
+					E('div', { 'style': 'font-size: 14px; font-weight: 600;' }, _('No flows matched the current filter')),
+					E('div', { 'style': 'font-size: 12px; margin-top: 4px;' }, _('Traffic in this category currently passes through standard default routes.'))
+				]));
+				return;
+			}
+
+			filtered.forEach(function(flow) {
+				var badgeClass = 'os-badge-muted';
+				if (flow.section === 'zapret2') badgeClass = 'os-badge-success';
+				else if (flow.section === 'streamproxy') badgeClass = 'os-badge-info';
+				else if (flow.section === 'singbox' || flow.section === 'vpn') badgeClass = 'os-badge-purple';
+				else if (flow.section === 'block') badgeClass = 'os-badge-danger';
+
+				var card = E('div', { 'class': 'os-entity-row' }, [
+					E('div', { 'class': 'os-entity-main' }, [
+						E('span', { 'style': 'display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--os-success); box-shadow: 0 0 6px var(--os-success); margin-right: 4px;' }),
+						E('div', { 'class': 'os-entity-details' }, [
+							E('span', { 'class': 'os-entity-name' }, flow.domain),
+							E('span', { 'class': 'os-entity-desc' }, _('Applied to all LAN clients'))
+						])
+					]),
+					E('div', { 'class': 'os-entity-actions' }, [
+						E('span', { 'class': 'os-badge ' + badgeClass }, flow.details || flow.section)
+					])
+				]);
+
+				container.appendChild(card);
+			});
+		};
 
 		setTimeout(function() {
+			self.renderStats(flows);
 			self.renderFlowList(flows);
 		}, 20);
 
 		return viewRoot;
-	},
-
-	renderFlowList: function(flows) {
-		var container = document.getElementById('os-flows-container');
-		if (!container) return;
-
-		var filtered = flows;
-		if (this.filterSection !== 'all') {
-			filtered = flows.filter(function(f) {
-				if (this.filterSection === 'singbox') {
-					return f.section === 'singbox' || f.section === 'vpn';
-				}
-				return f.section === this.filterSection;
-			}.bind(this));
-		}
-
-		dom.content(container, null);
-
-		if (filtered.length === 0) {
-			container.appendChild(E('div', {
-				'style': 'text-align: center; padding: 40px 20px; color: #94a3b8; background: #020617; border-radius: 10px;'
-			}, [
-				E('div', { 'style': 'font-size: 28px; margin-bottom: 8px;' }, '🔍'),
-				E('div', { 'style': 'font-weight: 600; color: #e2e8f0;' }, 'Потоков по выбранному фильтру не обнаружено'),
-				E('div', { 'style': 'font-size: 13px; margin-top: 4px;' }, 'Трафик для этой категории сейчас направляется через стандартный провайдерский шлюз WAN.')
-			]));
-			return;
-		}
-
-		filtered.forEach(function(flow) {
-			// Маршрут из конфигурации; счётчики пакетов не выдумываются.
-			var card = E('div', { 'class': 'os-flow-card' }, [
-				E('div', { 'style': 'display: flex; align-items: center; gap: 14px; min-width: 240px;' }, [
-					E('div', {}, [
-						E('div', { 'style': 'font-size: 16px; font-weight: 700; color: #fff;' }, [
-							E('span', { 'class': 'os-live-pulse', 'style': 'background: ' + flow.badge_color + '; box-shadow: 0 0 8px ' + flow.badge_color + ';' }),
-							flow.domain
-						]),
-						E('div', { 'style': 'font-size: 12px; color: #94a3b8; margin-top: 3px;' },
-							'Применяется ко всем клиентам LAN')
-					])
-				]),
-
-				E('div', { 'style': 'display: flex; align-items: center; gap: 14px; flex-wrap: wrap;' }, [
-					E('span', {
-						'style': 'padding: 6px 14px; border-radius: 9999px; font-weight: 700; font-size: 12px; background: ' +
-							flow.badge_color + '20; color: ' + flow.badge_color + '; border: 1px solid ' + flow.badge_color + '40;'
-					}, flow.details)
-				])
-			]);
-
-			container.appendChild(card);
-		});
 	},
 
 	handleSaveApply: null,

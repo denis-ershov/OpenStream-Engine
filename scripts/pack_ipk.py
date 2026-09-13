@@ -5,31 +5,68 @@ import io
 import os
 import tarfile
 import hashlib
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parent.parent
 DIST = ROOT / "dist" / "openwrt-24.10-a53"
 IPK_OUT = DIST / "ipk"
 BIN_OUT = DIST / "bin"
 VERSION = "0.4.2"
-RELEASE = "37"
+RELEASE = "38"
 ARCH = "aarch64_cortex-a53"
 
-def make_tar_gz(entries: list[tuple[str, bytes, int]]) -> bytes:
-    """Creates a tar.gz archive from (path, content, mode) entries."""
+def make_tar_gz(entries: list[tuple[str, bytes, int]], is_data: bool = True) -> bytes:
+    """Creates a tar.gz archive from (path, content, mode) entries with proper DIRTYPE hierarchy."""
     buf = io.BytesIO()
     with tarfile.open(fileobj=buf, mode="w:gz") as tar:
-        for name, data, mode in entries:
-            ti = tarfile.TarInfo(name=name.lstrip("/"))
-            ti.size = len(data)
-            ti.mode = mode
-            ti.mtime = 0
-            tar.addfile(ti, io.BytesIO(data))
+        if is_data:
+            # Root directory entry
+            ti_root = tarfile.TarInfo(name="./")
+            ti_root.type = tarfile.DIRTYPE
+            ti_root.mode = 0o755
+            ti_root.mtime = 0
+            tar.addfile(ti_root)
+
+            dirs = set()
+            normalized = []
+            for name, data, mode in entries:
+                clean = name.lstrip("/")
+                p = PurePosixPath(clean)
+                for anc in list(p.parents)[:-1]:
+                    dirs.add(anc.as_posix())
+                normalized.append((f"./{clean}", data, mode))
+
+            # Directories ordered shallowest first
+            for d in sorted(dirs, key=lambda x: (x.count("/"), x)):
+                ti_dir = tarfile.TarInfo(name=f"./{d}")
+                ti_dir.type = tarfile.DIRTYPE
+                ti_dir.mode = 0o755
+                ti_dir.mtime = 0
+                tar.addfile(ti_dir)
+
+            # Files
+            for path, data, mode in normalized:
+                ti = tarfile.TarInfo(name=path)
+                ti.type = tarfile.REGTYPE
+                ti.size = len(data)
+                ti.mode = mode
+                ti.mtime = 0
+                tar.addfile(ti, io.BytesIO(data))
+        else:
+            for name, data, mode in entries:
+                clean = name if name.startswith("./") else f"./{name.lstrip('/')}"
+                ti = tarfile.TarInfo(name=clean)
+                ti.type = tarfile.REGTYPE
+                ti.size = len(data)
+                ti.mode = mode
+                ti.mtime = 0
+                tar.addfile(ti, io.BytesIO(data))
+
     return buf.getvalue()
 
 def pack_ipk(output_ipk: Path, control_entries: list[tuple[str, bytes, int]], data_entries: list[tuple[str, bytes, int]]):
-    ctrl_gz = make_tar_gz(control_entries)
-    data_gz = make_tar_gz(data_entries)
+    ctrl_gz = make_tar_gz(control_entries, is_data=False)
+    data_gz = make_tar_gz(data_entries, is_data=True)
     deb_bin = b"2.0\n"
 
     outer_buf = io.BytesIO()
@@ -84,9 +121,10 @@ def build_packages():
     for hl in (ROOT / "package/openwrt/files/hostlists").glob("*.txt"):
         engine_data.append(collect_file(f"/usr/share/openstream/hostlists/{hl.name}", hl, 0o644))
     for rf in (ROOT / "rules").rglob("*.osrule.yaml"):
-        rel_sub = rf.relative_to(ROOT / "rules").as_posix()
-        engine_data.append(collect_file(f"/usr/share/openstream/rules/{rel_sub}", rf, 0o644))
-        engine_data.append(collect_file(f"/etc/openstream/rules/{rel_sub}", rf, 0o644))
+        # Install flat into /etc/openstream/rules/ and /usr/share/openstream/rules/
+        # Matches Makefile, pack-ipk-a53.sh, and openstream-render.uc non-recursive scanning
+        engine_data.append(collect_file(f"/etc/openstream/rules/{rf.name}", rf, 0o644))
+        engine_data.append(collect_file(f"/usr/share/openstream/rules/{rf.name}", rf, 0o644))
 
     engine_control = f"""Package: openstream-engine
 Version: {VERSION}-{RELEASE}
@@ -97,6 +135,16 @@ Architecture: {ARCH}
 Installed-Size: {len(binary_path.read_bytes())}
 Description: OpenStream Engine HLS/DASH proxy & Smart Split Router (No CA needed)
 """.encode("utf-8")
+
+    engine_preinst = b"""#!/bin/sh
+[ -n "${IPKG_INSTROOT}" ] || {
+	mkdir -p /etc/openstream/rules /usr/share/openstream/rules \
+	         /usr/share/openstream/hostlists /usr/share/openstream/nft \
+	         /usr/libexec /etc/init.d /etc/config /etc/openstream \
+	         /etc/uci-defaults 2>/dev/null || true
+}
+exit 0
+"""
 
     engine_postinst = b"""#!/bin/sh
 [ -n "${IPKG_INSTROOT}" ] || {
@@ -116,28 +164,33 @@ exit 0
 
     engine_ctrl = [
         ("./control", engine_control, 0o644),
+        ("./preinst", engine_preinst, 0o755),
         ("./postinst", engine_postinst, 0o755),
         ("./prerm", engine_prerm, 0o755),
         ("./conffiles", engine_conffiles, 0o644),
     ]
     pack_ipk(IPK_OUT / f"openstream-engine_{VERSION}-{RELEASE}_{ARCH}.ipk", engine_ctrl, engine_data)
 
-    # 2. LuCI App Package (ucode + client-side JavaScript views)
+    # 2. LuCI App Package (ucode + client-side JavaScript views + modern CSS)
     luci_data = [
         collect_file("/usr/lib/lua/luci/controller/openstream.lua", ROOT / "luci-app-openstream/luasrc/controller/openstream.lua", 0o644),
         collect_file("/usr/share/luci/menu.d/luci-app-openstream.json", ROOT / "luci-app-openstream/root/usr/share/luci/menu.d/luci-app-openstream.json", 0o644),
         collect_file("/usr/share/rpcd/ucode/openstream.uc", ROOT / "luci-app-openstream/root/usr/share/rpcd/ucode/openstream.uc", 0o644),
+        collect_file("/usr/share/rpcd/acl.d/luci-app-openstream.json", ROOT / "luci-app-openstream/root/usr/share/rpcd/acl.d/luci-app-openstream.json", 0o644),
         collect_file("/usr/share/luci/acl.d/luci-app-openstream.json", ROOT / "luci-app-openstream/root/usr/share/luci/acl.d/luci-app-openstream.json", 0o644),
         collect_file("/etc/uci-defaults/40_luci-openstream", ROOT / "luci-app-openstream/root/etc/uci-defaults/40_luci-openstream", 0o755),
     ]
+
+    # Add design system CSS
+    css_path = ROOT / "luci-app-openstream/root/www/luci-static/resources/openstream/openstream.css"
+    if css_path.exists():
+        luci_data.append(collect_file("/www/luci-static/resources/openstream/openstream.css", css_path, 0o644))
+
     # Add modern client-side JS views
     js_dir = ROOT / "luci-app-openstream/root/www/luci-static/resources/view/openstream"
     if js_dir.exists():
         for js in js_dir.glob("*.js"):
             luci_data.append(collect_file(f"/www/luci-static/resources/view/openstream/{js.name}", js, 0o644))
-
-    for htm in (ROOT / "luci-app-openstream/luasrc/view/openstream").glob("*.htm"):
-        luci_data.append(collect_file(f"/usr/lib/lua/luci/view/openstream/{htm.name}", htm, 0o644))
 
     luci_control = f"""Package: luci-app-openstream
 Version: {VERSION}-{RELEASE}
@@ -149,15 +202,30 @@ Installed-Size: 0
 Description: LuCI modern JavaScript and ucode web UI for OpenStream Engine
 """.encode("utf-8")
 
+    luci_preinst = b"""#!/bin/sh
+[ -n "${IPKG_INSTROOT}" ] || {
+	mkdir -p /www/luci-static/resources/openstream \
+	         /www/luci-static/resources/view/openstream \
+	         /usr/lib/lua/luci/controller \
+	         /usr/share/luci/menu.d \
+	         /usr/share/rpcd/ucode \
+	         /usr/share/rpcd/acl.d \
+	         /usr/share/luci/acl.d \
+	         /etc/uci-defaults 2>/dev/null || true
+}
+exit 0
+"""
+
     luci_postinst = b"""#!/bin/sh
 [ -n "${IPKG_INSTROOT}" ] || {
-	rm -f /tmp/luci-indexcache 2>/dev/null || true
-	/etc/init.d/rpcd restart 2>/dev/null || true
+	rm -f /tmp/luci-indexcache* /tmp/luci-modulecache/* 2>/dev/null || true
+	ubus call rpcd reload 2>/dev/null || /etc/init.d/rpcd reload 2>/dev/null || true
 }
 exit 0
 """
     luci_ctrl = [
         ("./control", luci_control, 0o644),
+        ("./preinst", luci_preinst, 0o755),
         ("./postinst", luci_postinst, 0o755),
     ]
     pack_ipk(IPK_OUT / f"luci-app-openstream_{VERSION}-{RELEASE}_all.ipk", luci_ctrl, luci_data)
@@ -182,8 +250,16 @@ Installed-Size: 0
 Description: Russian translation for luci-app-openstream
 """.encode("utf-8")
 
+    i18n_preinst = b"""#!/bin/sh
+[ -n "${IPKG_INSTROOT}" ] || {
+	mkdir -p /usr/lib/lua/luci/i18n /etc/uci-defaults 2>/dev/null || true
+}
+exit 0
+"""
+
     i18n_ctrl = [
         ("./control", i18n_control, 0o644),
+        ("./preinst", i18n_preinst, 0o755),
         ("./postinst", luci_postinst, 0o755),
     ]
     pack_ipk(IPK_OUT / f"luci-i18n-openstream-ru_{VERSION}-{RELEASE}_all.ipk", i18n_ctrl, i18n_data)

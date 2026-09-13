@@ -1,422 +1,251 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8\n"
 
-msgid "OpenStream Engine"
-msgstr "OpenStream Engine"
+msgid "0.0.0.0 (Null routed)"
+msgstr "0.0.0.0 (Заблокировано)"
 
-msgid "Status"
-msgstr "Состояние"
-
-msgid "Dashboard"
-msgstr "Обзор"
-
-msgid "Twitch"
-msgstr "Twitch"
-
-msgid "Services"
-msgstr "Сервисы"
-
-msgid "Logs"
-msgstr "Журнал"
-
-msgid "Diagnostics"
-msgstr "Диагностика"
-
-msgid "Loading…"
-msgstr "Загрузка…"
+msgid "Access Token Route (gql.twitch.tv)"
+msgstr "Маршрут токена доступа (gql.twitch.tv)"
 
 msgid "Active"
 msgstr "Активен"
 
-msgid "Standby"
-msgstr "В ожидании"
+msgid "Active & Healthy"
+msgstr "Работает и активен"
 
-msgid "Yes"
-msgstr "Да"
+msgid "Active Declarative Rules"
+msgstr "Активные декларативные правила"
 
-msgid "No"
-msgstr "Нет"
+msgid "Active Flow Classifications"
+msgstr "Классификация активных потоков"
 
-msgid "Apply and Reload"
-msgstr "Применить и перезагрузить"
-
-msgid "Applied successfully!"
-msgstr "Успешно применено!"
-
-msgid "Reloading…"
-msgstr "Перезагрузка…"
-
-msgid "Failed to reload"
-msgstr "Ошибка перезагрузки"
-
-msgid "Twitch module"
-msgstr "Модуль Twitch"
-
-msgid "Twitch Module"
-msgstr "Модуль Twitch"
-
-msgid "Smart Split Routing and Ad-Bypass without client certificates."
-msgstr "Умная маршрутизация и обход рекламы без сертификатов на клиентах."
-
-msgid "Twitch Routing Preset"
-msgstr "Сценарий маршрутизации Twitch"
-
-msgid "Enable Twitch Module"
-msgstr "Включить модуль Twitch"
-
-msgid "Routing Preset"
-msgstr "Готовый сценарий"
-
-msgid "🛡️ Geo-Split via Clean-Proxy / Ad-Free VPN (Zero-CA for all devices) [Recommended]"
-msgstr "🛡️ Geo-Split через Clean-Proxy / Ad-Free VPN (Zero-CA для всех устройств) [Рекомендуется]"
-
-msgid "⚡ Playlist Edge: Local Manifest Stripping (Port 18080 for SmartTV/VLC/Kodi)"
-msgstr "⚡ Playlist Edge: Локальный Manifest Stripping (Порт 18080 для SmartTV/VLC/Kodi)"
-
-msgid "🌍 Quality Unlock: 1080p60/1440p/Source (SmartDNS — without ad-block)"
-msgstr "🌍 Quality Unlock: 1080p60/1440p/Source (SmartDNS — без блокировки рекламы)"
-
-msgid "Select an automated routing strategy. Geo-Split routes tokens to ad-free VPN and master to EU. Playlist Edge physically strips ads via local HTTP proxy."
-msgstr "Выберите стратегию маршрутизации. Geo-Split направляет токен в Ad-Free VPN, а мастер-плейлист в EU. Playlist Edge физически вырезает рекламу локальным HTTP-прокси."
-
-msgid "Ad-Free VPN / Clean-Proxy (UA/AL/KZ)"
-msgstr "Ad-Free VPN / Clean-Proxy (UA/AL/KZ)"
-
-msgid "Location where authorization token is requested. Country without Twitch ads gives ad-free token."
-msgstr "Регион запроса токена. Страна без рекламы на Twitch (UA/AL/KZ) возвращает токен без рекламы."
-
-msgid "Ad-Free / Clean-Proxy VPN Set"
-msgstr "Набор VPN для Ad-Free / Clean-Proxy"
-
-msgid "Used for ad-free token retrieval (UA/AL/KZ tunnel). e.g. 4#inet#fw4#vpn_adfree"
-msgstr "Используется для получения токена без рекламы (туннель UA/AL/KZ). Например: 4#inet#fw4#vpn_adfree"
-
-msgid "Live Streaming Traffic Optimizer & Ad-Free Edge Accelerator."
-msgstr "Оптимизатор потокового трафика и акселератор без рекламы."
-
-msgid "Live Manifest Stripping & Ad-Block Statistics"
-msgstr "Статистика Manifest Stripping и блокировки рекламы в реальном времени"
-
-msgid "Ads Detected"
-msgstr "Рекламы обнаружено"
-
-msgid "Total ad blocks caught"
-msgstr "Всего пойманных рекламных блоков"
-
-msgid "Segments Stripped"
-msgstr "Сегментов вырезано"
-
-msgid "Ad video chunks removed"
-msgstr "Вырезанных видеосегментов рекламы"
-
-msgid "Playlists Processed"
-msgstr "Манифестов обработано"
-
-msgid "HLS manifests served"
-msgstr "Обработанных HLS-плейлистов"
-
-msgid "Active Streams"
-msgstr "Активных стримов"
-
-msgid "Current live streams"
-msgstr "Текущих активных трансляций"
-
-msgid "Running (18080)"
-msgstr "Работает (порт 18080)"
-
-msgid "Playlist Edge"
-msgstr "Playlist Edge"
-
-msgid "Scenario Diagnostics & Health Check"
-msgstr "Диагностика сценария и проверка здоровья"
+msgid "Active Outbound Node"
+msgstr "Текущий активный узел"
 
 msgid "Active Strategy Health Status"
 msgstr "Состояние активной стратегии"
 
-msgid "streamproxyd Engine"
-msgstr "Движок streamproxyd"
-
-msgid "Stripped Ad Segments"
-msgstr "Вырезанные видеосегменты"
-
-msgid "Clean video chunks"
-msgstr "Чистые чанки видео"
-
-msgid "Ad Sinkhole Domains"
-msgstr "Sinkhole доменов рекламы"
-
-msgid "0.0.0.0 (Null routed)"
-msgstr "0.0.0.0 (Заблокировано)"
-
-msgid "Network & DNS Route Verification"
-msgstr "Проверка сети и DNS маршрутов"
-
-msgid "Run Full Health Check"
-msgstr "Запустить полную проверку"
-
-msgid "Token Server"
-msgstr "Сервер токенов"
-
-msgid "Ad Beacon & Trigger"
-msgstr "Рекламный маяк и триггер"
-
-msgid "Video Stream CDN"
-msgstr "CDN видеопотоков"
-
-msgid "All Tests Passed"
-msgstr "Все тесты успешно пройдены"
-
-msgid "⚙️ Custom: Fine-grained matrix routing"
-msgstr "⚙️ Пользовательский: Точечная матрица маршрутов"
-
-msgid "⏹️ Disabled"
-msgstr "⏹️ Отключено"
-
-msgid "Select an automated routing preset tailored for your geographic location and ISP conditions."
-msgstr "Выберите автоматический сценарий маршрутизации под ваше географическое положение и условия провайдера."
-
-msgid "Playback Token (gql.twitch.tv)"
-msgstr "Токен авторизации (gql.twitch.tv)"
-
-msgid "Master Playlist (usher.ttvnw.net)"
-msgstr "Мастер-плейлист качеств (usher.ttvnw.net)"
-
-msgid "Media Playlists (playlist.ttvnw.net)"
-msgstr "Медиа-плейлисты вариантов (playlist.ttvnw.net)"
-
-msgid "Video Streams / CDN (live-video.net, ttvnw.net)"
-msgstr "Видеопотоки / CDN (live-video.net, ttvnw.net)"
-
-msgid "Banners & Ad Trackers (edge.ads.twitch.tv)"
-msgstr "Баннеры и ad-трекеры (edge.ads.twitch.tv)"
-
-msgid "DNS Sinkhole 0.0.0.0 (Block)"
-msgstr "DNS Sinkhole 0.0.0.0 (Заблокировано)"
-
-msgid "Direct (Allow)"
-msgstr "Прямой (Разрешить)"
-
-msgid "Direct WAN (Local ISP)"
-msgstr "Прямой WAN (Локальный провайдер)"
-
-msgid "Main / European VPN"
-msgstr "Основной / Европейский VPN"
-
-msgid "Russian VPN (No Ads)"
-msgstr "Российский VPN (Без рекламы)"
-
-msgid "Russian VPN"
-msgstr "Российский VPN"
-
-msgid "Custom VPN Set"
-msgstr "Пользовательский VPN-набор"
-
-msgid "Location where authorization token is requested. RU IP gives ad-free token."
-msgstr "Регион запроса токена. Российский IP выдает токен без рекламы."
-
-msgid "Location where quality variants are fetched. EU/US VPN unlocks 1080p/1440p/Source."
-msgstr "Регион запроса качеств. VPN открывает доступ к 1080p/1440p/Source."
-
-msgid "Heavy video stream chunks. Direct WAN preserves 100% of your VPN bandwidth and speed."
-msgstr "Тяжелые видеопотоки. Прямой WAN сохраняет 100% скорости провайдера и не тратит трафик VPN."
-
-msgid "Blocks banner ads and analytics trackers on router DNS level."
-msgstr "Блокирует баннеры и аналитические трекеры на уровне DNS роутера."
-
-msgid "VPN Policy Routing Sets"
-msgstr "Наборы маршрутизации VPN (Policy Routing)"
-
-msgid "Specify nftset (OpenWrt 22+) or ipset names configured in your router's VPN/PBR clients."
-msgstr "Укажите имена nftset (OpenWrt 22+) или ipset, настроенные в клиентах VPN/PBR вашего роутера."
-
-msgid "Main / EU VPN Set"
-msgstr "Основной / Европейский VPN-набор"
-
-msgid "Russian VPN Set"
-msgstr "Российский VPN-набор"
-
-msgid "Used for ad-free token retrieval when you are located outside Russia."
-msgstr "Используется для получения токена без рекламы при нахождении за пределами РФ."
-
-msgid "Streaming Services Hub"
-msgstr "Центр потоковых сервисов"
-
-msgid "Manage streaming platform modules and global settings."
-msgstr "Управление модулями платформ и глобальными параметрами."
-
-msgid "Global Settings"
-msgstr "Общие настройки"
-
-msgid "Master Switch (OpenStream Engine)"
-msgstr "Главный переключатель (OpenStream Engine)"
-
-msgid "Expert / Developer Mode"
-msgstr "Режим эксперта / разработчика"
-
-msgid "Enables raw metric views and low-level diagnostic panels in navigation."
-msgstr "Включает отображение сырых метрик и низкоуровневых панелей в меню."
-
-msgid "YouTube (Experimental)"
-msgstr "YouTube (Экспериментальный)"
-
-msgid "Enable YouTube Module"
-msgstr "Включить модуль YouTube"
-
-msgid "Kick.com"
-msgstr "Kick.com"
-
-msgid "Enable Kick Module"
-msgstr "Включить модуль Kick"
-
-msgid "Trovo.live"
-msgstr "Trovo.live"
-
-msgid "Enable Trovo Module"
-msgstr "Включить модуль Trovo"
-
-msgid "Current Preset:"
-msgstr "Текущий сценарий:"
-
-msgid "Configure Twitch"
-msgstr "Настроить Twitch"
-
-msgid "Other Services"
-msgstr "Другие сервисы"
-
-msgid "Services Hub"
-msgstr "Центр сервисов"
+msgid "Active Streams"
+msgstr "Активных стримов"
 
 msgid "Active Twitch Traffic Flow"
 msgstr "Активная цепочка маршрутизации Twitch"
 
-msgid "Direct WAN (RU) — No Ads"
-msgstr "Прямой WAN (РФ) — Без рекламы"
-
-msgid "EU VPN — 1440p/Source Unlock"
-msgstr "EU VPN — Доступ к 1440p/Source"
-
-msgid "Direct WAN — 100% ISP Speed (0% VPN)"
-msgstr "Прямой WAN — 100% скорости (0% VPN)"
-
-msgid "DNS Sinkhole (0.0.0.0) — Blocked"
-msgstr "DNS Sinkhole (0.0.0.0) — Заблокировано"
-
-msgid "Smart DNS & Modular Traffic Routing for Live Streaming Platforms."
-msgstr "Умный DNS и модульная маршрутизация трафика для стриминговых сервисов."
-
-msgid "Logs & Routing Rules"
-msgstr "Журнал и правила маршрутизации"
-
-msgid "Live logs from streamproxyd and generated dnsmasq routing rules."
-msgstr "Журнал службы streamproxyd и сгенерированные правила dnsmasq."
-
-msgid "Generated dnsmasq Policy Routing (/etc/dnsmasq.d/openstream.conf)"
-msgstr "Сгенерированные правила dnsmasq (/etc/dnsmasq.d/openstream.conf)"
-
-msgid "System Logs (logread -e streamproxyd)"
-msgstr "Системный журнал (logread -e streamproxyd)"
-
-msgid "Refresh Now"
-msgstr "Обновить сейчас"
-
-msgid "Auto-refresh (every 3s)"
-msgstr "Автообновление (каждые 3 сек)"
-
-msgid "Diagnostics & DNS Test"
-msgstr "Диагностика и проверка DNS"
-
-msgid "Verify local DNS resolution, nftset matching, and ad-blocking status directly on the router."
-msgstr "Проверка локального DNS-резолвинга, сопоставления nftset и статуса блокировки рекламы прямо на роутере."
-
-msgid "Twitch Domain Resolution Test"
-msgstr "Проверка разрешения доменов Twitch"
-
-msgid "Click the button below to test how the router resolves critical streaming and ad domains via local dnsmasq (127.0.0.1):"
-msgstr "Нажмите кнопку ниже для тестирования разрешения доменов через локальный dnsmasq роутера (127.0.0.1):"
-
-msgid "Run DNS Test Now"
-msgstr "Запустить проверку DNS"
-
-msgid "Auth Token"
-msgstr "Токен авторизации"
-
-msgid "Master Playlist"
-msgstr "Мастер-плейлист"
+msgid "Ad Beacon & Trigger"
+msgstr "Рекламный маяк и триггер"
 
 msgid "Ad Server & Trackers"
 msgstr "Сервер рекламы и трекеры"
 
-msgid "CDN Stream"
-msgstr "Видеопоток CDN"
+msgid "Ad Sinkhole Domains"
+msgstr "Sinkhole доменов рекламы"
 
-msgid "Test Completed"
-msgstr "Проверка завершена"
+msgid "Ad video chunks removed"
+msgstr "Вырезанных видеосегментов рекламы"
+
+msgid "Ad-Free / Clean-Proxy VPN Set"
+msgstr "Набор VPN для Ad-Free / Clean-Proxy"
+
+msgid "Ad-Free VPN / Clean-Proxy (UA/AL/KZ)"
+msgstr "Ad-Free VPN / Clean-Proxy (UA/AL/KZ)"
+
+msgid "Add Custom Rule"
+msgstr "Добавить правило"
+
+msgid "Ads Detected"
+msgstr "Рекламы обнаружено"
+
+msgid "All"
+msgstr "Все"
+
+msgid "All Rules"
+msgstr "Все правила"
+
+msgid "All Subsystems"
+msgstr "Все подсистемы"
+
+msgid "All Tests Passed"
+msgstr "Все тесты успешно пройдены"
+
+msgid "All components updated successfully."
+msgstr "Все компоненты успешно обновлены."
+
+msgid "Anti-Censorship (Zapret2)"
+msgstr "Обход DPI (Zapret2)"
+
+msgid "Anti-DPI (Zapret2 NFQUEUE)"
+msgstr "Обход DPI (Zapret2 NFQUEUE)"
+
+msgid "Anti-DPI (Zapret2 nfqws2)"
+msgstr "Обход DPI (Zapret2 nfqws2)"
+
+msgid "Applied successfully!"
+msgstr "Успешно применено!"
+
+msgid "Applied to all LAN clients"
+msgstr "Применяется ко всем клиентам LAN"
+
+msgid "Apply Changes"
+msgstr "Применить изменения"
+
+msgid "Apply and Reload"
+msgstr "Применить и перезагрузить"
+
+msgid "Applying routing rules…"
+msgstr "Применение правил маршрутизации…"
+
+msgid "Archive .tar.gz"
+msgstr "Архив .tar.gz"
+
+msgid "Are you sure you want to delete this rule?"
+msgstr "Вы уверены, что хотите удалить это правило?"
+
+msgid "Auth Token"
+msgstr "Токен авторизации"
+
+msgid "Auto (Lowest Latency)"
+msgstr "Автовыбор (Наименьший пинг)"
+
+msgid "Auto-detect (Recommended)"
+msgstr "Автоопределение (Рекомендуется)"
+
+msgid "Auto-refresh (every 3s)"
+msgstr "Автообновление (каждые 3 сек)"
+
+msgid "Automated Sync & Cron Schedule"
+msgstr "Автоматическая синхронизация по расписанию (Cron)"
+
+msgid "Automated update schedule saved successfully!"
+msgstr "Расписание автообновления успешно сохранено!"
+
+msgid "Automated updates are disabled in this binary release. Run \"opkg update && opkg upgrade\" in terminal."
+msgstr "Автоматическое обновление отключено в данном релизе. Выполните 'opkg update && opkg upgrade' в терминале."
+
+msgid "Automated updates are disabled in this binary release. Run \\"
+msgstr "Автоматическое обновление отключено в данном релизе. Выполните 'opkg update && opkg upgrade' в терминале."
+
+msgid "Automated updates disabled. Upgrade via terminal: opkg update && opkg upgrade "
+msgstr "Автообновление отключено. Обновите вручную в консоли: opkg update && opkg upgrade "
+
+msgid "Automatic DNS Failover"
+msgstr "Автопереключение при сбоях DNS (Failover)"
+
+msgid "Automatic domain population into nftables dynamic sets with failover resolvers and automated DNS leak mitigation."
+msgstr "Автоматическое добавление доменов в динамические сеты nftables через dnsmasq с защитой от утечек DNS."
+
+msgid "Automatically determined based on lowest ping"
+msgstr "Определяется автоматически по наименьшему пингу"
 
 msgid "BLOCKED - OK"
 msgstr "ЗАБЛОКИРОВАНО — OK"
 
-msgid "Coexistence with Neighbor Packages (podkop, forkop, zapret)"
-msgstr "Сосуществование с соседними сервисами (podkop, forkop, zapret)"
+msgid "Backup & Restore"
+msgstr "Резервное копирование и восстановление"
 
-msgid "OpenStream Engine operates at DNS Policy level without TLS interception or heavy iptables/nftables redirect tables, ensuring 100% compatibility with DPI bypass and VPN services."
-msgstr "OpenStream Engine работает на уровне DNS-политик без перехвата TLS и тяжелых таблиц перенаправления iptables/nftables, гарантируя 100% совместимость с сервисами обхода блокировок и VPN."
+msgid "Backup archive downloaded successfully!"
+msgstr "Архив резервной копии успешно скачан!"
 
-msgid "Scanning neighbors…"
-msgstr "Поиск установленных сервисов…"
+msgid "Backup error: "
+msgstr "Ошибка создания бэкапа: "
 
-msgid "Recommendation:"
-msgstr "Рекомендация:"
+msgid "Bandwidth Efficiency"
+msgstr "Экономия пропускной способности"
 
-msgid "detected"
-msgstr "обнаружен"
+msgid "Banners & Ad Trackers (edge.ads.twitch.tv)"
+msgstr "Баннеры и ad-трекеры (edge.ads.twitch.tv)"
 
-msgid "No conflicting packages found"
-msgstr "Конфликтующих пакетов не обнаружено"
+msgid "BitTorrent WAN Bypass"
+msgstr "Прямой пропуск BitTorrent в WAN"
 
-msgid "twitch.tv is present in general VPN list of:"
-msgstr "Домен twitch.tv обнаружен в общем списке VPN:"
+msgid "Block (Reject/Drop)"
+msgstr "Блокировка (Reject/Drop)"
 
-msgid "For best results, remove twitch.tv from their list so OpenStream Engine can split token, qualities and video streams cleanly."
-msgstr "Для лучшего результата удалите twitch.tv из их списка, чтобы OpenStream Engine мог раздельно маршрутизировать токен, качества и видеопоток."
+msgid "Block QUIC (UDP 443)"
+msgstr "Блокировать QUIC (UDP 443)"
 
-msgid "Compatibility Settings"
-msgstr "Параметры совместимости"
+msgid "Block Unauthorized DoH/DoT"
+msgstr "Блокировать сторонний DoH/DoT"
 
-msgid "Ignore Coexistence Warnings"
-msgstr "Игнорировать предупреждения совместимости"
+msgid "Block telemetry, tracking domains, and analytics at DNS level (0.0.0.0)."
+msgstr "Блокировка телеметрии, трекеров и аналитики на уровне DNS (0.0.0.0)."
+
+msgid "Blocks banner ads and analytics trackers on router DNS level."
+msgstr "Блокирует баннеры и аналитические трекеры на уровне DNS роутера."
+
+msgid "Blocks rogue browser DoH to prevent DNS leaks and enforce router policy routing."
+msgstr "Предотвращает утечки DNS через встроенные резолверы браузеров мимо политик роутера."
+
+msgid "Bootstrap DNS (Static plain IPs for resolving DoH endpoints)"
+msgstr "Bootstrap DNS (Статические IP без шифрования для DoH)"
+
+msgid "Bypassing DPI (nfqws2)"
+msgstr "Активен обход блокировок"
+
+msgid "CDN Stream"
+msgstr "Видеопоток CDN"
+
+msgid "Cancel"
+msgstr "Отмена"
+
+msgid "Cascading upstream resolvers queried through the secure engine."
+msgstr "Каскадные апстрим-резолверы, опрашиваемые безопасным движком."
+
+msgid "Chain & Sets Active"
+msgstr "Цепочки и сеты активны"
+
+msgid "Check Ping"
+msgstr "Проверить пинг"
+
+msgid "Check for Updates"
+msgstr "Проверить обновления"
 
 msgid "Check this if twitch.tv is already placed in Exclude / Bypass list of Forkop, Podkop or PassWall."
 msgstr "Включите, если twitch.tv уже добавлен в список Exclude / Исключений Forkop, Podkop или PassWall."
 
-msgid "I have already excluded Twitch (Hide)"
-msgstr "Твитч уже в исключениях (Скрыть)"
+msgid "Checking for Updates"
+msgstr "Проверка обновлений"
 
-msgid "twitch.tv in Exclude - OK"
-msgstr "twitch.tv в Exclude — OK"
+msgid "Choose the sing-box build tailored to your router hardware constraints (RAM, flash storage, and protocol features):"
+msgstr "Выберите сборку sing-box под аппаратные возможности вашего роутера (RAM, флеш-память и протоколы):"
 
-msgid "Warnings Suppressed (Twitch Excluded)"
-msgstr "Предупреждения скрыты (Twitch в исключениях)"
+msgid "Clean video chunks"
+msgstr "Чистые чанки видео"
 
-msgid "🇷🇺 Russia / CIS: No ads + 1440p (SmartDNS — No VPN needed) [Recommended]"
-msgstr "🇷🇺 Россия / СНГ: Без рекламы + 1440p (SmartDNS — без VPN) [Рекомендуется]"
+msgid "Clear History"
+msgstr "Очистить историю"
 
-msgid "🌍 Quality Unlock: 1440p/Source (SmartDNS — No VPN needed)"
-msgstr "🌍 Разблокировка качеств: 1440p/Source (SmartDNS — без VPN)"
+msgid "Click \"Run Diagnostics\" to inspect system components."
+msgstr "Нажмите «Запустить диагностику» для проверки компонентов роутера."
 
-msgid "🛡️ Russia: No ads + 1440p (via Router VPN)"
-msgstr "🛡️ Россия: Без рекламы + 1440p (через VPN роутера)"
+msgid "Click \\"
+msgstr "Нажмите «Запустить диагностику» для проверки компонентов роутера."
 
-msgid "🇪🇺 Europe / US: Bypass ads via RU DNS"
-msgstr "🇪🇺 Европа / США: Обход рекламы через RU DNS"
+msgid "Click the button below to test how the router resolves critical streaming and ad domains via local dnsmasq (127.0.0.1):"
+msgstr "Нажмите кнопку ниже для тестирования разрешения доменов через локальный dnsmasq роутера (127.0.0.1):"
 
-msgid "Select an automated routing strategy. SmartDNS presets work out-of-the-box without requiring any VPN tunnels."
-msgstr "Выберите автоматический сценарий маршрутизации. Сценарии SmartDNS работают сразу «из коробки» без необходимости настройки VPN-туннелей."
+msgid "Client Certificate Free"
+msgstr "Без сертификатов на клиентах"
 
-msgid "Yandex DNS (RU — No Ads)"
-msgstr "Яндекс DNS (РФ — без рекламы)"
+msgid "Cloudflare DNS (Global)"
+msgstr "Cloudflare DNS (Зарубежный)"
 
-msgid "MSK-IX DNS (Fastest RU)"
-msgstr "MSK-IX DNS (Быстрый РФ)"
+msgid "Coexistence with Neighbor Packages (podkop, forkop, zapret)"
+msgstr "Сосуществование с соседними сервисами (podkop, forkop, zapret)"
+
+msgid "Community Domain & GeoIP Lists"
+msgstr "Списки доменов сообщества и GeoIP"
+
+msgid "Compatibility Settings"
+msgstr "Параметры совместимости"
+
+msgid "Component & Update Center"
+msgstr "Центр компонентов и обновлений"
+
+msgid "Comprehensive automated verification of nftables chains, sing-box sockets, Zapret2 DPI queues, and DNS integrity."
+msgstr "Комплексная автоматическая проверка цепочек nftables, сокетов sing-box, очередей Zapret2 и целостности DNS."
+
+msgid "Comss SmartDNS (EU) — 1440p Unlock (No VPN)"
+msgstr "Comss SmartDNS (EU) — 1440p (без VPN)"
 
 msgid "Comss.one SmartDNS"
 msgstr "Comss.one SmartDNS"
@@ -424,83 +253,1266 @@ msgstr "Comss.one SmartDNS"
 msgid "Comss.one SmartDNS (1440p No VPN)"
 msgstr "Comss.one SmartDNS (1440p без VPN)"
 
-msgid "Cloudflare DNS (Global)"
-msgstr "Cloudflare DNS (Зарубежный)"
+msgid "Configuration restored successfully!"
+msgstr "Конфигурация успешно восстановлена!"
 
-msgid "Yandex DNS (RU)"
-msgstr "Яндекс DNS (РФ)"
+msgid "Configure Twitch"
+msgstr "Настроить Twitch"
 
-msgid "Routes authorization token via Yandex DNS (RU) and master playlist via Comss SmartDNS (1440p). No VPN needed!"
-msgstr "Токен запрашивается через Яндекс DNS (РФ, без рекламы), а мастер-плейлист через Comss SmartDNS (1440p). VPN не требуется!"
+msgid "Configure cascading DNS failover, DoH bootstrap, QUIC/DoH blocking, BitTorrent WAN bypass, and system backup."
+msgstr "Настройка каскадного DNS, Bootstrap DoH, блокировки QUIC/DoH, прямого пропуска BitTorrent и резервных копий."
 
-msgid "Unlocks 1080p60/1440p/Source qualities via Comss SmartDNS. No VPN needed."
-msgstr "Разблокирует качества 1080p60/1440p/Source через Comss SmartDNS. VPN не требуется."
+msgid "Configured Servers"
+msgstr "Настроенные серверы"
 
-msgid "Routes authorization token directly (RU ISP) and master playlist via router VPN."
-msgstr "Токен запрашивается напрямую (провайдер РФ), а мастер-плейлист через VPN роутера."
+msgid "Controls region-based SSAI ad-injection rules."
+msgstr "Управляет региональными правилами внедрения рекламы SSAI."
 
-msgid "Fetches ad-free token via Russian DNS and streams via European CDN."
-msgstr "Токен без рекламы через DNS РФ, а видеопоток через европейский CDN."
+msgid "Controls resolution availability and transcoder endpoints."
+msgstr "Управляет доступностью разрешений (1080p60) и эндоинтами транскодеров."
 
-msgid "Routes all Twitch traffic via VPN tunnel."
-msgstr "Направляет весь трафик Twitch через VPN-туннель."
+msgid "Core Daemon (Rust)"
+msgstr "Основной демон (Rust)"
 
-msgid "Custom routing matrix is active."
-msgstr "Активна пользовательская матрица маршрутизации."
+msgid "Create Routing Rule"
+msgstr "Создать правило маршрутизации"
 
-msgid "Smart Split Routing & Ad-Bypass for Twitch live streams."
-msgstr "Умная раздельная маршрутизация и обход рекламы для стримов Twitch."
-
-msgid "SmartDNS (EU) — 1440p/Source Unlock"
-msgstr "SmartDNS (EU) — 1440p/Source разблокировка"
-
-msgid "Yandex DNS (RU) — No Ads"
-msgstr "Яндекс DNS (РФ) — без рекламы"
-
-msgid "Comss SmartDNS (EU) — 1440p Unlock (No VPN)"
-msgstr "Comss SmartDNS (EU) — 1440p (без VPN)"
-
-msgid "Direct WAN — 100% ISP Speed"
-msgstr "Прямой WAN — 100% скорость провайдера"
-
-msgid "EU VPN — Proxied"
-msgstr "EU VPN — проксировано"
-
-msgid "EU VPN — 1440p Unlock"
-msgstr "EU VPN — 1440p разблокировка"
-
-msgid "Routes authorization token to RU IP (no ads) and master playlist to EU VPN (1440p)."
-msgstr "Токен через IP РФ (без рекламы), мастер-плейлист через EU VPN (1440p)."
-
-msgid "WAN Interface for SmartDNS"
-msgstr "Интерфейс WAN для SmartDNS"
-
-msgid "Auto-detect (Recommended)"
-msgstr "Автоопределение (Рекомендуется)"
-
-msgid "Network interface used for direct SmartDNS and RU DNS requests in bypass of VPN tunnels."
-msgstr "Сетевой интерфейс, используемый для прямых запросов к SmartDNS и DNS РФ в обход VPN-туннелей."
-
-msgid "OpenStream 2.0: Service Policies (.osrule)"
-msgstr "OpenStream 2.0: Сервисные правила (.osrule)"
-
-msgid "Declarative cross-platform service rules compiled directly into kernel nftables and dnsmasq."
-msgstr "Декларативные кроссплатформенные правила сервисов, компилируемые напрямую в nftables и dnsmasq."
-
-msgid "YouTube Anti-DPI & Clean"
-msgstr "YouTube Anti-DPI & Clean"
-
-msgid "Local TLS ClientHello segmentation for googlevideo CDN without remote VPN limits."
-msgstr "Локальное разделение TLS ClientHello для серверов googlevideo без ограничений VPN."
+msgid "Creating archive..."
+msgstr "Создание архива..."
 
 msgid "Crunchyroll Smart Route"
 msgstr "Crunchyroll Smart Route"
 
-msgid "US library catalog unlock with direct CDN stream speeds."
-msgstr "Разблокировка каталога США с прямой загрузкой видеопотока."
+msgid "Current Preset:"
+msgstr "Текущий сценарий:"
+
+msgid "Current live streams"
+msgstr "Текущих активных трансляций"
+
+msgid "Custom"
+msgstr "Пользовательский"
+
+msgid "Custom Rules"
+msgstr "Пользовательские правила"
+
+msgid "Custom VPN Set"
+msgstr "Пользовательский VPN-набор"
+
+msgid "Custom routing matrix is active."
+msgstr "Активна пользовательская матрица маршрутизации."
+
+msgid "Custom: Fine-grained matrix split routing"
+msgstr "Пользовательский: Раздельная матричная маршрутизация"
+
+msgid "DNS Sinkhole (0.0.0.0) — Blocked"
+msgstr "DNS Sinkhole (0.0.0.0) — Заблокировано"
+
+msgid "DNS Sinkhole 0.0.0.0 (Block)"
+msgstr "DNS Sinkhole 0.0.0.0 (Заблокировано)"
+
+msgid "DNS Sinkhole Block"
+msgstr "DNS Sinkhole Блокировка"
+
+msgid "DNS and network security settings applied successfully!"
+msgstr "Параметры DNS и сетевой безопасности успешно применены!"
+
+msgid "DPI Bypass (Zapret2)"
+msgstr "Обход DPI (Zapret2)"
+
+msgid "DPI Bypass Engine"
+msgstr "Обход DPI (Zapret2)"
+
+msgid "Daily (at 04:00 AM)"
+msgstr "Ежедневно (в 04:00 утра)"
+
+msgid "Dashboard"
+msgstr "Обзор"
+
+msgid "Declarative Policy Routing"
+msgstr "Декларативная маршрутизация"
+
+msgid "Declarative cross-platform service rules compiled directly into kernel nftables and dnsmasq."
+msgstr "Декларативные кроссплатформенные правила сервисов, компилируемые напрямую в nftables и dnsmasq."
+
+msgid "Declarative routing engine managing Zapret2 DPI bypass, StreamProxy ad-stripping, and sing-box outbounds."
+msgstr "Декларативный движок маршрутизации: обход DPI Zapret2, очистка потоков StreamProxy и туннели sing-box."
+
+msgid "Declarative routing policy"
+msgstr "Декларативная политика маршрутизации"
+
+msgid "Default WAN"
+msgstr "Основной WAN"
+
+msgid "Delete rule"
+msgstr "Удалить правило"
+
+msgid "Delete rule "
+msgstr "Удалить правило "
+
+msgid "Delete server"
+msgstr "Удалить сервер"
+
+msgid "Delete server: "
+msgstr "Удалить сервер: "
+
+msgid "Description"
+msgstr "Описание"
+
+msgid "Diagnosing..."
+msgstr "Диагностика..."
+
+msgid "Diagnostic Checks"
+msgstr "Диагностические проверки"
+
+msgid "Diagnostics"
+msgstr "Диагностика"
+
+msgid "Diagnostics & DNS Test"
+msgstr "Диагностика и проверка DNS"
+
+msgid "Diagnostics error: "
+msgstr "Ошибка выполнения диагностики: "
+
+msgid "Direct (Allow)"
+msgstr "Прямой (Разрешить)"
+
+msgid "Direct WAN (Bypass)"
+msgstr "Прямой WAN (Прямой интернет)"
+
+msgid "Direct WAN (Local ISP)"
+msgstr "Прямой WAN (Локальный провайдер)"
+
+msgid "Direct WAN (Max ISP Bandwidth)"
+msgstr "Прямой WAN (Максимальная скорость провайдера)"
+
+msgid "Direct WAN (Provider Default)"
+msgstr "Прямой WAN (По умолчанию)"
+
+msgid "Direct WAN (RU) — No Ads"
+msgstr "Прямой WAN (РФ) — Без рекламы"
+
+msgid "Direct WAN routing for time synchronization without tunnel jitter."
+msgstr "Прямой пропуск пакетов времени без задержек и джиттера туннелей."
+
+msgid "Direct WAN — 100% ISP Speed"
+msgstr "Прямой WAN — 100% скорость провайдера"
+
+msgid "Direct WAN — 100% ISP Speed (0% VPN)"
+msgstr "Прямой WAN — 100% скорости (0% VPN)"
+
+msgid "Disabled"
+msgstr "Отключено"
+
+msgid "Display Name"
+msgstr "Отображаемое имя"
+
+msgid "Domain Route Inspector"
+msgstr "Инспектор маршрута домена"
+
+msgid "Domain routing rules"
+msgstr "Правил маршрутизации доменов"
+
+msgid "Domains will be automatically populated into nftables dynamic target sets via dnsmasq."
+msgstr "Домены будут автоматически добавлены в динамические сеты nftables через dnsmasq."
+
+msgid "Download Backup (.tar.gz)"
+msgstr "Скачать бэкап (.tar.gz)"
+
+msgid "Download Updates via VPN"
+msgstr "Скачивать обновления через VPN"
+
+msgid "Downloading & parsing..."
+msgstr "Загрузка и парсинг..."
+
+msgid "EU VPN — 1440p Unlock"
+msgstr "EU VPN — 1440p разблокировка"
+
+msgid "EU VPN — 1440p/Source Unlock"
+msgstr "EU VPN — Доступ к 1440p/Source"
+
+msgid "EU VPN — Proxied"
+msgstr "EU VPN — проксировано"
+
+msgid "Ecosystem Coexistence"
+msgstr "Совместимость в экосистеме"
+
+msgid "Edit"
+msgstr "Редактировать"
+
+msgid "Edit Policy Rule"
+msgstr "Редактировать правило"
+
+msgid "Edit Routing Rule"
+msgstr "Редактировать правило маршрутизации"
+
+msgid "Enable Automated Cron"
+msgstr "Включить автообновление cron"
+
+msgid "Enable Kick Module"
+msgstr "Включить модуль Kick"
+
+msgid "Enable Trovo Module"
+msgstr "Включить модуль Trovo"
+
+msgid "Enable Twitch Module"
+msgstr "Включить модуль Twitch"
+
+msgid "Enable YouTube Module"
+msgstr "Включить модуль YouTube"
+
+msgid "Enables raw metric views and low-level diagnostic panels in navigation."
+msgstr "Включает отображение сырых метрик и низкоуровневых панелей в меню."
+
+msgid "Engine Active"
+msgstr "Движок активен"
+
+msgid "Engine Status & Overview"
+msgstr "Состояние и обзор OpenStream Engine"
+
+msgid "Error: "
+msgstr "Ошибка: "
+
+msgid "Every 3 Days"
+msgstr "Каждые 3 дня"
+
+msgid "Exclude NTP (UDP 123)"
+msgstr "Исключить синхронизацию времени NTP"
+
+msgid "Excluded LAN Clients (IP or MAC, comma-separated)"
+msgstr "Исключенные клиенты LAN (IP или MAC через запятую)"
+
+msgid "Excluded Subnets and IPs (CIDR list, comma-separated)"
+msgstr "Исключенные подсети и IP (CIDR список через запятую)"
+
+msgid "Executes periodic syncing in the background (/etc/crontabs/root)."
+msgstr "Фоновое выполнение обновлений через системный cron (/etc/crontabs/root)."
+
+msgid "Expert / Developer Mode"
+msgstr "Режим эксперта / разработчика"
+
+msgid "Export all custom routing rules, UCI configuration, and server credentials to a portable archive, or restore on a freshly flashed router."
+msgstr "Экспорт всех правил, конфигураций UCI и серверов в переносимый архив tar.gz или восстановление при перепрошивке."
+
+msgid "FAIL"
+msgstr "ОШИБКА"
+
+msgid "Failed to apply rules: "
+msgstr "Ошибка применения правил: "
+
+msgid "Failed to reload"
+msgstr "Ошибка перезагрузки"
+
+msgid "Failed to restart service: "
+msgstr "Не удалось перезапустить службу: "
+
+msgid "Failed to save schedule: "
+msgstr "Не удалось сохранить расписание: "
+
+msgid "Failover Failure Threshold"
+msgstr "Порог сбоев для Failover (от флаппинга)"
+
+msgid "Fetches ad-free token via Russian DNS and streams via European CDN."
+msgstr "Токен без рекламы через DNS РФ, а видеопоток через европейский CDN."
+
+msgid "Firewall & Kernel Acceleration"
+msgstr "Файрвол и ускорение ядра"
+
+msgid "Flow Distribution Metrics"
+msgstr "Метрики распределения потоков"
+
+msgid "Flow monitor history cleared."
+msgstr "История мониторинга потоков очищена."
+
+msgid "For best results, remove twitch.tv from their list so OpenStream Engine can split token, qualities and video streams cleanly."
+msgstr "Для лучшего результата удалите twitch.tv из их списка, чтобы OpenStream Engine мог раздельно маршрутизировать токен, качества и видеопоток."
+
+msgid "Forces TLS 1.3 TCP fallback in browsers, essential for YouTube DPI bypass in Zapret2."
+msgstr "Форсирует TCP TLS 1.3 в браузерах. Критически важно для работы обхода замедления YouTube в Zapret2."
+
+msgid "Full protocol suite: VLESS Reality, xHTTP transport, TUIC v5, Shadowsocks 2022 and state-of-the-art anti-censorship."
+msgstr "Полный набор современных протоколов: VLESS Reality, транспорт xHTTP, TUIC v5, Shadowsocks 2022 и новейшие методы обхода цензуры."
+
+msgid "Generated dnsmasq Policy Routing (/etc/dnsmasq.d/openstream.conf)"
+msgstr "Сгенерированные правила dnsmasq (/etc/dnsmasq.d/openstream.conf)"
+
+msgid "Geo-Split requests stream playback access tokens from an ad-free region (e.g. Ukraine, Kazakhstan, Albania) while delivering raw 1080p video chunks directly from your local ISP CDN."
+msgstr "Geo-Split запрашивает авторизационный токен в стране без рекламы (Украина, Казахстан, Албания), а 1080p-видеопоток транслирует напрямую с прямого CDN вашего провайдера."
+
+msgid "Geo-Split via Clean-Proxy (Zero-CA for SmartTV/PC) [Recommended]"
+msgstr "Geo-Split через Clean-Proxy (Zero-CA для SmartTV/ПК) [Рекомендуется]"
+
+msgid "Global Settings"
+msgstr "Общие настройки"
+
+msgid "HEALTHY"
+msgstr "В НОРМЕ"
+
+msgid "HLS manifests served"
+msgstr "Обработанных HLS-плейлистов"
+
+msgid "HLS/DASH Stream Proxy (Port 8888)"
+msgstr "StreamProxy HLS/DASH (Порт 8888)"
+
+msgid "Hardware ID (X-HWID for Private Providers)"
+msgstr "Аппаратный ID (X-HWID для приватных подписок)"
+
+msgid "Heavy video stream chunks. Direct WAN preserves 100% of your VPN bandwidth and speed."
+msgstr "Тяжелые видеопотоки. Прямой WAN сохраняет 100% скорости провайдера и не тратит трафик VPN."
+
+msgid "Heavy video traffic (~8-12 Mbps per stream) never overloads your VPN tunnel. Only lightweight JSON token handshakes (~2 KB) are routed through geo-split outbounds."
+msgstr "Тяжелый видеопоток (~8–12 Мбит/с на стрим) не нагружает ваш VPN. Через удаленный туннель проходят только крошечные JSON-запросы токенов (~2 КБ)."
+
+msgid "High-performance routing layer supporting VLESS Reality/xHTTP, Hysteria 2, TUIC v5, Shadowsocks 2022, and URLTest lowest-latency auto-selection."
+msgstr "Высокопроизводительный уровень маршрутизации с поддержкой VLESS Reality/xHTTP, Hysteria 2, TUIC v5, Shadowsocks 2022 и автовыбором по задержке URLTest."
+
+msgid "I have already excluded Twitch (Hide)"
+msgstr "Твитч уже в исключениях (Скрыть)"
+
+msgid "IP prefixes that are always bypassed directly to WAN without proxying."
+msgstr "IP-префиксы, которые всегда идут напрямую в WAN без обработки прокси."
+
+msgid "Idempotent table management preserving dynamic sets across reloads with mutual conflict isolation alongside Forkop, Podkop, and Passwall."
+msgstr "Идемпотентное управление таблицами с сохранением сетов при перезагрузках и изоляцией конфликтов с Forkop, Podkop и Passwall."
+
+msgid "Ignore Coexistence Warnings"
+msgstr "Игнорировать предупреждения совместимости"
+
+msgid "Import Nodes"
+msgstr "Импортировать узлы"
+
+msgid "Import Subscriptions & Nodes"
+msgstr "Импорт подписок и узлов"
+
+msgid "Import error: "
+msgstr "Сбой при импорте: "
+
+msgid "Import failed: "
+msgstr "Ошибка импорта: "
+
+msgid "Inactive"
+msgstr "Неактивен"
+
+msgid "Inspect Route"
+msgstr "Проверить маршрут"
+
+msgid "Inspect which engine handles traffic for a specific domain in real time:"
+msgstr "Узнайте в реальном времени, какая подсистема обрабатывает трафик для домена:"
+
+msgid "Installed"
+msgstr "Установлен"
+
+msgid "Installed Subsystem Status"
+msgstr "Статус установленных подсистем"
+
+msgid "Installed Version: "
+msgstr "Установленная версия: "
+
+msgid "Installed: "
+msgstr "Установлена: "
+
+msgid "Kernel NFQUEUE Engine"
+msgstr "Движок ядра NFQUEUE"
+
+msgid "Kernel nftables Rules"
+msgstr "Правила ядра nftables"
+
+msgid "Kernel-level fwmark packet dispatching via Linux nftables & IP rule sets routes targeted traffic across Direct, VPN, Anti-DPI, and Proxy egress interfaces."
+msgstr "Диспетчеризация пакетов на уровне ядра через fwmark в Linux nftables и таблицы IP route направляет трафик между WAN, VPN, Anti-DPI и Proxy."
+
+msgid "Kick.com"
+msgstr "Kick.com"
+
+msgid "L7 packet segmentation, fake SNI injection, and TCP window manipulation for seamless YouTube 4K, Discord voice, and restricted media access."
+msgstr "Сегментация пакетов на L7, отправка fake SNI и манипуляции с окном TCP для работы YouTube 4K, голосовой связи Discord и заблокированных медиаресурсов."
+
+msgid "Live Domain Routing Inspector"
+msgstr "Живой инспектор маршрутов доменов"
+
+msgid "Live Manifest Stripping & Ad-Block Statistics"
+msgstr "Статистика Manifest Stripping и блокировки рекламы в реальном времени"
+
+msgid "Live Monitoring"
+msgstr "Мониторинг потоков"
+
+msgid "Live Streaming Traffic Optimizer & Ad-Free Edge Accelerator."
+msgstr "Оптимизатор потокового трафика и акселератор без рекламы."
+
+msgid "Live Traffic & Routing Monitor"
+msgstr "Живой мониторинг трафика и маршрутов"
+
+msgid "Live logs from streamproxyd and generated dnsmasq routing rules."
+msgstr "Журнал службы streamproxyd и сгенерированные правила dnsmasq."
+
+msgid "Loading…"
+msgstr "Загрузка…"
+
+msgid "Local DNS Overrides (Hosts format: domain IP)"
+msgstr "Локальные DNS-переопределения (формат hosts: домен IP)"
+
+msgid "Local TLS ClientHello segmentation for googlevideo CDN without remote VPN limits."
+msgstr "Локальное разделение TLS ClientHello для серверов googlevideo без ограничений VPN."
+
+msgid "Location where authorization token is requested. Country without Twitch ads gives ad-free token."
+msgstr "Регион запроса токена. Страна без рекламы на Twitch (UA/AL/KZ) возвращает токен без рекламы."
+
+msgid "Location where authorization token is requested. RU IP gives ad-free token."
+msgstr "Регион запроса токена. Российский IP выдает токен без рекламы."
+
+msgid "Location where quality variants are fetched. EU/US VPN unlocks 1080p/1440p/Source."
+msgstr "Регион запроса качеств. VPN открывает доступ к 1080p/1440p/Source."
+
+msgid "Logs"
+msgstr "Журнал"
+
+msgid "Logs & Routing Rules"
+msgstr "Журнал и правила маршрутизации"
+
+msgid "Low-traffic hours recommended for transparent updates."
+msgstr "Рекомендуются часы минимальной нагрузки сети для бесшовного обновления."
+
+msgid "MSK-IX DNS (Fastest RU)"
+msgstr "MSK-IX DNS (Быстрый РФ)"
+
+msgid "Main / EU VPN Set"
+msgstr "Основной / Европейский VPN-набор"
+
+msgid "Main / European VPN"
+msgstr "Основной / Европейский VPN"
+
+msgid "Manage OSE core services, sing-box flavor variants, Zapret2 DPI rules, and automated cron syncing."
+msgstr "Управление службами OSE, вариантами sing-box, правилами Zapret2 и автоматической синхронизацией по cron."
+
+msgid "Manage declarative traffic rules (.osrule.yaml), test domain resolution, and configure client policy routing."
+msgstr "Управление правилами маршрутизации (.osrule.yaml), проверка разрешения доменов и настройка клиентских политик."
+
+msgid "Manage streaming platform modules and global settings."
+msgstr "Управление модулями платформ и глобальными параметрами."
+
+msgid "Management of sing-box outbounds: VLESS Reality, Hysteria 2, TUIC, Shadowsocks 2022, Trojan and auto-failover."
+msgstr "Управление узлами sing-box: VLESS Reality, Hysteria 2, TUIC, Shadowsocks 2022, Trojan и автопереключение."
+
+msgid "Manual Selection"
+msgstr "Фиксированный сервер (Вручную)"
+
+msgid "Master Playlist"
+msgstr "Мастер-плейлист"
+
+msgid "Master Playlist (usher.ttvnw.net)"
+msgstr "Мастер-плейлист качеств (usher.ttvnw.net)"
+
+msgid "Master Playlist Route (usher.ttvnw.net)"
+msgstr "Маршрут мастер-плейлиста (usher.ttvnw.net)"
+
+msgid "Master Switch (OpenStream Engine)"
+msgstr "Главный переключатель (OpenStream Engine)"
+
+msgid "Matched routing rule"
+msgstr "Сработало правило маршрутизации"
+
+msgid "Matrix Routing Destinations"
+msgstr "Направления матричной маршрутизации"
+
+msgid "Measuring latency..."
+msgstr "Замер задержки..."
+
+msgid "Media Playlists (playlist.ttvnw.net)"
+msgstr "Медиа-плейлисты вариантов (playlist.ttvnw.net)"
+
+msgid "Module Enabled"
+msgstr "Модуль включен"
+
+msgid "Multi-DNS & DoH Shield"
+msgstr "Multi-DNS и защита DoH"
+
+msgid "Multi-DNS Failover & Bootstrap Resolver"
+msgstr "Отказоустойчивый Multi-DNS и Bootstrap"
+
+msgid "NFQUEUE 1088"
+msgstr "Очередь NFQUEUE 1088"
+
+msgid "Network & DNS Route Verification"
+msgstr "Проверка сети и DNS маршрутов"
+
+msgid "Network Security & Bypass Rules"
+msgstr "Сетевая безопасность и правила пропуска"
+
+msgid "Network Services & Security"
+msgstr "Сетевые сервисы и безопасность"
+
+msgid "Network interface used for direct SmartDNS and RU DNS requests in bypass of VPN tunnels."
+msgstr "Сетевой интерфейс, используемый для прямых запросов к SmartDNS и DNS РФ в обход VPN-туннелей."
+
+msgid "New Routing Policy Rule"
+msgstr "Новое правило маршрутизации"
+
+msgid "No"
+msgstr "Нет"
+
+msgid "No conflicting packages found"
+msgstr "Конфликтующих пакетов не обнаружено"
+
+msgid "No diagnostic results yet"
+msgstr "Диагностика ещё не проводилась"
+
+msgid "No flows matched the current filter"
+msgstr "Потоков по выбранному фильтру не обнаружено"
+
+msgid "No rules matching selected filter."
+msgstr "Нет правил, соответствующих выбранному фильтру."
+
+msgid "No servers added yet"
+msgstr "Серверы ещё не добавлены"
+
+msgid "No servers available"
+msgstr "Нет доступных серверов"
+
+msgid "No update activity logged."
+msgstr "Журнал обновлений пуст."
+
+msgid "Nodes imported successfully!"
+msgstr "Узлы успешно импортированы!"
+
+msgid "Not Installed"
+msgstr "Не установлен"
+
+msgid "Not Running"
+msgstr "Не запущен"
+
+msgid "Number of consecutive failed queries before switching to secondary DNS (anti-flapping)."
+msgstr "Количество неудачных запросов подряд перед переключением на запасной DNS."
+
+msgid "Official standard feed build. Rock-solid Shadowsocks, VLESS, WireGuard and DNS routing."
+msgstr "Официальная стабильная сборка из фидов OpenWrt. Надежные протоколы Shadowsocks, VLESS, WireGuard и DNS-маршрутизация."
+
+msgid "One IP or CIDR per line, e.g.:\n198.51.100.0/24\n203.0.113.5"
+msgstr "Один IP или CIDR на строку, например:\n198.51.100.0/24\n203.0.113.5"
+
+msgid "One IP or CIDR per line, e.g.:\\\n198.51.100.0/24\\\n203.0.113.5"
+msgstr "One IP or CIDR per line, e.g.:\\\n198.51.100.0/24\\\n203.0.113.5"
+
+msgid "One IP or CIDR per line, e.g.:\\n198.51.100.0/24\\n203.0.113.5"
+msgstr "Один IP или CIDR на строку, например:\n198.51.100.0/24\n203.0.113.5"
+
+msgid "One domain per line, e.g.:\nexample.com\n*.cdn.example.org"
+msgstr "Один домен на строку, например:\nexample.com\n*.cdn.example.org"
+
+msgid "One domain per line, e.g.:\\\nexample.com\\\n*.cdn.example.org"
+msgstr "One domain per line, e.g.:\\\nexample.com\\\n*.cdn.example.org"
+
+msgid "One domain per line, e.g.:\\nexample.com\\n*.cdn.example.org"
+msgstr "Один домен на строку, например:\nexample.com\n*.cdn.example.org"
+
+msgid "Online (Port 8888)"
+msgstr "В сети (Порт 8888)"
+
+msgid "OpenStream 2.0: Service Policies (.osrule)"
+msgstr "OpenStream 2.0: Сервисные правила (.osrule)"
+
+msgid "OpenStream Engine"
+msgstr "OpenStream Engine"
+
+msgid "OpenStream Engine operates at DNS Policy level without TLS interception or heavy iptables/nftables redirect tables, ensuring 100% compatibility with DPI bypass and VPN services."
+msgstr "OpenStream Engine работает на уровне DNS-политик без перехвата TLS и тяжелых таблиц перенаправления iptables/nftables, гарантируя 100% совместимость с сервисами обхода блокировок и VPN."
+
+msgid "Operational Preset"
+msgstr "Рабочий сценарий"
+
+msgid "Optimizer Mode & Routing Presets"
+msgstr "Режим оптимизатора и готовые сценарии"
+
+msgid "Optional"
+msgstr "Опционально"
+
+msgid "Optional client certificate for mutual TLS DoH resolvers."
+msgstr "Опциональный клиентский сертификат для DoH-серверов с взаимной TLS-аутентификацией."
+
+msgid "Optional private key matching the client certificate."
+msgstr "Приватный ключ, соответствующий клиентскому сертификату."
+
+msgid "Optional: e.g. 64-char hex hardware ID"
+msgstr "Опционально: 64-значный hex HWID"
+
+msgid "Orchestration Layer"
+msgstr "Уровень оркестрации"
+
+msgid "Other Services"
+msgstr "Другие сервисы"
+
+msgid "Outbound Gateway Selector"
+msgstr "Селектор исходящего шлюза"
+
+msgid "Outbound Multiplexer (sing-box)"
+msgstr "Мультиплексор исходящих (sing-box)"
+
+msgid "Outbound Servers & Subscriptions"
+msgstr "Исходящие серверы и подписки"
+
+msgid "Paste a subscription link or node URI above to import outbounds."
+msgstr "Вставьте ссылку на подписку или URI узла выше для импорта серверов."
+
+msgid "Paste https:// subscription link, Base64 block, or vless://, hysteria2://, tuic://, ss://, trojan:// URI"
+msgstr "Вставьте https:// ссылку на подписку, блок Base64 или vless://, hysteria2://, tuic://, ss://, trojan:// ссылки"
+
+msgid "Ping"
+msgstr "Пинг"
+
+msgid "Ping test failed: "
+msgstr "Ошибка проверки пинга: "
+
+msgid "Plain IP resolvers used to bootstrap initial DoH server domain names."
+msgstr "Прямые IP DNS-серверов для разрешения доменных имён DoH при старте."
+
+msgid "Playback Token (gql.twitch.tv)"
+msgstr "Токен авторизации (gql.twitch.tv)"
+
+msgid "Playlist Edge"
+msgstr "Playlist Edge"
+
+msgid "Playlist Edge: Local SSAI ad-stripping in streamproxyd (:18080)"
+msgstr "Playlist Edge: Локальное удаление SSAI-рекламы в streamproxyd (:18080)"
+
+msgid "Playlists Processed"
+msgstr "Манифестов обработано"
+
+msgid "Policy Routing"
+msgstr "Маршрутизация"
+
+msgid "Policy Routing & Rules"
+msgstr "Политика маршрутизации и правил"
+
+msgid "Ports 6881–6889 & 51413 bypass VPN directly to WAN, preventing VPN provider bans."
+msgstr "Порты 6881–6889 и 51413 направляются в WAN напрямую, предотвращая блокировки хостеров."
+
+msgid "Prefer IPv4 for DNS Queries"
+msgstr "Приоритет IPv4 при DNS-запросах"
+
+msgid "Primary Recovery Interval (seconds)"
+msgstr "Интервал возврата к Primary DNS (секунды)"
+
+msgid "Primary VPN (Europe)"
+msgstr "Основной VPN (Европа)"
+
+msgid "Privacy & AdBlock"
+msgstr "Приватность и антиреклама"
 
 msgid "Privacy & AdBlock Sinkhole"
 msgstr "Privacy & AdBlock Sinkhole"
 
-msgid "Block telemetry, tracking domains, and analytics at DNS level (0.0.0.0)."
-msgstr "Блокировка телеметрии, трекеров и аналитики на уровне DNS (0.0.0.0)."
+msgid "Proxy (sing-box TPROXY)"
+msgstr "Прокси (sing-box TPROXY)"
+
+msgid "Proxy Core (sing-box)"
+msgstr "Прокси-ядро (sing-box)"
+
+msgid "Quality Unlock: 1080p60 unthrottled via SmartDNS"
+msgstr "Quality Unlock: Разблокировка 1080p60 без ограничений через SmartDNS"
+
+msgid "Query the active routing table in real-time to inspect which core subsystem will handle traffic for a specific domain:"
+msgstr "Мгновенная проверка таблицы маршрутизации: через какую подсистему ядра пойдёт трафик для домена:"
+
+msgid "Querying remote repositories and package index..."
+msgstr "Опрос удаленных репозиториев и индекса пакетов..."
+
+msgid "RPC Error: "
+msgstr "Ошибка RPC: "
+
+msgid "Ready"
+msgstr "Готов"
+
+msgid "Real-time Domain Route Inspector"
+msgstr "Инспектор маршрута домена в реальном времени"
+
+msgid "Real-time inspection of active network flows, core engine classification, and client traffic mapping."
+msgstr "Отслеживание активных сетевых соединений, секций ядра и сопоставления клиентов в реальном времени."
+
+msgid "Real-time operational status of streamproxyd, Zapret2 nfqws2, sing-box TPROXY, and nftables integration."
+msgstr "Мониторинг состояния streamproxyd, Zapret2 nfqws2, sing-box TPROXY и nftables в реальном времени."
+
+msgid "Recheck"
+msgstr "Проверить"
+
+msgid "Recommendation:"
+msgstr "Рекомендация:"
+
+msgid "Refresh Console"
+msgstr "Обновить консоль"
+
+msgid "Refresh Now"
+msgstr "Обновить сейчас"
+
+msgid "Refreshing..."
+msgstr "Обновление..."
+
+msgid "Reloading…"
+msgstr "Перезагрузка…"
+
+msgid "Resilient DNS"
+msgstr "Отказоустойчивый DNS"
+
+msgid "Restart Service"
+msgstr "Перезапустить службу"
+
+msgid "Restart failed: "
+msgstr "Ошибка перезапуска: "
+
+msgid "Restart requested successfully!"
+msgstr "Запрос на перезапуск успешно отправлен!"
+
+msgid "Restarting streamproxyd…"
+msgstr "Перезапуск streamproxyd…"
+
+msgid "Restore error: "
+msgstr "Ошибка восстановления: "
+
+msgid "Restore from Archive"
+msgstr "Восстановить из архива"
+
+msgid "Restoring Configuration"
+msgstr "Восстановление конфигурации"
+
+msgid "Routes all Twitch traffic via VPN tunnel."
+msgstr "Направляет весь трафик Twitch через VPN-туннель."
+
+msgid "Routes authorization token directly (RU ISP) and master playlist via router VPN."
+msgstr "Токен запрашивается напрямую (провайдер РФ), а мастер-плейлист через VPN роутера."
+
+msgid "Routes authorization token to RU IP (no ads) and master playlist to EU VPN (1440p)."
+msgstr "Токен через IP РФ (без рекламы), мастер-плейлист через EU VPN (1440p)."
+
+msgid "Routes authorization token via Yandex DNS (RU) and master playlist via Comss SmartDNS (1440p). No VPN needed!"
+msgstr "Токен запрашивается через Яндекс DNS (РФ, без рекламы), а мастер-плейлист через Comss SmartDNS (1440p). VPN не требуется!"
+
+msgid "Routing Preset"
+msgstr "Готовый сценарий"
+
+msgid "Routing Target Action"
+msgstr "Действие маршрутизации"
+
+msgid "Routing rules applied successfully!"
+msgstr "Правила маршрутизации успешно применены!"
+
+msgid "Rule Identifier (ID)"
+msgstr "Идентификатор правила (ID)"
+
+msgid "Rule Name"
+msgstr "Название правила"
+
+msgid "Run DNS Test Now"
+msgstr "Запустить проверку DNS"
+
+msgid "Run Diagnostics"
+msgstr "Запустить диагностику"
+
+msgid "Run Full Health Check"
+msgstr "Запустить полную проверку"
+
+msgid "Running (18080)"
+msgstr "Работает (порт 18080)"
+
+msgid "Russian VPN"
+msgstr "Российский VPN"
+
+msgid "Russian VPN (No Ads)"
+msgstr "Российский VPN (Без рекламы)"
+
+msgid "Russian VPN Set"
+msgstr "Российский VPN-набор"
+
+msgid "Save & Apply"
+msgstr "Сохранить и применить"
+
+msgid "Save All Settings"
+msgstr "Сохранить все настройки"
+
+msgid "Save Rule"
+msgstr "Сохранить правило"
+
+msgid "Save Schedule"
+msgstr "Сохранить расписание"
+
+msgid "Save error: "
+msgstr "Ошибка сохранения: "
+
+msgid "Saving settings..."
+msgstr "Сохранение настроек..."
+
+msgid "Saving..."
+msgstr "Сохранение..."
+
+msgid "Scanning neighbors…"
+msgstr "Поиск установленных сервисов…"
+
+msgid "Scenario Diagnostics & Health Check"
+msgstr "Диагностика сценария и проверка здоровья"
+
+msgid "Segments Stripped"
+msgstr "Сегментов вырезано"
+
+msgid "Select"
+msgstr "Выбрать"
+
+msgid "Select an automated routing preset tailored for your geographic location and ISP conditions."
+msgstr "Выберите автоматический сценарий маршрутизации под ваше географическое положение и условия провайдера."
+
+msgid "Select an automated routing strategy. Geo-Split routes tokens to ad-free VPN and master to EU. Playlist Edge physically strips ads via local HTTP proxy."
+msgstr "Выберите стратегию маршрутизации. Geo-Split направляет токен в Ad-Free VPN, а мастер-плейлист в EU. Playlist Edge физически вырезает рекламу локальным HTTP-прокси."
+
+msgid "Select an automated routing strategy. SmartDNS presets work out-of-the-box without requiring any VPN tunnels."
+msgstr "Выберите автоматический сценарий маршрутизации. Сценарии SmartDNS работают сразу «из коробки» без необходимости настройки VPN-туннелей."
+
+msgid "Selected"
+msgstr "Выбран"
+
+msgid "Selector Mode"
+msgstr "Режим выбора шлюза"
+
+msgid "Self-Diagnostics & Health Hub"
+msgstr "Самодиагностика и проверка здоровья системы"
+
+msgid "Self-diagnostics completed!"
+msgstr "Самодиагностика системы успешно завершена!"
+
+msgid "Server latency test completed!"
+msgstr "Замер задержки серверов успешно выполнен!"
+
+msgid "Server list and outbounds successfully applied!"
+msgstr "Список серверов и конфигурация sing-box успешно применены!"
+
+msgid "Server-side token split routing and SSAI ad-stripping without installing client SSL root certificates (Zero-CA)."
+msgstr "Серверное разделение токенов и удаление рекламы SSAI без установки SSL-сертификатов на клиентские устройства (Zero-CA)."
+
+msgid "Servers & Subscriptions"
+msgstr "Серверы и подписки"
+
+msgid "Service Offline"
+msgstr "Служба остановлена"
+
+msgid "Services"
+msgstr "Сервисы"
+
+msgid "Services & DNS"
+msgstr "Сервисы и DNS"
+
+msgid "Services Hub"
+msgstr "Центр сервисов"
+
+msgid "Short rule purpose"
+msgstr "Краткое описание правила"
+
+msgid "Sinkhole (Block)"
+msgstr "DNS Sinkhole (Блокировка)"
+
+msgid "Smart DNS & Modular Traffic Routing for Live Streaming Platforms."
+msgstr "Умный DNS и модульная маршрутизация трафика для стриминговых сервисов."
+
+msgid "Smart Split Routing & Ad-Bypass for Twitch live streams."
+msgstr "Умная раздельная маршрутизация и обход рекламы для стримов Twitch."
+
+msgid "Smart Split Routing and Ad-Bypass without client certificates."
+msgstr "Умная маршрутизация и обход рекламы без сертификатов на клиентах."
+
+msgid "SmartDNS (EU) — 1440p/Source Unlock"
+msgstr "SmartDNS (EU) — 1440p/Source разблокировка"
+
+msgid "SmartDNS Comss.one (1080p60 Unlock)"
+msgstr "SmartDNS Comss.one (1080p60)"
+
+msgid "SmartTV, Consoles & Mobile"
+msgstr "SmartTV, игровые консоли и смартфоны"
+
+msgid "Specific local devices completely excluded from all proxying."
+msgstr "Устройства локальной сети, полностью исключенные из всех правил маршрутизации."
+
+msgid "Specify nftset (OpenWrt 22+) or ipset names configured in your router's VPN/PBR clients."
+msgstr "Укажите имена nftset (OpenWrt 22+) или ipset, настроенные в клиентах VPN/PBR вашего роутера."
+
+msgid "Standby"
+msgstr "В ожидании"
+
+msgid "Static domain mappings evaluated before querying upstream DNS."
+msgstr "Статические сопоставления доменов, проверяемые до обращения к внешним DNS."
+
+msgid "Status"
+msgstr "Состояние"
+
+msgid "Stopped"
+msgstr "Остановлена"
+
+msgid "StreamProxy (:18080)"
+msgstr "StreamProxy (:18080)"
+
+msgid "Streaming & Media"
+msgstr "Стриминг и видео"
+
+msgid "Streaming Services Hub"
+msgstr "Центр потоковых сервисов"
+
+msgid "Stripped Ad Segments"
+msgstr "Вырезанные видеосегменты"
+
+msgid "Stripped minimal build (<15 MB RAM usage). Optimized for entry-level routers with 64–128 MB RAM."
+msgstr "Максимально облегченная сборка (потребление <15 МБ RAM). Оптимально для роутеров начального уровня с 64–128 МБ RAM."
+
+msgid "Submitting update request for "
+msgstr "Запрос на обновление для "
+
+msgid "Submitting update request..."
+msgstr "Отправка запроса на обновление..."
+
+msgid "Subscription URL, Base64 or Node URI"
+msgstr "Ссылка на подписку, Base64 или URI узла"
+
+msgid "Subscription or node link field is empty."
+msgstr "Поле ссылки на подписку или узел пусто."
+
+msgid "Switch to Compressed"
+msgstr "Переключить на Compressed"
+
+msgid "Switch to Extended"
+msgstr "Переключить на Extended"
+
+msgid "Switch to Stable"
+msgstr "Переключить на Stable"
+
+msgid "Switch to Tiny"
+msgstr "Переключить на Tiny"
+
+msgid "Switched to Compressed variant."
+msgstr "Выбран вариант Extended Compress."
+
+msgid "Switched to Extended variant."
+msgstr "Выбран вариант Extended (xHTTP)."
+
+msgid "Switched to Stable variant."
+msgstr "Выбран вариант Stable."
+
+msgid "Switched to Tiny variant."
+msgstr "Выбран вариант Tiny."
+
+msgid "Sync Interval"
+msgstr "Интервал синхронизации"
+
+msgid "Synchronized Modules"
+msgstr "Синхронизируемые модули"
+
+msgid "System Architecture & Network Interfaces"
+msgstr "Архитектура системы и сетевые интерфейсы"
+
+msgid "System Logs (logread -e streamproxyd)"
+msgstr "Системный журнал (logread -e streamproxyd)"
+
+msgid "TPROXY / TUN Gateway"
+msgstr "Шлюз TPROXY / TUN"
+
+msgid "Tables Missing"
+msgstr "Таблицы не загружены"
+
+msgid "Target Domains (Wildcards allowed)"
+msgstr "Целевые домены (поддерживаются маски *)"
+
+msgid "Target IP / CIDR Ranges (Optional)"
+msgstr "Целевые IP / CIDR диапазоны (Опционально)"
+
+msgid "Test Completed"
+msgstr "Проверка завершена"
+
+msgid "Test Route"
+msgstr "Тест маршрута"
+
+msgid "Testing…"
+msgstr "Тестирование…"
+
+msgid "Time to wait before probing and returning to the primary DNS server."
+msgstr "Время ожидания перед проверкой и возвратом к основному DNS-серверу."
+
+msgid "Token Server"
+msgstr "Сервер токенов"
+
+msgid "Total Tracked Flows"
+msgstr "Всего отслежено потоков"
+
+msgid "Total ad blocks caught"
+msgstr "Всего пойманных рекламных блоков"
+
+msgid "Traffic in this category currently passes through standard default routes."
+msgstr "Трафик для этой категории сейчас направляется через стандартные маршруты по умолчанию."
+
+msgid "Traffic routes through this selected server"
+msgstr "Трафик направляется через выбранный сервер"
+
+msgid "Transparent HTTP/HTTPS stream rewriter strips server-side inserted advertisements (SSAI) in HLS/DASH playlists without requiring root CA certificates on client devices."
+msgstr "Прозрачный рерайтер HTTP/HTTPS потоков удаляет рекламу (SSAI) в плейлистах HLS/DASH без установки корневых CA-сертификатов на клиентские устройства."
+
+msgid "Transparent TPROXY Active"
+msgstr "Прозрачный TPROXY активен"
+
+msgid "Transports multi-gigabyte video segments."
+msgstr "Передаёт многогигабайтные видеофрагменты."
+
+msgid "Trovo.live"
+msgstr "Trovo.live"
+
+msgid "Twitch"
+msgstr "Twitch"
+
+msgid "Twitch Domain Resolution Test"
+msgstr "Проверка разрешения доменов Twitch"
+
+msgid "Twitch Live Stream Optimizer"
+msgstr "Оптимизатор прямых трансляций Twitch"
+
+msgid "Twitch Module"
+msgstr "Модуль Twitch"
+
+msgid "Twitch Optimizer"
+msgstr "Оптимизатор Twitch"
+
+msgid "Twitch Optimizer configuration saved and applied!"
+msgstr "Конфигурация оптимизатора Twitch сохранена и применена!"
+
+msgid "Twitch Routing Preset"
+msgstr "Сценарий маршрутизации Twitch"
+
+msgid "Twitch module"
+msgstr "Модуль Twitch"
+
+msgid "UPX-compressed Extended build. Provides all modern protocol features while saving 65% flash storage."
+msgstr "UPX-сжатый вариант Extended. Все современные протоколы с экономией 65% дискового пространства."
+
+msgid "URLTest (Auto-best latency)"
+msgstr "URLTest (Автовыбор наименьшей задержки)"
+
+msgid "URLTest automatically chooses the lowest-latency outbound; Manual locks to a specific server."
+msgstr "URLTest автоматически переключается на узел с наименьшим пингом; Фиксированный режим жестко закрепляет сервер."
+
+msgid "US library catalog unlock with direct CDN stream speeds."
+msgstr "Разблокировка каталога США с прямой загрузкой видеопотока."
+
+msgid "Universal Cross-Platform Traffic Orchestrator & Declarative Policy Routing Engine"
+msgstr "Универсальный оркестратор сетевого трафика и декларативный движок маршрутизации"
+
+msgid "Unknown error"
+msgstr "Неизвестная ошибка"
+
+msgid "Unlocks 1080p60/1440p/Source qualities via Comss SmartDNS. No VPN needed."
+msgstr "Разблокирует качества 1080p60/1440p/Source через Comss SmartDNS. VPN не требуется."
+
+msgid "Unnamed Rule"
+msgstr "Правило без названия"
+
+msgid "Unpacking archive and restarting services..."
+msgstr "Распаковка архива и перезапуск служб..."
+
+msgid "Untested"
+msgstr "Не проверен"
+
+msgid "Up to Date"
+msgstr "Актуально"
+
+msgid "Update All (1-Click)"
+msgstr "Обновить всё в 1 клик"
+
+msgid "Update Execution Console"
+msgstr "Консоль процесса обновления"
+
+msgid "Update check complete. Versions refreshed."
+msgstr "Проверка завершена. Данные о версиях обновлены."
+
+msgid "Update completed."
+msgstr "Обновление выполнено."
+
+msgid "Update error: "
+msgstr "Ошибка обновления: "
+
+msgid "Update failed"
+msgstr "Сбой обновления"
+
+msgid "Update failed: "
+msgstr "Ошибка обновления: "
+
+msgid "Update: "
+msgstr "Доступно: "
+
+msgid "Updates"
+msgstr "Обновления"
+
+msgid "Updating Component"
+msgstr "Обновление компонента"
+
+msgid "Updating Components"
+msgstr "Обновление компонентов"
+
+msgid "Upgrade to "
+msgstr "Обновить до "
+
+msgid "Upstream DNS Servers (DoH / DoT / UDP - one per line)"
+msgstr "Основные DNS-серверы (DoH / DoT / UDP - по одному на строку)"
+
+msgid "Use active sing-box tunnel when downloading GitHub release packages if blocked."
+msgstr "Использовать туннель sing-box для скачивания релизов GitHub при региональных блокировках."
+
+msgid "Used for ad-free token retrieval (UA/AL/KZ tunnel). e.g. 4#inet#fw4#vpn_adfree"
+msgstr "Используется для получения токена без рекламы (туннель UA/AL/KZ). Например: 4#inet#fw4#vpn_adfree"
+
+msgid "Used for ad-free token retrieval when you are located outside Russia."
+msgstr "Используется для получения токена без рекламы при нахождении за пределами РФ."
+
+msgid "User-Agent Header (Default: ClashMeta)"
+msgstr "Заголовок User-Agent (По умолчанию: ClashMeta)"
+
+msgid "VPN Policy Routing Sets"
+msgstr "Наборы маршрутизации VPN (Policy Routing)"
+
+msgid "Verify local DNS resolution, nftset matching, and ad-blocking status directly on the router."
+msgstr "Проверка локального DNS-резолвинга, сопоставления nftset и статуса блокировки рекламы прямо на роутере."
+
+msgid "Video Stream CDN"
+msgstr "CDN видеопотоков"
+
+msgid "Video Stream CDN Route (live-video.net)"
+msgstr "Маршрут CDN видеопотока (live-video.net)"
+
+msgid "Video Stream Proxy"
+msgstr "Прокси видеопотоков"
+
+msgid "Video Streams / CDN (live-video.net, ttvnw.net)"
+msgstr "Видеопотоки / CDN (live-video.net, ttvnw.net)"
+
+msgid "WAN Interface for SmartDNS"
+msgstr "Интерфейс WAN для SmartDNS"
+
+msgid "WARNING"
+msgstr "ВНИМАНИЕ"
+
+msgid "Warnings Suppressed (Twitch Excluded)"
+msgstr "Предупреждения скрыты (Twitch в исключениях)"
+
+msgid "Weekly (Sunday at 04:00 AM)"
+msgstr "Еженедельно (Воскресенье, 04:00 утра)"
+
+msgid "Works out of the box on Apple TV, Android TV, LG webOS, Samsung Tizen, PlayStation, Xbox, iOS and Android without modifying device certificates or running mitmproxy."
+msgstr "Работает из коробки на Apple TV, Android TV, LG webOS, Samsung Tizen, PlayStation, Xbox, iOS и Android без установки сертификатов и без mitmproxy."
+
+msgid "Yandex DNS (RU — No Ads)"
+msgstr "Яндекс DNS (РФ — без рекламы)"
+
+msgid "Yandex DNS (RU)"
+msgstr "Яндекс DNS (РФ)"
+
+msgid "Yandex DNS (RU) — No Ads"
+msgstr "Яндекс DNS (РФ) — без рекламы"
+
+msgid "Yes"
+msgstr "Да"
+
+msgid "YouTube (Experimental)"
+msgstr "YouTube (Экспериментальный)"
+
+msgid "YouTube Anti-DPI & Clean"
+msgstr "YouTube Anti-DPI & Clean"
+
+msgid "Zapret2 (nfqws2)"
+msgstr "Zapret2 (nfqws2)"
+
+msgid "Zapret2 (nfqws2) Binary & Strategy"
+msgstr "Бинарник и стратегии Zapret2 (nfqws2)"
+
+msgid "Zero-CA Architectural Blueprint"
+msgstr "Архитектурная концепция Zero-CA"
+
+msgid "Zero-Copy Routing"
+msgstr "Маршрутизация без копирования"
+
+msgid "checks"
+msgstr "проверок"
+
+msgid "detected"
+msgstr "обнаружен"
+
+msgid "domains"
+msgstr "доменов"
+
+msgid "e.g. My Custom Service"
+msgstr "например, Мой сервис"
+
+msgid "flows"
+msgstr "потоков"
+
+msgid "mTLS DoH: Client Certificate (PEM Path)"
+msgstr "mTLS DoH: Клиентский сертификат (PEM путь)"
+
+msgid "mTLS DoH: Client Private Key (PEM Path)"
+msgstr "mTLS DoH: Приватный ключ клиента (PEM путь)"
+
+msgid "nftables Kernel Rules"
+msgstr "Правила ядра nftables"
+
+msgid "nftables policy routing integrated directly with fw4 and dnsmasq ipsets/nftsets. DNS requests resolve dynamically without traffic redirection loops."
+msgstr "Политики nftables интегрированы напрямую с fw4 и dnsmasq nftsets. Запросы разрешаются динамически без петель перенаправления трафика."
+
+msgid "no domains"
+msgstr "нет доменов"
+
+msgid "nodes"
+msgstr "узлов"
+
+msgid "packages"
+msgstr "пакетов"
+
+msgid "rules loaded"
+msgstr "правил загружено"
+
+msgid "sing-box / VPN"
+msgstr "sing-box / VPN"
+
+msgid "sing-box Binary Flavor Selector"
+msgstr "Выбор сборки sing-box (Flavors)"
+
+msgid "sing-box Core Binary"
+msgstr "Бинарник sing-box Core"
+
+msgid "sing-box Outbound"
+msgstr "Исходящий sing-box"
+
+msgid "streamproxyd Engine"
+msgstr "Движок streamproxyd"
+
+msgid "twitch.tv in Exclude - OK"
+msgstr "twitch.tv в Exclude — OK"
+
+msgid "twitch.tv is present in general VPN list of:"
+msgstr "Домен twitch.tv обнаружен в общем списке VPN:"
+
+msgid "⏹️ Disabled"
+msgstr "⏹️ Отключено"
+
+msgid "○ Service Stopped"
+msgstr "○ Служба остановлена"
+
+msgid "● Service Running"
+msgstr "● Служба работает"
+
+msgid "⚙️ Custom: Fine-grained matrix routing"
+msgstr "⚙️ Пользовательский: Точечная матрица маршрутов"
+
+msgid "⚡ Playlist Edge: Local Manifest Stripping (Port 18080 for SmartTV/VLC/Kodi)"
+msgstr "⚡ Playlist Edge: Локальный Manifest Stripping (Порт 18080 для SmartTV/VLC/Kodi)"
+
+msgid "🇪🇺 Europe / US: Bypass ads via RU DNS"
+msgstr "🇪🇺 Европа / США: Обход рекламы через RU DNS"
+
+msgid "🇷🇺 Russia / CIS: No ads + 1440p (SmartDNS — No VPN needed) [Recommended]"
+msgstr "🇷🇺 Россия / СНГ: Без рекламы + 1440p (SmartDNS — без VPN) [Рекомендуется]"
+
+msgid "🌍 Quality Unlock: 1080p60/1440p/Source (SmartDNS — without ad-block)"
+msgstr "🌍 Quality Unlock: 1080p60/1440p/Source (SmartDNS — без блокировки рекламы)"
+
+msgid "🌍 Quality Unlock: 1440p/Source (SmartDNS — No VPN needed)"
+msgstr "🌍 Разблокировка качеств: 1440p/Source (SmartDNS — без VPN)"
+
+msgid "🛡️ Geo-Split via Clean-Proxy / Ad-Free VPN (Zero-CA for all devices) [Recommended]"
+msgstr "🛡️ Geo-Split через Clean-Proxy / Ad-Free VPN (Zero-CA для всех устройств) [Рекомендуется]"
+
+msgid "🛡️ Russia: No ads + 1440p (via Router VPN)"
+msgstr "🛡️ Россия: Без рекламы + 1440p (через VPN роутера)"
+

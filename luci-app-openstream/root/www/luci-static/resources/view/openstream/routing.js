@@ -24,465 +24,342 @@ var callRoutingTest = rpc.declare({
 	expect: { '': {} }
 });
 
+function ensureStylesheet() {
+	var href = (window.L && L.resource) ? L.resource('openstream/openstream.css') : '/luci-static/resources/openstream/openstream.css';
+	if (!document.querySelector('link[href*="openstream.css"]')) {
+		document.head.appendChild(E('link', {
+			'rel': 'stylesheet',
+			'type': 'text/css',
+			'href': href
+		}));
+	}
+}
+
 return view.extend({
+	filterType: 'all',
+
 	load: function() {
-		return callRoutingGet();
+		ensureStylesheet();
+		return callRoutingGet().catch(function() { return {}; });
 	},
 
 	render: function(data) {
-		var state = {
-			rules: (data && data.rules) ? data.rules : [],
-			clients: (data && data.clients) ? data.clients : [],
-			zapret2_installed: (data && data.zapret2_installed) || false,
-			singbox_installed: (data && data.singbox_installed) || false
-		};
+		ensureStylesheet();
+		var self = this;
 
-		var viewRoot = E('div', { 'class': 'os-modern-container' });
+		var rules = (data && data.rules) ? data.rules : [];
+		var clients = (data && data.clients) ? data.clients : [];
+		var zapret2Installed = (data && data.zapret2_installed) || false;
+		var singboxInstalled = (data && data.singbox_installed) || false;
 
-		// Inject modern CSS tokens and styles
-		var styleNode = E('style', {}, `
-			:root {
-				--os-bg: #020617;
-				--os-card: #0f172a;
-				--os-card-hover: #1e293b;
-				--os-border: #334155;
-				--os-text: #f8fafc;
-				--os-muted: #94a3b8;
-				--os-emerald: #10b981;
-				--os-blue: #38bdf8;
-				--os-amber: #f59e0b;
-				--os-rose: #f43f5e;
-				--os-purple: #a855f7;
-				--os-radius: 12px;
-			}
-			.os-modern-container {
-				font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
-				color: var(--os-text);
-				max-width: 1280px;
-				margin: 0 auto;
-				padding: 10px 0;
-			}
-			.os-header-card {
-				display: flex;
-				flex-wrap: wrap;
-				align-items: center;
-				justify-content: space-between;
-				gap: 16px;
-				margin-bottom: 24px;
-				padding: 24px;
-				background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
-				border: 1px solid var(--os-border);
-				border-radius: var(--os-radius);
-				box-shadow: 0 10px 25px -5px rgba(0,0,0,0.4);
-			}
-			.os-badge {
-				display: inline-flex;
-				align-items: center;
-				font-size: 11px;
-				font-weight: 700;
-				padding: 3px 8px;
-				border-radius: 9999px;
-				text-transform: uppercase;
-				letter-spacing: 0.05em;
-			}
-			.os-badge-emerald { background: rgba(16,185,129,0.2); color: var(--os-emerald); border: 1px solid rgba(16,185,129,0.4); }
-			.os-badge-blue { background: rgba(56,189,248,0.2); color: var(--os-blue); border: 1px solid rgba(56,189,248,0.4); }
-			.os-badge-purple { background: rgba(168,85,247,0.2); color: var(--os-purple); border: 1px solid rgba(168,85,247,0.4); }
-			.os-badge-rose { background: rgba(244,63,94,0.2); color: var(--os-rose); border: 1px solid rgba(244,63,94,0.4); }
-			.os-badge-amber { background: rgba(245,158,11,0.2); color: var(--os-amber); border: 1px solid rgba(245,158,11,0.4); }
-			.os-badge-cyan { background: rgba(6, 182, 212, 0.15); color: #06b6d4; border: 1px solid rgba(6, 182, 212, 0.3); }
+		var viewRoot = E('div', { 'class': 'os-container' });
 
-			.os-pills {
-				display: grid;
-				grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-				gap: 12px;
-				margin-bottom: 24px;
-			}
-			.os-pill {
-				background: var(--os-card);
-				border: 1px solid var(--os-border);
-				border-radius: var(--os-radius);
-				padding: 16px 20px;
-				display: flex;
-				align-items: center;
-				justify-content: space-between;
-			}
-			.os-btn {
-				display: inline-flex;
-				align-items: center;
-				gap: 8px;
-				padding: 9px 18px;
-				font-size: 13px;
-				font-weight: 600;
-				border-radius: 8px;
-				cursor: pointer;
-				border: none;
-				transition: all 0.2s;
-			}
-			.os-btn-primary { background: #3b82f6; color: #fff; }
-			.os-btn-primary:hover { background: #2563eb; }
-			.os-btn-success { background: #10b981; color: #fff; }
-			.os-btn-success:hover { background: #059669; }
-			.os-btn-dark { background: #1e293b; color: #f8fafc; border: 1px solid var(--os-border); }
-			.os-btn-dark:hover { background: #334155; }
-
-			.os-card {
-				background: var(--os-card);
-				border: 1px solid var(--os-border);
-				border-radius: var(--os-radius);
-				padding: 20px;
-				margin-bottom: 16px;
-				box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-				transition: border-color 0.2s;
-			}
-			.os-card:hover { border-color: #475569; }
-
-			.os-card-head {
-				display: flex;
-				flex-wrap: wrap;
-				align-items: center;
-				justify-content: space-between;
-				gap: 12px;
-				margin-bottom: 14px;
-			}
-			.os-card-grid {
-				display: grid;
-				grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-				gap: 16px;
-				padding-top: 14px;
-				border-top: 1px solid #1e293b;
-			}
-			.os-field {
-				display: flex;
-				flex-direction: column;
-				gap: 6px;
-			}
-			.os-label {
-				font-size: 12px;
-				font-weight: 600;
-				color: var(--os-muted);
-				text-transform: uppercase;
-				letter-spacing: 0.04em;
-			}
-			.os-input, .os-select {
-				background: #020617;
-				border: 1px solid var(--os-border);
-				border-radius: 8px;
-				padding: 9px 12px;
-				color: #fff;
-				font-size: 13px;
-				outline: none;
-			}
-			.os-input:focus, .os-select:focus { border-color: var(--os-blue); }
-
-			.os-switch {
-				position: relative;
-				display: inline-block;
-				width: 44px;
-				height: 24px;
-			}
-			.os-switch input { opacity: 0; width: 0; height: 0; }
-			.os-slider {
-				position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
-				background-color: #334155;
-				transition: .2s;
-				border-radius: 24px;
-			}
-			.os-slider:before {
-				position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
-				background-color: white;
-				transition: .2s;
-				border-radius: 50%;
-			}
-			input:checked + .os-slider { background-color: var(--os-emerald); }
-			input:checked + .os-slider:before { transform: translateX(20px); }
-		`);
-		viewRoot.appendChild(styleNode);
-
-		// 1. Header Banner
-		var headerNode = E('div', { 'class': 'os-header-card' }, [
-			E('div', {}, [
-				E('h2', { 'style': 'margin: 0 0 6px 0; font-size: 24px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 10px;' }, [
-					'🛡️ OpenStream Policy Routing',
-					E('span', { 'class': 'os-badge os-badge-blue' }, 'ucode Engine 2.1')
+		// Hero Header Card
+		var hero = E('div', { 'class': 'os-hero' }, [
+			E('div', { 'class': 'os-hero-title-wrap' }, [
+				E('h2', { 'class': 'os-hero-title' }, [
+					E('span', {}, '🔀'),
+					_('Policy Routing & Rules')
 				]),
-				E('div', { 'style': 'font-size: 13px; color: var(--os-muted);' },
-					'Интеллектуальная оркестрация сетевых движков: Zapret2 (nfqws2), StreamProxy, VPN и DNS-маршрутизация на ucode'
+				E('p', { 'class': 'os-hero-subtitle' },
+					_('Manage declarative traffic rules (.osrule.yaml), test domain resolution, and configure client policy routing.')
 				)
 			]),
-			E('div', { 'style': 'display: flex; gap: 10px;' }, [
+			E('div', { 'class': 'os-hero-actions' }, [
 				E('button', {
-					'class': 'os-btn os-btn-dark',
-					'click': function() {
-						var name = prompt('Введите название нового правила:', 'Custom Service');
-						if (!name) return;
-						var newRule = {
-							file: 'rule_' + Date.now() + '.osrule.yaml',
-							id: 'org.openstream.rules.custom_' + Date.now(),
-							name: name,
-							enabled: true,
-							description: 'Пользовательское правило маршрутизации',
-							action: 'zapret2',
-							preset: 'youtube_4k',
-							raw_yaml: 'schema_version: "2.1"\nid: "org.openstream.rules.custom_' + Date.now() + '"\nname: "' + name + '"\nversion: "1.0.0"\nmatches:\n  - domains: ["example.com"]\n    action:\n      zapret2:\n        preset: "youtube_4k"\n'
-						};
-						state.rules.push(newRule);
-						renderCards();
-					}
-				}, [ '➕ Добавить правило' ]),
+					'class': 'os-btn os-btn-primary',
+					'click': function() { self.showRuleModal(null, rules); }
+				}, [ E('span', {}, '➕'), _('Add Custom Rule') ]),
 				E('button', {
 					'class': 'os-btn os-btn-success',
-					'id': 'os-save-btn',
 					'click': function(ev) {
 						var btn = ev.target;
 						btn.disabled = true;
-						btn.innerText = '⏳ Применение в ucode...';
-
-						callRoutingSave(state.rules).then(function(res) {
+						ui.showIndicator('os-save-rules', _('Applying routing rules…'));
+						callRoutingSave(rules).then(function() {
+							ui.hideIndicator('os-save-rules');
+							ui.addNotification(null, E('p', {}, _('Routing rules applied successfully!')), 'info');
 							btn.disabled = false;
-							btn.innerText = '💾 Сохранить и применить';
-							if (res && res.success) {
-								ui.addNotification(null, E('p', {}, '✓ ' + (res.message || 'Маршруты успешно обновлены')), 'success');
-							} else {
-								ui.addNotification(null, E('p', {}, '❌ Ошибка: ' + (res && res.error ? res.error : 'Неизвестный сбой')), 'error');
-							}
-						}).catch(function(err) {
+						}).catch(function(e) {
+							ui.hideIndicator('os-save-rules');
+							ui.addNotification(null, E('p', {}, _('Failed to apply rules: ') + (e.message || e)), 'danger');
 							btn.disabled = false;
-							btn.innerText = '💾 Сохранить и применить';
-							ui.addNotification(null, E('p', {}, '❌ Ошибка RPC: ' + err), 'error');
 						});
 					}
-				}, [ '💾 Сохранить и применить' ])
+				}, [ E('span', {}, '💾'), _('Apply Changes') ])
 			])
 		]);
-		viewRoot.appendChild(headerNode);
+		viewRoot.appendChild(hero);
 
-		// 2. Status Pills
-		var pillsNode = E('div', { 'class': 'os-pills' }, [
-			E('div', { 'class': 'os-pill' }, [
-				E('div', {}, [
-					E('div', { 'class': 'os-label' }, 'Анти-DPI (Zapret2 / nfqws2)'),
-					E('div', { 'style': 'font-weight: 700; font-size: 14px; margin-top: 4px; color: ' + (state.zapret2_installed ? 'var(--os-emerald)' : 'var(--os-amber)') },
-						state.zapret2_installed ? '✓ Установлен и готов' : '⚠️ Не найден (/usr/bin/nfqws2)'
-					)
-				]),
-				E('span', { 'class': 'os-badge os-badge-purple' }, 'NFQUEUE 1088')
+		// Domain Tester Tool Card
+		var testCard = E('div', { 'class': 'os-card' }, [
+			E('div', { 'class': 'os-card-header' }, [
+				E('h3', { 'class': 'os-card-title' }, [
+					E('span', {}, '🎯'),
+					_('Real-time Domain Route Inspector')
+				])
 			]),
-			E('div', { 'class': 'os-pill' }, [
-				E('div', {}, [
-					E('div', { 'class': 'os-label' }, 'DNS-Интеграция'),
-					E('div', { 'style': 'font-weight: 700; font-size: 14px; margin-top: 4px; color: var(--os-emerald);' },
-						'✓ dnsmasq nftset (без перехвата 53)'
-					)
-				]),
-				E('span', { 'class': 'os-badge os-badge-emerald' }, 'Штатный')
-			]),
-			E('div', { 'class': 'os-pill' }, [
-				E('div', {}, [
-					E('div', { 'class': 'os-label' }, 'Клиенты LAN'),
-					E('div', { 'style': 'font-weight: 700; font-size: 14px; margin-top: 4px;' },
-						state.clients.length + ' устройств в DHCP'
-					)
-				]),
-				E('span', { 'class': 'os-badge os-badge-blue' }, 'Per-Device #95')
-			])
-		]);
-		viewRoot.appendChild(pillsNode);
-
-		// 3. Real-Time Route Tester Widget (Issues #75, #76)
-		var testBox = E('div', { 'style': 'display: none; padding: 12px; background: #020617; border-radius: 8px; margin-top: 10px;' });
-		var testerNode = E('div', { 'class': 'os-card' }, [
-			E('div', { 'style': 'font-weight: 700; font-size: 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;' }, [
-				'🔍 Инспектор маршрутизации в реальном времени (без перезагрузки)'
-			]),
-			E('div', { 'style': 'display: flex; gap: 10px; flex-wrap: wrap;' }, [
+			E('div', { 'style': 'display: flex; gap: 10px; flex-wrap: wrap; align-items: center;' }, [
 				E('input', {
 					'type': 'text',
-					'id': 'os-test-input',
 					'class': 'os-input',
+					'placeholder': 'e.g. video.twitch.tv or discord.com',
+					'id': 'os-test-domain-input',
 					'style': 'flex: 1; min-width: 240px;',
-					'placeholder': 'Введите домен (например: googlevideo.com, discord.gg, twitch.tv)'
+					'keydown': function(ev) {
+						if (ev.key === 'Enter') document.getElementById('os-test-domain-btn').click();
+					}
 				}),
+				E('button', {
+					'id': 'os-test-domain-btn',
+					'class': 'os-btn os-btn-secondary',
+					'click': function() {
+						var input = document.getElementById('os-test-domain-input');
+						var resultBox = document.getElementById('os-test-result');
+						var domain = (input.value || '').trim();
+						if (!domain) return;
+
+						resultBox.innerHTML = '';
+						resultBox.appendChild(E('span', { 'class': 'os-badge os-badge-info' }, _('Testing…')));
+
+						callRoutingTest(domain).then(function(res) {
+							resultBox.innerHTML = '';
+							var route = (res && res.route) || 'direct';
+							var badgeClass = 'os-badge-info';
+							if (route === 'proxy' || route === 'streamproxy') badgeClass = 'os-badge-purple';
+							else if (route === 'zapret2' || route === 'nfqws2') badgeClass = 'os-badge-warning';
+							else if (route === 'block') badgeClass = 'os-badge-danger';
+							else badgeClass = 'os-badge-success';
+
+							resultBox.appendChild(E('span', { 'class': 'os-badge ' + badgeClass }, [
+								E('strong', {}, route.toUpperCase()),
+								' (' + (res.matched_rule || _('Default WAN')) + ')'
+							]));
+						}).catch(function(err) {
+							resultBox.innerHTML = '';
+							resultBox.appendChild(E('span', { 'class': 'os-badge os-badge-danger' }, _('Error: ') + (err.message || err)));
+						});
+					}
+				}, [ E('span', {}, '🔍'), _('Inspect Route') ]),
+				E('div', { 'id': 'os-test-result', 'style': 'display: flex; align-items: center;' })
+			])
+		]);
+		viewRoot.appendChild(testCard);
+
+		// Rules Filter & List Card
+		var rulesCard = E('div', { 'class': 'os-card' }, [
+			E('div', { 'class': 'os-card-header' }, [
+				E('h3', { 'class': 'os-card-title' }, [
+					E('span', {}, '📋'),
+					_('Active Declarative Rules'),
+					E('span', { 'class': 'os-badge os-badge-muted' }, rules.length + ' ' + _('rules loaded'))
+				]),
+				E('div', { 'class': 'os-filter-bar', 'style': 'margin-bottom: 0;' }, [
+					E('button', {
+						'class': 'os-filter-item' + (self.filterType === 'all' ? ' active' : ''),
+						'click': function() { self.filterType = 'all'; self.renderRulesList(rules, listContainer); }
+					}, _('All')),
+					E('button', {
+						'class': 'os-filter-item' + (self.filterType === 'streaming' ? ' active' : ''),
+						'click': function() { self.filterType = 'streaming'; self.renderRulesList(rules, listContainer); }
+					}, _('Streaming & Media')),
+					E('button', {
+						'class': 'os-filter-item' + (self.filterType === 'privacy' ? ' active' : ''),
+						'click': function() { self.filterType = 'privacy'; self.renderRulesList(rules, listContainer); }
+					}, _('Privacy & AdBlock')),
+					E('button', {
+						'class': 'os-filter-item' + (self.filterType === 'custom' ? ' active' : ''),
+						'click': function() { self.filterType = 'custom'; self.renderRulesList(rules, listContainer); }
+					}, _('Custom'))
+				])
+			])
+		]);
+
+		var listContainer = E('div', { 'id': 'os-rules-list' });
+		rulesCard.appendChild(listContainer);
+		viewRoot.appendChild(rulesCard);
+
+		self.renderRulesList(rules, listContainer);
+
+		return viewRoot;
+	},
+
+	renderRulesList: function(rules, container) {
+		var self = this;
+		container.innerHTML = '';
+
+		var filtered = rules.filter(function(r) {
+			if (self.filterType === 'all') return true;
+			var id = (r.id || r.name || '').toLowerCase();
+			if (self.filterType === 'streaming') return id.includes('twitch') || id.includes('youtube') || id.includes('discord') || id.includes('crunchyroll');
+			if (self.filterType === 'privacy') return id.includes('adblock') || id.includes('torrent') || id.includes('privacy');
+			if (self.filterType === 'custom') return !id.includes('twitch') && !id.includes('youtube') && !id.includes('discord') && !id.includes('adblock') && !id.includes('torrent');
+			return true;
+		});
+
+		if (filtered.length === 0) {
+			container.appendChild(E('div', { 'style': 'padding: 24px; text-align: center; color: var(--os-text-muted);' },
+				_('No rules matching selected filter.')
+			));
+			return;
+		}
+
+		filtered.forEach(function(rule, idx) {
+			var isEnabled = rule.enabled !== false;
+			var action = (rule.action || 'proxy').toLowerCase();
+			var actionBadgeClass = 'os-badge-info';
+			if (action === 'proxy' || action === 'streamproxy') actionBadgeClass = 'os-badge-purple';
+			else if (action === 'zapret2' || action === 'nfqws2') actionBadgeClass = 'os-badge-warning';
+			else if (action === 'direct' || action === 'bypass') actionBadgeClass = 'os-badge-success';
+			else if (action === 'block') actionBadgeClass = 'os-badge-danger';
+
+			var row = E('div', { 'class': 'os-entity-row' }, [
+				E('div', { 'class': 'os-entity-main' }, [
+					E('input', {
+						'type': 'checkbox',
+						'checked': isEnabled,
+						'style': 'width: 18px; height: 18px; cursor: pointer; accent-color: var(--os-primary);',
+						'change': function(ev) {
+							rule.enabled = ev.target.checked;
+						}
+					}),
+					E('div', { 'class': 'os-entity-details' }, [
+						E('div', { 'style': 'display: flex; align-items: center; gap: 8px;' }, [
+							E('span', { 'class': 'os-entity-name' }, rule.name || rule.id || _('Unnamed Rule')),
+							E('span', { 'class': 'os-badge ' + actionBadgeClass }, action.toUpperCase()),
+							rule.file ? E('span', { 'class': 'os-badge os-badge-muted' }, rule.file) : E('span')
+						]),
+						E('span', { 'class': 'os-entity-desc' },
+							(rule.description || _('Declarative routing policy')) + ' • ' +
+							((rule.domains && rule.domains.length) ? rule.domains.length + ' ' + _('domains') : _('no domains'))
+						)
+					])
+				]),
+				E('div', { 'class': 'os-entity-actions' }, [
+					E('button', {
+						'class': 'os-btn os-btn-secondary os-btn-sm',
+						'click': function() { self.showRuleModal(rule, rules); }
+					}, [ E('span', {}, '✏️'), _('Edit') ]),
+					E('button', {
+						'class': 'os-btn os-btn-danger os-btn-sm',
+						'click': function() {
+							if (confirm(_('Are you sure you want to delete this rule?'))) {
+								var rIdx = rules.indexOf(rule);
+								if (rIdx >= 0) rules.splice(rIdx, 1);
+								self.renderRulesList(rules, container);
+							}
+						}
+					}, [ E('span', {}, '🗑️') ])
+				])
+			]);
+
+			container.appendChild(row);
+		});
+	},
+
+	showRuleModal: function(rule, allRules) {
+		var self = this;
+		var isNew = !rule;
+		var current = rule ? Object.assign({}, rule) : {
+			id: 'custom_rule_' + Date.now(),
+			name: '',
+			description: '',
+			action: 'proxy',
+			enabled: true,
+			domains: [],
+			cidrs: []
+		};
+
+		var idInput = E('input', { 'class': 'os-input', 'value': current.id || '', 'disabled': !isNew });
+		var nameInput = E('input', { 'class': 'os-input', 'value': current.name || '', 'placeholder': _('e.g. My Custom Service') });
+		var descInput = E('input', { 'class': 'os-input', 'value': current.description || '', 'placeholder': _('Short rule purpose') });
+
+		var actionSelect = E('select', { 'class': 'os-select' }, [
+			E('option', { 'value': 'proxy', 'selected': current.action === 'proxy' }, _('Proxy (sing-box TPROXY)')),
+			E('option', { 'value': 'streamproxy', 'selected': current.action === 'streamproxy' }, _('HLS/DASH Stream Proxy (Port 8888)')),
+			E('option', { 'value': 'zapret2', 'selected': current.action === 'zapret2' }, _('Anti-DPI (Zapret2 NFQUEUE)')),
+			E('option', { 'value': 'direct', 'selected': current.action === 'direct' }, _('Direct WAN (Bypass)')),
+			E('option', { 'value': 'block', 'selected': current.action === 'block' }, _('Block (Reject/Drop)'))
+		]);
+
+		var domainsArea = E('textarea', {
+			'class': 'os-textarea',
+			'rows': 5,
+			'placeholder': _('One domain per line, e.g.:\nexample.com\n*.cdn.example.org')
+		}, (current.domains || []).join('\n'));
+
+		var cidrsArea = E('textarea', {
+			'class': 'os-textarea',
+			'rows': 3,
+			'placeholder': _('One IP or CIDR per line, e.g.:\n198.51.100.0/24\n203.0.113.5')
+		}, (current.cidrs || []).join('\n'));
+
+		var modalContent = E('div', { 'class': 'os-container', 'style': 'padding: 0;' }, [
+			E('div', { 'class': 'os-form-group' }, [
+				E('label', { 'class': 'os-label' }, _('Rule Identifier (ID)')),
+				idInput
+			]),
+			E('div', { 'class': 'os-form-group' }, [
+				E('label', { 'class': 'os-label' }, _('Display Name')),
+				nameInput
+			]),
+			E('div', { 'class': 'os-form-group' }, [
+				E('label', { 'class': 'os-label' }, _('Description')),
+				descInput
+			]),
+			E('div', { 'class': 'os-form-group' }, [
+				E('label', { 'class': 'os-label' }, _('Routing Target Action')),
+				actionSelect
+			]),
+			E('div', { 'class': 'os-form-group' }, [
+				E('label', { 'class': 'os-label' }, _('Target Domains (Wildcards allowed)')),
+				domainsArea,
+				E('span', { 'class': 'os-help' }, _('Domains will be automatically populated into nftables dynamic target sets via dnsmasq.'))
+			]),
+			E('div', { 'class': 'os-form-group' }, [
+				E('label', { 'class': 'os-label' }, _('Target IP / CIDR Ranges (Optional)')),
+				cidrsArea
+			])
+		]);
+
+		ui.showModal(isNew ? _('Create Routing Rule') : _('Edit Routing Rule'), [
+			modalContent,
+			E('div', { 'class': 'right', 'style': 'margin-top: 16px; display: flex; justify-content: flex-end; gap: 8px;' }, [
+				E('button', {
+					'class': 'os-btn os-btn-secondary',
+					'click': ui.hideModal
+				}, _('Cancel')),
 				E('button', {
 					'class': 'os-btn os-btn-primary',
 					'click': function() {
-						var domInput = document.getElementById('os-test-input');
-						var domVal = domInput ? domInput.value.trim() : '';
-						if (!domVal) return;
+						var parsedDomains = domainsArea.value.split('\n').map(function(s) { return s.trim(); }).filter(Boolean);
+						var parsedCidrs = cidrsArea.value.split('\n').map(function(s) { return s.trim(); }).filter(Boolean);
 
-						testBox.style.display = 'block';
-						testBox.innerHTML = '<span style="color: var(--os-muted);">Запрос маршрута к ucode RPC...</span>';
+						var updated = {
+							id: idInput.value.trim() || current.id,
+							name: nameInput.value.trim() || idInput.value.trim(),
+							description: descInput.value.trim(),
+							action: actionSelect.value,
+							enabled: current.enabled !== false,
+							domains: parsedDomains,
+							cidrs: parsedCidrs,
+							file: current.file || (idInput.value.trim() + '.osrule.yaml')
+						};
 
-						callRoutingTest(domVal).then(function(res) {
-							if (res && res.success && res.result) {
-								var r = res.result;
-								testBox.innerHTML = `
-									<div style="font-weight: 700; color: #fff; margin-bottom: 4px;">Результат: ${domVal}</div>
-									<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 4px;">
-										<span>Маршрут:</span>
-										<span class="os-badge os-badge-blue">${r.engine}</span>
-									</div>
-									<div style="color: var(--os-muted); font-size: 12px;">${r.details}</div>
-								`;
-							} else {
-								testBox.innerHTML = '<span style="color: var(--os-rose);">Маршрут не определен.</span>';
-							}
-						}).catch(function(err) {
-							testBox.innerHTML = '<span style="color: var(--os-rose);">Ошибка ubus: ' + err + '</span>';
-						});
+						if (isNew) {
+							allRules.push(updated);
+						} else {
+							var idx = allRules.indexOf(rule);
+							if (idx >= 0) allRules[idx] = updated;
+						}
+
+						ui.hideModal();
+						var listContainer = document.getElementById('os-rules-list');
+						if (listContainer) self.renderRulesList(allRules, listContainer);
 					}
-				}, [ 'Проверить маршрут' ])
-			]),
-			testBox
+				}, _('Save Rule'))
+			])
 		]);
-		viewRoot.appendChild(testerNode);
-
-		// 4. Cards Container (No Tables - Rules #10, #11)
-		var cardsContainer = E('div', { 'id': 'os-cards-container' });
-		viewRoot.appendChild(cardsContainer);
-
-		function renderCards() {
-			dom.content(cardsContainer, null);
-
-			state.rules.forEach(function(rule, idx) {
-				var badgeClass = 'os-badge-amber';
-				var badgeText = '➡️ Direct (WAN)';
-				if (rule.action === 'bypass') {
-					badgeClass = 'os-badge-cyan';
-					badgeText = '⏩ Bypass / Исключение';
-				} else if (rule.action === 'zapret2') {
-					badgeClass = 'os-badge-purple';
-					badgeText = '🚀 Zapret2 (Anti-DPI)';
-				} else if (rule.action === 'streamproxy') {
-					badgeClass = 'os-badge-emerald';
-					badgeText = '🛡️ StreamProxy';
-				} else if (rule.action === 'vpn') {
-					badgeClass = 'os-badge-blue';
-					badgeText = '🌐 VPN Tunnel';
-				} else if (rule.action === 'block') {
-					badgeClass = 'os-badge-rose';
-					badgeText = '⛔ Block (0.0.0.0)';
-				}
-
-				var cardNode = E('div', { 'class': 'os-card' }, [
-					E('div', { 'class': 'os-card-head' }, [
-						E('div', { 'style': 'display: flex; align-items: center; gap: 10px;' }, [
-							E('div', { 'style': 'width: 28px; height: 28px; border-radius: 6px; background: #1e293b; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #94a3b8;' }, [ String(idx + 1) ]),
-							E('div', {}, [
-								E('div', { 'style': 'font-size: 16px; font-weight: 700; color: #fff;' }, [ rule.name ]),
-								E('div', { 'style': 'font-size: 12px; color: var(--os-muted);' }, [ rule.description || rule.id ])
-							]),
-							E('span', { 'class': 'os-badge ' + badgeClass }, [ badgeText ])
-						]),
-						E('div', { 'style': 'display: flex; align-items: center; gap: 8px;' }, [
-							E('label', { 'class': 'os-switch', 'title': 'Включить / Отключить' }, [
-								E('input', {
-									'type': 'checkbox',
-									'checked': rule.enabled,
-									'change': function(ev) { rule.enabled = ev.target.checked; }
-								}),
-								E('span', { 'class': 'os-slider' })
-							]),
-							E('button', {
-								'class': 'os-btn os-btn-dark',
-								'style': 'padding: 4px 10px;',
-								'disabled': idx === 0,
-								'title': 'Поднять приоритет',
-								'click': function() {
-									var tmp = state.rules[idx];
-									state.rules[idx] = state.rules[idx - 1];
-									state.rules[idx - 1] = tmp;
-									renderCards();
-								}
-							}, [ '▲' ]),
-							E('button', {
-								'class': 'os-btn os-btn-dark',
-								'style': 'padding: 4px 10px;',
-								'disabled': idx === state.rules.length - 1,
-								'title': 'Понизить приоритет',
-								'click': function() {
-									var tmp = state.rules[idx];
-									state.rules[idx] = state.rules[idx + 1];
-									state.rules[idx + 1] = tmp;
-									renderCards();
-								}
-							}, [ '▼' ]),
-							E('button', {
-								'class': 'os-btn os-btn-dark',
-								'style': 'padding: 4px 10px; color: var(--os-rose);',
-								'title': 'Удалить',
-								'click': function() {
-									if (confirm('Удалить правило ' + rule.name + '?')) {
-										state.rules.splice(idx, 1);
-										renderCards();
-									}
-								}
-							}, [ '🗑️' ])
-						])
-					]),
-
-					E('div', { 'class': 'os-card-grid' }, [
-						E('div', { 'class': 'os-field' }, [
-							E('label', { 'class': 'os-label' }, 'Сетевой движок (Action)'),
-							E('select', {
-								'class': 'os-select',
-								'change': function(ev) {
-									rule.action = ev.target.value;
-									if (rule.action === 'zapret2' && !rule.preset) rule.preset = 'youtube_4k';
-									renderCards();
-								}
-							}, [
-								E('option', { 'value': 'bypass', 'selected': rule.action === 'bypass' }, '⏩ Пропустить / Bypass (Исключение в WAN)'),
-								E('option', { 'value': 'zapret2', 'selected': rule.action === 'zapret2' }, '🚀 Zapret2 (nfqws2 Anti-DPI)'),
-								E('option', { 'value': 'streamproxy', 'selected': rule.action === 'streamproxy' }, '🛡️ StreamProxy (Twitch/AdBlock)'),
-								E('option', { 'value': 'vpn', 'selected': rule.action === 'vpn' }, '🌐 VPN / sing-box Gateway'),
-								E('option', { 'value': 'direct', 'selected': rule.action === 'direct' }, '➡️ Direct / WAN'),
-								E('option', { 'value': 'block', 'selected': rule.action === 'block' }, '⛔ Блокировка (0.0.0.0)')
-							])
-						]),
-
-						E('div', { 'class': 'os-field' }, [
-							E('label', { 'class': 'os-label' }, 'Клиенты LAN (Per-Device #95)'),
-							E('select', { 'class': 'os-select' }, [
-								E('option', { 'value': 'all' }, 'Все устройства локальной сети'),
-								...state.clients.map(function(c) {
-									return E('option', { 'value': c.mac }, c.hostname + ' (' + c.ip + ' / ' + c.mac + ')');
-								})
-							])
-						]),
-
-						(rule.action === 'zapret2') ? E('div', { 'class': 'os-field' }, [
-							E('label', { 'class': 'os-label' }, 'Пресет десинхронизации Zapret2'),
-							E('select', {
-								'class': 'os-select',
-								'change': function(ev) {
-									rule.preset = ev.target.value;
-									renderCards();
-								}
-							}, [
-								E('option', { 'value': 'youtube_4k', 'selected': rule.preset === 'youtube_4k' }, 'YouTube 4K (split2 badseq)'),
-								E('option', { 'value': 'discord_voice', 'selected': rule.preset === 'discord_voice' }, 'Discord Voice (UDP fake 50000:65535)'),
-								E('option', { 'value': 'general_multisplit', 'selected': rule.preset === 'general_multisplit' }, 'General (multisplit midsld)'),
-								E('option', { 'value': 'custom', 'selected': rule.preset === 'custom' }, '⚙️ Пользовательские аргументы (Custom Flags)')
-							]),
-							(rule.preset === 'custom') ? E('input', {
-								'type': 'text',
-								'class': 'os-input',
-								'style': 'margin-top: 6px; font-family: monospace;',
-								'placeholder': '--dpi-desync=fake,split2 --dpi-desync-split-pos=3',
-								'value': rule.custom_args || '',
-								'input': function(ev) { rule.custom_args = ev.target.value; }
-							}) : E('div', {})
-						]) : E('div', {})
-					])
-				]);
-
-				cardsContainer.appendChild(cardNode);
-			});
-		}
-
-		renderCards();
-		return viewRoot;
 	},
 
 	handleSaveApply: null,

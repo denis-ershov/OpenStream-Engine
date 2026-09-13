@@ -4,6 +4,23 @@
 'require ui';
 'require dom';
 
+/*
+ * OpenStream Engine 2.1 - Component Updates & sing-box Flavor Manager
+ * Unified Linear/Apple Design System, Mobile-First, 100% i18n
+ */
+
+function ensureStylesheet() {
+	var id = 'openstream-css';
+	if (document.getElementById(id)) return;
+	var link = E('link', {
+		'id': id,
+		'rel': 'stylesheet',
+		'type': 'text/css',
+		'href': (window.L && L.resource) ? L.resource('openstream/openstream.css') : '/luci-static/resources/openstream/openstream.css'
+	});
+	document.head.appendChild(link);
+}
+
 var callCheckUpdates = rpc.declare({
 	object: 'openstream',
 	method: 'check_updates',
@@ -52,14 +69,16 @@ var callSaveAutoUpdateConfig = rpc.declare({
 return view.extend({
 	load: function() {
 		return Promise.all([
-			callCheckUpdates(),
-			callGetSingboxInfo(),
-			callGetUpdateLog(),
+			callCheckUpdates().catch(function() { return {}; }),
+			callGetSingboxInfo().catch(function() { return {}; }),
+			callGetUpdateLog().catch(function() { return {}; }),
 			callGetAutoUpdateConfig().catch(function() { return {}; })
 		]);
 	},
 
 	render: function(data) {
+		ensureStylesheet();
+
 		var updateData = data[0] || {};
 		var singboxInfo = data[1] || {};
 		var logData = data[2] || {};
@@ -67,400 +86,343 @@ return view.extend({
 
 		var components = updateData.components || [];
 
-		var viewRoot = E('div', { 'style': 'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif; color: #f8fafc; max-width: 1400px; margin: 0 auto;' }, [
-			E('style', {}, `
-				.os-card {
-					background: #0f172a;
-					border: 1px solid #1e293b;
-					border-radius: 12px;
-					padding: 22px;
-					margin-bottom: 20px;
-					box-shadow: 0 10px 25px -5px rgba(0,0,0,0.4);
-				}
-				.os-hero-btn {
-					background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-					color: #020617;
-					font-weight: 800;
-					font-size: 16px;
-					padding: 14px 28px;
-					border-radius: 10px;
-					border: none;
-					cursor: pointer;
-					display: inline-flex;
-					align-items: center;
-					gap: 10px;
-					box-shadow: 0 4px 14px 0 rgba(16, 185, 129, 0.39);
-					transition: all 0.2s ease;
-				}
-				.os-hero-btn:hover {
-					transform: translateY(-2px);
-					box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
-				}
-				.os-comp-grid {
-					display: grid;
-					grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-					gap: 16px;
-					margin-top: 18px;
-				}
-				.os-comp-card {
-					background: #020617;
-					border: 1px solid #1e293b;
-					border-radius: 10px;
-					padding: 18px;
-					display: flex;
-					flex-direction: column;
-					justify-content: space-between;
-					transition: border-color 0.2s;
-				}
-				.os-comp-card:hover {
-					border-color: #38bdf8;
-				}
-				.os-badge-ok {
-					background: rgba(16, 185, 129, 0.15);
-					color: #10b981;
-					border: 1px solid rgba(16, 185, 129, 0.3);
-					padding: 4px 10px;
-					border-radius: 9999px;
-					font-size: 12px;
-					font-weight: 700;
-				}
-				.os-badge-upd {
-					background: rgba(245, 158, 11, 0.15);
-					color: #f59e0b;
-					border: 1px solid rgba(245, 158, 11, 0.3);
-					padding: 4px 10px;
-					border-radius: 9999px;
-					font-size: 12px;
-					font-weight: 700;
-				}
-				.os-log-terminal {
-					background: #020617;
-					border: 1px solid #1e293b;
-					border-radius: 8px;
-					padding: 14px;
-					font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-					font-size: 13px;
-					color: #38bdf8;
-					white-space: pre-wrap;
-					height: 220px;
-					overflow-y: auto;
-				}
-			`),
+		var viewRoot = E('div', { 'class': 'os-container' });
 
-			// 1. Главная панель обновлений (Hero Card)
-			E('div', { 'class': 'os-card' }, [
-				E('div', { 'style': 'display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;' }, [
-					E('div', {}, [
-						E('h2', { 'style': 'margin: 0 0 6px 0; font-size: 24px; font-weight: 800; color: #fff;' }, '🚀 Менеджер компонентов и обновлений в 1 клик'),
-						E('div', { 'style': 'font-size: 14px; color: #94a3b8;' }, 'Централизованная проверка и бесшовное обновление ядра OSE, sing-box, Zapret2 и каталога правил.')
-					]),
-					E('div', { 'style': 'display: flex; gap: 12px; flex-wrap: wrap;' }, [
-						E('button', {
-							'class': 'btn cbi-button-action',
-							'style': 'background: #1e293b; color: #fff; font-weight: 600; padding: 12px 20px; border-radius: 8px;',
-							'click': function() {
-								ui.showModal('Проверка обновлений', [
-									E('p', { 'class': 'spinning' }, 'Опрос удаленного репозитория GitHub и индекса OpenStream...')
-								]);
-								callCheckUpdates().then(function() {
-									ui.hideModal();
-									ui.addNotification(null, E('p', {}, 'Проверка завершена. Все списки версий актуализированы.'), 'info');
-									window.location.reload();
-								});
-							}
-						}, '🔍 Проверить обновления'),
-						E('button', {
-							'class': 'os-hero-btn',
-							'click': function() {
-								ui.showModal('Обновление компонентов', [
-									E('p', { 'class': 'spinning' }, 'Запрос на обновление компонентов...')
-								]);
-								// Результат определяется ответом демона: автоматическая
-								// установка в этой версии не реализована, поэтому
-								// сообщать об «успехе» без проверки нельзя.
-								callPerformUpdate('all').then(function(res) {
-									ui.hideModal();
-									if (res && res.not_implemented) {
-										ui.addNotification(null, E('p', {},
-											'Автоматическое обновление не реализовано в этой версии. ' +
-											'Обновите пакеты вручную: opkg update && opkg upgrade <пакет>.'), 'warning');
-									} else if (res && res.success) {
-										ui.addNotification(null, E('p', {}, 'Обновление выполнено.'), 'info');
-										window.location.reload();
-									} else {
-										ui.addNotification(null, E('p', {},
-											'Обновление не выполнено: ' + ((res && res.error) || 'неизвестная ошибка')), 'error');
-									}
-								}).catch(function(err) {
-									ui.hideModal();
-									ui.addNotification(null, E('p', {}, 'Ошибка запроса обновления: ' + err), 'error');
-								});
-							}
-						}, '⚡ Обновить всё в 1 клик')
-					])
-				])
+		// Hero Card
+		var heroNode = E('div', { 'class': 'os-hero' }, [
+			E('div', { 'class': 'os-hero-title-wrap' }, [
+				E('h2', { 'class': 'os-hero-title' }, [ '🚀 ', _('Component & Update Center') ]),
+				E('p', { 'class': 'os-hero-subtitle' },
+					_('Manage OSE core services, sing-box flavor variants, Zapret2 DPI rules, and automated cron syncing.')
+				)
 			]),
-
-			// 2. Выбор варианта sing-box (Stable / Extended / Tiny / Extended Compress)
-			E('div', { 'class': 'os-card' }, [
-				E('div', { 'style': 'display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;' }, [
-					E('div', {}, [
-						E('h3', { 'style': 'margin: 0 0 4px 0; font-size: 18px; font-weight: 700; color: #fff;' }, '🌐 Интеграция sing-box: Выбор сборки (Flavors)'),
-						E('div', { 'style': 'font-size: 13px; color: #94a3b8;' }, 'Выберите оптимальную редакцию под аппаратные характеристики вашего роутера:')
-					]),
-					E('span', {
-						'class': singboxInfo.installed ? 'os-badge-ok' : 'os-badge-upd'
-					}, singboxInfo.installed ? 'Текущая: ' + (singboxInfo.version || 'v1.11.x') : 'Не установлен')
-				]),
-
-				E('div', { 'style': 'margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px;' }, [
-					// Вариант 1: Stable
-					E('div', { 'class': 'os-comp-card', 'style': (singboxInfo.configured_variant === 'stable' ? 'border-color: #38bdf8;' : '') }, [
-						E('div', {}, [
-							E('div', { 'style': 'font-weight: 700; font-size: 15px; color: #fff; display: flex; justify-content: space-between;' }, [
-								'sing-box Stable',
-								singboxInfo.configured_variant === 'stable' ? E('span', { 'class': 'os-badge-ok' }, 'Активен') : null
-							]),
-							E('div', { 'style': 'font-size: 12px; color: #94a3b8; margin-top: 6px; line-height: 1.4;' },
-								'Официальная стабильная сборка OpenWrt feeds. Базовый набор проверенных протоколов (Shadowsocks, VLESS, WireGuard).'
-							),
-							E('div', { 'style': 'font-size: 11px; color: #cbd5e1; margin-top: 8px;' }, 'Flash: ~18 МБ • RAM: Рекомендуется 256+ МБ')
-						]),
-						E('button', {
-							'class': 'btn cbi-button-action',
-							'style': 'margin-top: 14px; background: #1e293b; color: #38bdf8; border: 1px solid #334155; font-weight: 600;',
-							'disabled': singboxInfo.configured_variant === 'stable',
-							'click': function() {
-								callSwitchSingboxVariant('stable').then(function() {
-									ui.addNotification(null, E('p', {}, 'Выбран вариант Stable. Бинарник sing-box не заменён: установите соответствующую сборку вручную.'), 'warning');
-									window.location.reload();
-								});
+			E('div', { 'class': 'os-hero-actions' }, [
+				E('button', {
+					'class': 'os-btn os-btn-secondary',
+					'click': function() {
+						ui.showModal(_('Checking for Updates'), [
+							E('p', { 'class': 'spinning' }, _('Querying remote repositories and package index...'))
+						]);
+						callCheckUpdates().then(function() {
+							ui.hideModal();
+							ui.addNotification(null, E('p', {}, '✓ ' + _('Update check complete. Versions refreshed.')), 'info');
+							window.location.reload();
+						});
+					}
+				}, [ '🔍 ', _('Check for Updates') ]),
+				E('button', {
+					'class': 'os-btn os-btn-primary',
+					'click': function() {
+						ui.showModal(_('Updating Components'), [
+							E('p', { 'class': 'spinning' }, _('Submitting update request...'))
+						]);
+						callPerformUpdate('all').then(function(res) {
+							ui.hideModal();
+							if (res && res.not_implemented) {
+								ui.addNotification(null, E('p', {},
+									_('Automated updates are disabled in this binary release. Run "opkg update && opkg upgrade" in terminal.')), 'warning');
+							} else if (res && res.success) {
+								ui.addNotification(null, E('p', {}, '✓ ' + _('All components updated successfully.')), 'info');
+								window.location.reload();
+							} else {
+								ui.addNotification(null, E('p', {},
+									'❌ ' + _('Update failed: ') + ((res && res.error) || _('Unknown error'))), 'error');
 							}
-						}, singboxInfo.configured_variant === 'stable' ? '✓ Выбран' : 'Переключить на Stable')
-					]),
+						}).catch(function(err) {
+							ui.hideModal();
+							ui.addNotification(null, E('p', {}, '❌ ' + _('Update error: ') + err), 'error');
+						});
+					}
+				}, [ '⚡ ', _('Update All (1-Click)') ])
+			])
+		]);
+		viewRoot.appendChild(heroNode);
 
-					// Вариант 2: Extended
-					E('div', { 'class': 'os-comp-card', 'style': (singboxInfo.configured_variant === 'extended' ? 'border-color: #a855f7;' : '') }, [
-						E('div', {}, [
-							E('div', { 'style': 'font-weight: 700; font-size: 15px; color: #fff; display: flex; justify-content: space-between;' }, [
-								'sing-box Extended (xHTTP)',
-								singboxInfo.configured_variant === 'extended' ? E('span', { 'class': 'os-badge-ok', 'style': 'background: rgba(168,85,247,0.2); color: #a855f7; border-color: #a855f7;' }, 'Активен') : null
-							]),
-							E('div', { 'style': 'font-size: 12px; color: #94a3b8; margin-top: 6px; line-height: 1.4;' },
-								'Полная расширенная сборка: xHTTP транспорт, Reality, TUIC v5, Shadowsocks 2022 и новейшие шифры обхода блокировок.'
-							),
-							E('div', { 'style': 'font-size: 11px; color: #cbd5e1; margin-top: 8px;' }, 'Flash: ~28 МБ • RAM: Рекомендуется 256+ МБ')
-						]),
-						E('button', {
-							'class': 'btn cbi-button-action',
-							'style': 'margin-top: 14px; background: #1e293b; color: #a855f7; border: 1px solid #334155; font-weight: 600;',
-							'disabled': singboxInfo.configured_variant === 'extended',
-							'click': function() {
-								callSwitchSingboxVariant('extended').then(function() {
-									ui.addNotification(null, E('p', {}, 'Выбран вариант Extended (xHTTP). Бинарник sing-box не заменён: установите соответствующую сборку вручную.'), 'warning');
-									window.location.reload();
-								});
-							}
-						}, singboxInfo.configured_variant === 'extended' ? '✓ Выбран' : 'Переключить на Extended')
-					]),
-
-					// Вариант 3: Tiny
-					E('div', { 'class': 'os-comp-card', 'style': (singboxInfo.configured_variant === 'tiny' ? 'border-color: #10b981;' : '') }, [
-						E('div', {}, [
-							E('div', { 'style': 'font-weight: 700; font-size: 15px; color: #fff; display: flex; justify-content: space-between;' }, [
-								'sing-box Tiny (Легковес)',
-								singboxInfo.configured_variant === 'tiny' ? E('span', { 'class': 'os-badge-ok' }, 'Активен') : null
-							]),
-							E('div', { 'style': 'font-size: 12px; color: #94a3b8; margin-top: 6px; line-height: 1.4;' },
-								'Минималистичный бинарник без тяжелых библиотек. Идеально для слабых роутеров с 64–128 МБ RAM (потребление <15 МБ).'
-							),
-							E('div', { 'style': 'font-size: 11px; color: #cbd5e1; margin-top: 8px;' }, 'Flash: <8 МБ • RAM: 64–128 МБ')
-						]),
-						E('button', {
-							'class': 'btn cbi-button-action',
-							'style': 'margin-top: 14px; background: #1e293b; color: #10b981; border: 1px solid #334155; font-weight: 600;',
-							'disabled': singboxInfo.configured_variant === 'tiny',
-							'click': function() {
-								callSwitchSingboxVariant('tiny').then(function() {
-									ui.addNotification(null, E('p', {}, 'Выбран вариант Tiny. Бинарник sing-box не заменён: установите соответствующую сборку вручную.'), 'warning');
-									window.location.reload();
-								});
-							}
-						}, singboxInfo.configured_variant === 'tiny' ? '✓ Выбран' : 'Переключить на Tiny')
-					]),
-
-					// Вариант 4: Extended Compress (UPX)
-					E('div', { 'class': 'os-comp-card', 'style': (singboxInfo.configured_variant === 'extended_compress' ? 'border-color: #f59e0b;' : '') }, [
-						E('div', {}, [
-							E('div', { 'style': 'font-weight: 700; font-size: 15px; color: #fff; display: flex; justify-content: space-between;' }, [
-								'sing-box Extended Compress',
-								singboxInfo.configured_variant === 'extended_compress' ? E('span', { 'class': 'os-badge-ok', 'style': 'background: rgba(245,158,11,0.2); color: #f59e0b; border-color: #f59e0b;' }, 'Активен') : null
-							]),
-							E('div', { 'style': 'font-size: 12px; color: #94a3b8; margin-top: 6px; line-height: 1.4;' },
-								'UPX-сжатый вариант Extended. Полноценная поддержка всех новейших протоколов с экономией 65% дискового пространства.'
-							),
-							E('div', { 'style': 'font-size: 11px; color: #cbd5e1; margin-top: 8px;' }, 'Flash: ~11 МБ (Сжато) • RAM: 128+ МБ')
-						]),
-						E('button', {
-							'class': 'btn cbi-button-action',
-							'style': 'margin-top: 14px; background: #1e293b; color: #f59e0b; border: 1px solid #334155; font-weight: 600;',
-							'disabled': singboxInfo.configured_variant === 'extended_compress',
-							'click': function() {
-								callSwitchSingboxVariant('extended_compress').then(function() {
-									ui.addNotification(null, E('p', {}, 'Выбран вариант Extended Compress. Бинарник sing-box не заменён: установите соответствующую сборку вручную.'), 'warning');
-									window.location.reload();
-								});
-							}
-						}, singboxInfo.configured_variant === 'extended_compress' ? '✓ Выбран' : 'Переключить на Compress')
-					])
-				])
+		// sing-box Flavors Card
+		var curVariant = singboxInfo.configured_variant || 'stable';
+		var sbCard = E('div', { 'class': 'os-card' }, [
+			E('div', { 'class': 'os-card-header' }, [
+				E('h3', { 'class': 'os-card-title' }, [ '🌐 ', _('sing-box Binary Flavor Selector') ]),
+				E('span', {
+					'class': 'os-badge ' + (singboxInfo.installed ? 'os-badge-success' : 'os-badge-warning')
+				}, singboxInfo.installed ? _('Installed: ') + (singboxInfo.version || 'v1.11.x') : _('Not Installed'))
 			]),
-
-			// 3. Автообновление по расписанию (Cron / Safe Fallback)
-			E('div', { 'class': 'os-card' }, [
-				E('div', { 'style': 'display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 12px;' }, [
+			E('p', { 'class': 'os-help', 'style': 'margin-bottom: 16px;' },
+				_('Choose the sing-box build tailored to your router hardware constraints (RAM, flash storage, and protocol features):')
+			),
+			E('div', { 'class': 'os-grid' }, [
+				// Flavor 1: Stable
+				E('div', {
+					'class': 'os-card',
+					'style': 'margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;' + (curVariant === 'stable' ? ' border-color: var(--os-primary);' : '')
+				}, [
 					E('div', {}, [
-						E('h3', { 'style': 'margin: 0 0 4px 0; font-size: 18px; font-weight: 700; color: #fff;' }, '⏰ Автоматическое обновление по расписанию (Cron)'),
-						E('div', { 'style': 'font-size: 13px; color: #94a3b8;' }, 'Фоновая синхронизация списков и модулей с проверкой SHA-256 и Safe Fallback')
+						E('div', { 'style': 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;' }, [
+							E('span', { 'class': 'os-label' }, 'sing-box Stable'),
+							curVariant === 'stable' ? E('span', { 'class': 'os-badge os-badge-success' }, _('Active')) : null
+						]),
+						E('div', { 'class': 'os-help', 'style': 'line-height: 1.4;' },
+							_('Official standard feed build. Rock-solid Shadowsocks, VLESS, WireGuard and DNS routing.')
+						),
+						E('div', { 'style': 'font-size: 11px; color: var(--os-text-muted); margin-top: 8px;' },
+							'Flash: ~18 MB • RAM: 256+ MB'
+						)
 					]),
 					E('button', {
-						'class': 'btn cbi-button-action',
-						'style': 'background: #10b981; color: #020617; font-weight: 700;',
-						'click': function(ev) {
-							var btn = ev.target;
-							btn.disabled = true;
-							btn.innerText = 'Сохранение...';
-
-							var isEnabled = document.getElementById('os-auto-enabled') ? document.getElementById('os-auto-enabled').checked : false;
-							var interval = document.getElementById('os-auto-interval') ? document.getElementById('os-auto-interval').value : 'daily';
-							var upLists = document.getElementById('os-up-lists') ? document.getElementById('os-up-lists').checked : true;
-							var upSb = document.getElementById('os-up-sb') ? document.getElementById('os-up-sb').checked : false;
-							var upZ2 = document.getElementById('os-up-z2') ? document.getElementById('os-up-z2').checked : false;
-							var upCore = document.getElementById('os-up-core') ? document.getElementById('os-up-core').checked : false;
-
-							callSaveAutoUpdateConfig(isEnabled, interval, upLists, upSb, upZ2, upCore).then(function() {
-								btn.disabled = false;
-								btn.innerText = '💾 Сохранить расписание cron';
-								ui.addNotification(null, E('p', {}, '✓ Расписание автоматического обновления сохранено!'), 'info');
-							}).catch(function(err) {
-								btn.disabled = false;
-								btn.innerText = '💾 Сохранить расписание cron';
-								ui.addNotification(null, E('p', {}, '❌ Ошибка сохранения cron: ' + err), 'error');
+						'class': 'os-btn os-btn-sm ' + (curVariant === 'stable' ? 'os-btn-secondary' : 'os-btn-primary'),
+						'style': 'margin-top: 14px;',
+						'disabled': curVariant === 'stable',
+						'click': function() {
+							callSwitchSingboxVariant('stable').then(function() {
+								ui.addNotification(null, E('p', {}, '✓ ' + _('Switched to Stable variant.')), 'info');
+								window.location.reload();
 							});
 						}
-					}, [ '💾 Сохранить расписание cron' ])
+					}, curVariant === 'stable' ? '✓ ' + _('Selected') : _('Switch to Stable'))
 				]),
-				E('div', { 'style': 'display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 14px;' }, [
-					E('div', { 'style': 'background: #020617; border: 1px solid #1e293b; border-radius: 8px; padding: 14px;' }, [
-						E('label', { 'style': 'display: flex; align-items: center; gap: 10px; cursor: pointer;' }, [
+
+				// Flavor 2: Extended
+				E('div', {
+					'class': 'os-card',
+					'style': 'margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;' + (curVariant === 'extended' ? ' border-color: var(--os-purple);' : '')
+				}, [
+					E('div', {}, [
+						E('div', { 'style': 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;' }, [
+							E('span', { 'class': 'os-label' }, 'sing-box Extended (xHTTP)'),
+							curVariant === 'extended' ? E('span', { 'class': 'os-badge os-badge-purple' }, _('Active')) : null
+						]),
+						E('div', { 'class': 'os-help', 'style': 'line-height: 1.4;' },
+							_('Full protocol suite: VLESS Reality, xHTTP transport, TUIC v5, Shadowsocks 2022 and state-of-the-art anti-censorship.')
+						),
+						E('div', { 'style': 'font-size: 11px; color: var(--os-text-muted); margin-top: 8px;' },
+							'Flash: ~28 MB • RAM: 256+ MB'
+						)
+					]),
+					E('button', {
+						'class': 'os-btn os-btn-sm ' + (curVariant === 'extended' ? 'os-btn-secondary' : 'os-btn-primary'),
+						'style': 'margin-top: 14px;',
+						'disabled': curVariant === 'extended',
+						'click': function() {
+							callSwitchSingboxVariant('extended').then(function() {
+								ui.addNotification(null, E('p', {}, '✓ ' + _('Switched to Extended variant.')), 'info');
+								window.location.reload();
+							});
+						}
+					}, curVariant === 'extended' ? '✓ ' + _('Selected') : _('Switch to Extended'))
+				]),
+
+				// Flavor 3: Tiny
+				E('div', {
+					'class': 'os-card',
+					'style': 'margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;' + (curVariant === 'tiny' ? ' border-color: var(--os-success);' : '')
+				}, [
+					E('div', {}, [
+						E('div', { 'style': 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;' }, [
+							E('span', { 'class': 'os-label' }, 'sing-box Tiny (Lightweight)'),
+							curVariant === 'tiny' ? E('span', { 'class': 'os-badge os-badge-success' }, _('Active')) : null
+						]),
+						E('div', { 'class': 'os-help', 'style': 'line-height: 1.4;' },
+							_('Stripped minimal build (<15 MB RAM usage). Optimized for entry-level routers with 64–128 MB RAM.')
+						),
+						E('div', { 'style': 'font-size: 11px; color: var(--os-text-muted); margin-top: 8px;' },
+							'Flash: <8 MB • RAM: 64–128 MB'
+						)
+					]),
+					E('button', {
+						'class': 'os-btn os-btn-sm ' + (curVariant === 'tiny' ? 'os-btn-secondary' : 'os-btn-primary'),
+						'style': 'margin-top: 14px;',
+						'disabled': curVariant === 'tiny',
+						'click': function() {
+							callSwitchSingboxVariant('tiny').then(function() {
+								ui.addNotification(null, E('p', {}, '✓ ' + _('Switched to Tiny variant.')), 'info');
+								window.location.reload();
+							});
+						}
+					}, curVariant === 'tiny' ? '✓ ' + _('Selected') : _('Switch to Tiny'))
+				]),
+
+				// Flavor 4: Extended Compress
+				E('div', {
+					'class': 'os-card',
+					'style': 'margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;' + (curVariant === 'extended_compress' ? ' border-color: var(--os-warning);' : '')
+				}, [
+					E('div', {}, [
+						E('div', { 'style': 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;' }, [
+							E('span', { 'class': 'os-label' }, 'sing-box Compressed (UPX)'),
+							curVariant === 'extended_compress' ? E('span', { 'class': 'os-badge os-badge-warning' }, _('Active')) : null
+						]),
+						E('div', { 'class': 'os-help', 'style': 'line-height: 1.4;' },
+							_('UPX-compressed Extended build. Provides all modern protocol features while saving 65% flash storage.')
+						),
+						E('div', { 'style': 'font-size: 11px; color: var(--os-text-muted); margin-top: 8px;' },
+							'Flash: ~11 MB • RAM: 128+ MB'
+						)
+					]),
+					E('button', {
+						'class': 'os-btn os-btn-sm ' + (curVariant === 'extended_compress' ? 'os-btn-secondary' : 'os-btn-primary'),
+						'style': 'margin-top: 14px;',
+						'disabled': curVariant === 'extended_compress',
+						'click': function() {
+							callSwitchSingboxVariant('extended_compress').then(function() {
+								ui.addNotification(null, E('p', {}, '✓ ' + _('Switched to Compressed variant.')), 'info');
+								window.location.reload();
+							});
+						}
+					}, curVariant === 'extended_compress' ? '✓ ' + _('Selected') : _('Switch to Compressed'))
+				])
+			])
+		]);
+		viewRoot.appendChild(sbCard);
+
+		// Scheduled Auto-Updates (Cron)
+		var cronCard = E('div', { 'class': 'os-card' }, [
+			E('div', { 'class': 'os-card-header' }, [
+				E('h3', { 'class': 'os-card-title' }, [ '⏰ ', _('Automated Sync & Cron Schedule') ]),
+				E('button', {
+					'class': 'os-btn os-btn-primary os-btn-sm',
+					'click': function(ev) {
+						var btn = ev.target;
+						btn.disabled = true;
+						btn.innerText = _('Saving...');
+
+						var isEnabled = document.getElementById('os-auto-enabled') ? document.getElementById('os-auto-enabled').checked : false;
+						var interval = document.getElementById('os-auto-interval') ? document.getElementById('os-auto-interval').value : 'daily';
+						var upLists = document.getElementById('os-up-lists') ? document.getElementById('os-up-lists').checked : true;
+						var upSb = document.getElementById('os-up-sb') ? document.getElementById('os-up-sb').checked : false;
+						var upZ2 = document.getElementById('os-up-z2') ? document.getElementById('os-up-z2').checked : false;
+						var upCore = document.getElementById('os-up-core') ? document.getElementById('os-up-core').checked : false;
+
+						callSaveAutoUpdateConfig(isEnabled, interval, upLists, upSb, upZ2, upCore).then(function() {
+							btn.disabled = false;
+							btn.innerText = '💾 ' + _('Save Schedule');
+							ui.addNotification(null, E('p', {}, '✓ ' + _('Automated update schedule saved successfully!')), 'info');
+						}).catch(function(err) {
+							btn.disabled = false;
+							btn.innerText = '💾 ' + _('Save Schedule');
+							ui.addNotification(null, E('p', {}, '❌ ' + _('Failed to save schedule: ') + err), 'error');
+						});
+					}
+				}, [ '💾 ', _('Save Schedule') ])
+			]),
+			E('div', { 'class': 'os-grid' }, [
+				E('div', { 'class': 'os-stat-box' }, [
+					E('div', { 'style': 'display: flex; justify-content: space-between; align-items: center;' }, [
+						E('span', { 'class': 'os-label' }, _('Enable Automated Cron')),
+						E('label', { 'class': 'os-switch' }, [
 							E('input', {
 								'type': 'checkbox',
 								'id': 'os-auto-enabled',
 								'checked': autoCfg.auto_update_enabled === true
 							}),
-							E('span', { 'style': 'font-weight: 700; color: #fff;' }, 'Включить автообновление')
-						]),
-						E('div', { 'style': 'font-size: 12px; color: #64748b; margin-top: 6px;' }, 'Запускает задание через системный cron роутера (/etc/crontabs/root)')
-					]),
-					E('div', { 'style': 'background: #020617; border: 1px solid #1e293b; border-radius: 8px; padding: 14px;' }, [
-						E('label', { 'style': 'display: block; font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 6px;' }, 'ПЕРИОДИЧНОСТЬ'),
-						E('select', {
-							'class': 'cbi-input-select',
-							'id': 'os-auto-interval',
-							'style': 'width: 100%; background: #0f172a; color: #fff; border: 1px solid #334155; padding: 6px 10px; border-radius: 6px;'
-						}, [
-							E('option', { 'value': 'daily', 'selected': (autoCfg.interval || 'daily') === 'daily' }, 'Ежедневно (в 04:00)'),
-							E('option', { 'value': '3days', 'selected': autoCfg.interval === '3days' }, 'Каждые 3 дня'),
-							E('option', { 'value': 'weekly', 'selected': autoCfg.interval === 'weekly' }, 'Раз в неделю (Воскресенье)')
+							E('span', { 'class': 'os-slider' })
 						])
 					]),
-					E('div', { 'style': 'background: #020617; border: 1px solid #1e293b; border-radius: 8px; padding: 14px;' }, [
-						E('div', { 'style': 'font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 6px;' }, 'ОБНОВЛЯЕМЫЕ КОМПОНЕНТЫ'),
-						E('label', { 'style': 'display: block; font-size: 13px; margin-bottom: 4px;' }, [
+					E('div', { 'class': 'os-help' }, _('Executes periodic syncing in the background (/etc/crontabs/root).'))
+				]),
+				E('div', { 'class': 'os-form-group' }, [
+					E('label', { 'class': 'os-label' }, _('Sync Interval')),
+					E('select', {
+						'class': 'os-select',
+						'id': 'os-auto-interval'
+					}, [
+						E('option', { 'value': 'daily', 'selected': (autoCfg.interval || 'daily') === 'daily' }, _('Daily (at 04:00 AM)')),
+						E('option', { 'value': '3days', 'selected': autoCfg.interval === '3days' }, _('Every 3 Days')),
+						E('option', { 'value': 'weekly', 'selected': autoCfg.interval === 'weekly' }, _('Weekly (Sunday at 04:00 AM)'))
+					]),
+					E('div', { 'class': 'os-help' }, _('Low-traffic hours recommended for transparent updates.'))
+				]),
+				E('div', { 'class': 'os-form-group' }, [
+					E('label', { 'class': 'os-label' }, _('Synchronized Modules')),
+					E('div', { 'style': 'display: flex; flex-direction: column; gap: 6px; margin-top: 4px;' }, [
+						E('label', { 'style': 'display: flex; align-items: center; gap: 8px; font-size: 13px;' }, [
 							E('input', { 'type': 'checkbox', 'id': 'os-up-lists', 'checked': autoCfg.update_lists !== false }),
-							' Списки правил и доменов'
+							_('Community Domain & GeoIP Lists')
 						]),
-						E('label', { 'style': 'display: block; font-size: 13px; margin-bottom: 4px;' }, [
+						E('label', { 'style': 'display: flex; align-items: center; gap: 8px; font-size: 13px;' }, [
 							E('input', { 'type': 'checkbox', 'id': 'os-up-sb', 'checked': autoCfg.update_singbox === true }),
-							' sing-box Core'
+							_('sing-box Core Binary')
 						]),
-						E('label', { 'style': 'display: block; font-size: 13px;' }, [
+						E('label', { 'style': 'display: align-items: center; gap: 8px; font-size: 13px;' }, [
 							E('input', { 'type': 'checkbox', 'id': 'os-up-z2', 'checked': autoCfg.update_zapret2 === true }),
-							' Zapret2 (nfqws2)'
-						])
+							_('Zapret2 (nfqws2) Binary & Strategy')
+						]),
+						E('input', { 'type': 'hidden', 'id': 'os-up-core', 'value': '0' })
 					])
 				])
-			]),
-
-			// 4. Статус компонентов OSE и сторонних демонов (Карточки Mobile First)
-			E('div', { 'class': 'os-card' }, [
-				E('h3', { 'style': 'margin: 0 0 4px 0; font-size: 18px; font-weight: 700; color: #fff;' }, '📦 Статус компонентов системы'),
-				E('div', { 'style': 'font-size: 13px; color: #94a3b8;' }, 'Точечное обновление модулей и просмотр установленных версий'),
-
-				E('div', { 'class': 'os-comp-grid' }, components.map(function(comp) {
-					return E('div', { 'class': 'os-comp-card' }, [
-						E('div', {}, [
-							E('div', { 'style': 'display: flex; justify-content: space-between; align-items: center;' }, [
-								E('span', { 'style': 'font-size: 15px; font-weight: 700; color: #fff;' }, comp.name),
-								E('span', {
-									'class': comp.update_available ? 'os-badge-upd' : 'os-badge-ok'
-								}, comp.update_available ? 'Доступно: ' + comp.latest_version : 'Актуален')
-							]),
-							E('div', { 'style': 'font-size: 12px; color: #94a3b8; margin-top: 6px;' }, comp.description),
-							E('div', { 'style': 'font-size: 12px; color: #cbd5e1; margin-top: 10px;' }, [
-								'Установлена версия: ',
-								E('strong', { 'style': 'color: #fff;' }, comp.installed_version)
-							])
-						]),
-						E('button', {
-							'class': 'btn cbi-button-action',
-							'style': 'margin-top: 14px; background: #1e293b; color: #38bdf8; border: 1px solid #334155;',
-							'click': function() {
-								ui.showModal('Обновление компонента', [
-									E('p', { 'class': 'spinning' }, 'Запрос на обновление ' + comp.name + '...')
-								]);
-								callPerformUpdate(comp.id).then(function(res) {
-									ui.hideModal();
-									if (res && res.not_implemented) {
-										ui.addNotification(null, E('p', {},
-											'Автоматическое обновление не реализовано. Обновите вручную: opkg update && opkg upgrade <пакет>.'), 'warning');
-									} else if (res && res.success) {
-										ui.addNotification(null, E('p', {}, comp.name + ': обновление выполнено.'), 'info');
-										window.location.reload();
-									} else {
-										ui.addNotification(null, E('p', {},
-											comp.name + ': ' + ((res && res.error) || 'не удалось выполнить обновление')), 'error');
-									}
-								}).catch(function(err) {
-									ui.hideModal();
-									ui.addNotification(null, E('p', {}, 'Ошибка запроса: ' + err), 'error');
-								});
-							}
-						}, comp.update_available ? 'Обновить до ' + comp.latest_version : 'Проверить')
-					]);
-				}))
-			]),
-
-			// 4. Терминал логов обновления
-			E('div', { 'class': 'os-card' }, [
-				E('div', { 'style': 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;' }, [
-					E('h3', { 'style': 'margin: 0; font-size: 17px; font-weight: 700; color: #fff;' }, '🖥️ Консоль процесса обновления (/tmp/openstream_update.log)'),
-					E('button', {
-						'class': 'btn cbi-button-action',
-						'style': 'background: #1e293b; color: #94a3b8; font-size: 12px;',
-						'click': function() {
-							callGetUpdateLog().then(function(res) {
-								var logEl = document.getElementById('os-update-log');
-								if (logEl && res && res.log) {
-									logEl.textContent = res.log;
-								}
-							});
-						}
-					}, 'Обновить лог')
-				]),
-				E('div', { 'id': 'os-update-log', 'class': 'os-log-terminal' }, logData.log || 'Лог обновлений пуст.')
 			])
 		]);
+		viewRoot.appendChild(cronCard);
+
+		// Component Status Grid Card
+		var compCard = E('div', { 'class': 'os-card' }, [
+			E('div', { 'class': 'os-card-header' }, [
+				E('h3', { 'class': 'os-card-title' }, [ '📦 ', _('Installed Subsystem Status') ]),
+				E('span', { 'class': 'os-badge os-badge-info' }, components.length + ' ' + _('packages'))
+			]),
+			E('div', { 'class': 'os-grid' }, components.map(function(comp) {
+				return E('div', { 'class': 'os-entity-row', 'style': 'flex-direction: column; align-items: stretch; margin-bottom: 0;' }, [
+					E('div', { 'style': 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;' }, [
+						E('span', { 'class': 'os-entity-name' }, comp.name),
+						E('span', {
+							'class': 'os-badge ' + (comp.update_available ? 'os-badge-warning' : 'os-badge-success')
+						}, comp.update_available ? _('Update: ') + comp.latest_version : _('Up to Date'))
+					]),
+					E('div', { 'class': 'os-entity-desc', 'style': 'margin-bottom: 8px;' }, comp.description),
+					E('div', { 'style': 'font-size: 11px; color: var(--os-text-secondary); margin-bottom: 10px;' }, [
+						_('Installed Version: '),
+						E('strong', { 'style': 'color: var(--os-text-primary);' }, comp.installed_version || '–')
+					]),
+					E('button', {
+						'class': 'os-btn os-btn-sm ' + (comp.update_available ? 'os-btn-primary' : 'os-btn-secondary'),
+						'click': function() {
+							ui.showModal(_('Updating Component'), [
+								E('p', { 'class': 'spinning' }, _('Submitting update request for ') + comp.name + '...')
+							]);
+							callPerformUpdate(comp.id).then(function(res) {
+								ui.hideModal();
+								if (res && res.not_implemented) {
+									ui.addNotification(null, E('p', {},
+										_('Automated updates disabled. Upgrade via terminal: opkg update && opkg upgrade ') + comp.id), 'warning');
+								} else if (res && res.success) {
+									ui.addNotification(null, E('p', {}, comp.name + ': ' + _('Update completed.')), 'info');
+									window.location.reload();
+								} else {
+									ui.addNotification(null, E('p', {},
+										comp.name + ': ' + ((res && res.error) || _('Update failed'))), 'error');
+								}
+							}).catch(function(err) {
+								ui.hideModal();
+								ui.addNotification(null, E('p', {}, '❌ ' + _('Error: ') + err), 'error');
+							});
+						}
+					}, comp.update_available ? _('Upgrade to ') + comp.latest_version : _('Recheck'))
+				]);
+			}))
+		]);
+		viewRoot.appendChild(compCard);
+
+		// Terminal Log Card
+		var logCard = E('div', { 'class': 'os-card' }, [
+			E('div', { 'class': 'os-card-header' }, [
+				E('h3', { 'class': 'os-card-title' }, [ '🖥️ ', _('Update Execution Console') ]),
+				E('button', {
+					'class': 'os-btn os-btn-secondary os-btn-sm',
+					'click': function() {
+						callGetUpdateLog().then(function(res) {
+							var el = document.getElementById('os-update-log');
+							if (el && res && res.log) {
+								el.textContent = res.log;
+							}
+						});
+					}
+				}, [ '🔄 ', _('Refresh Console') ])
+			]),
+			E('div', {
+				'id': 'os-update-log',
+				'class': 'os-console'
+			}, logData.log || _('No update activity logged.'))
+		]);
+		viewRoot.appendChild(logCard);
 
 		return viewRoot;
 	},

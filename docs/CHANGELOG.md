@@ -1,5 +1,52 @@
 # Changelog
 
+## [0.4.2-r38] — 2026-09-13 — LuCI Modern UI Redesign & Unified Design System
+
+Комплексная актуализация и редизайн веб-интерфейса LuCI: ликвидация разрозненного устаревшего кода, внедрение дизайн-системы Linear/Apple/Vercel с поддержкой тем оформления LuCI, 100% честная интернационализация (i18n), удаление устаревших табличных представлений и пересборка IPK-пакетов.
+
+### Дизайн-система и верстка (Mobile First)
+- **Унифицированная дизайн-система (`openstream.css`):**
+  Создан файл `luci-app-openstream/root/www/luci-static/resources/openstream/openstream.css` с CSS-переменными для светлой и тёмной тем (OLED Dark / Light), адаптированный под темы LuCI (Argon, Bootstrap, Material).
+  Включает компоненты: `.os-container`, `.os-hero`, `.os-card`, `.os-grid`, `.os-stat-box`, `.os-badge`, `.os-btn`, `.os-input`, `.os-select`, `.os-textarea`, `.os-switch`, `.os-slider`, `.os-filter-bar`, `.os-console`, `.os-entity-row`.
+- **Ликвидация устаревших `.htm` шаблонов:**
+  Удалена директория `luasrc/view/openstream/` с архаичными шаблонами `coexistence.htm`, `diagnostics.htm`, `events.htm`, `logs.htm`, `metrics.htm`, `routing.htm`, `status.htm`. Весь интерфейс переведен на современный компонентный JavaScript-стек LuCI 24.10.
+- **Очистка контроллера `openstream.lua`:**
+  Исключены дублирующие точки входа `entry(...)`, приводившие к конфликтам маршрутизации диспетчера LuCI. Диспетчеризация страниц меню полностью переведена на декларативный JSON (`menu.d/luci-app-openstream.json`).
+
+### Модернизация представлений (8 представлений)
+1. **`status.js` (Состояние системы):**
+   Hero-карточка с кнопкой мягкого рестарта службы streamproxyd через `luci:setInitStatus`, карточки статуса 4 ключевых подсистем (Rust streamproxyd, Zapret2 nfqws2, sing-box TPROXY, ucode/nftables) и архитектурная сводка.
+2. **`routing.js` (Декларативная маршрутизация):**
+   Инспектор маршрута домена в реальном времени (`test_route`), чип-фильтрация категорий правил (All, Streaming, DPI Bypass, Proxy, Privacy, Custom), адаптивный список правил и модальное окно создания/редактирования с поддержкой масок доменов и CIDR.
+3. **`servers.js` (Серверы и подписки sing-box):**
+   Карточный интерфейс серверов без таблиц, замер пинга в реальном времени, селектор алгоритма шлюза (URLTest / Фиксированный узел), форма импорта подписок с полями User-Agent и HWID.
+4. **`services.js` (Multi-DNS и сетевая безопасность):**
+   Настройка каскадных DoH/DoT апстримов, Bootstrap DNS, защиты от флаппинга (Threshold & Recovery), прямого пропуска BitTorrent в WAN (порты 6881–6889, 51413), блокировки QUIC/DoH, исключения NTP, белых списков CIDR и LAN клиентов, скачивание архива резервной копии и модальное восстановление.
+5. **`twitch.js` (Twitch Live Stream Optimizer):**
+   Переписан со старого `form.Map` на чистый DOM с классами `openstream.css` и прямое сохранение через LuCI `uci` API. Карточки готовых сценариев (Geo-Split, Playlist Edge, Quality Unlock, Custom), матричный выбор маршрутов и описание концепции Zero-CA.
+6. **`monitor.js` (Живой мониторинг потоков):**
+   Метрики распределения потоков по секциям ядра, фильтрация по подсистемам, интерактивный инспектор доменов, карточный список активных потоков без HTML-таблиц.
+7. **`updates.js` (Центр обновлений):**
+   Выбор 4 сборок sing-box (Stable, Extended xHTTP, Tiny, Extended Compress UPX), расписание автообновления cron, точечное обновление компонентов и встроенный терминал журнала.
+8. **`diagnostics.js` (Самодиагностика здоровья):**
+   Автоматизированный опрос сокетов, очередей NFQUEUE и целостности сетов nftables с индикацией статусов Healthy, Warning и Fail.
+
+### Интернационализация (100% i18n)
+- Весь исходный код JS переведен на английские строковые ключи в `_('...')`.
+- Создан скрипт синхронизации переводов `scripts/update_translations.py`.
+- Актуализирован каталог локализации `luci-app-openstream/po/ru/openstream.po` (505 ключей).
+- Скомпилирован двоичный каталог `openstream.ru.lmo` (490 переводов) с хэшированием SuperFastHash.
+
+### Сборка и стабильность установки
+- Скрипт `scripts/pack_ipk.py` обновлен до релиза 38: в состав пакета `luci-app-openstream` включен `openstream.css`.
+- В `luci_postinst` жесткий вызов `killall -HUP rpcd` заменен на мягкий `ubus call rpcd reload || /etc/init.d/rpcd reload`, устранивший сброс активных сессий пользователей в браузере при установке.
+- Собраны пакеты:
+  - `openstream-engine_0.4.2-38_aarch64_cortex-a53.ipk`
+  - `luci-app-openstream_0.4.2-38_all.ipk`
+  - `luci-i18n-openstream-ru_0.4.2-38_all.ipk`
+
+---
+
 ## [0.4.2-r37] — 2026-09-12 — 100% Production Readiness & Component Updates
 
 Реализация полного комплекса задач по устранению остаточных замечаний аудита: внедрение строгой модели доступа ACL, структурированного логирования ошибок парсинга правил, бесшовного обновления nftables без сброса DNS-сетов и полноценной подсистемы раздельных обновлений и автообновления.
@@ -9,6 +56,16 @@
   Полностью исключен wildcard `"openstream": ["*"]`. Права доступа разделены на явные списки допустимых методов:
   - `read`: `["status", "get_routing", "test_route", "get_monitor_flows", "get_servers", "test_server_latency", "get_security_settings", "get_auto_update_config", "run_diagnostics", "create_backup", "get_singbox_info", "check_updates", "get_update_log"]`.
   - `write`: `["save_routing", "clear_monitor_flows", "save_servers", "import_subscription", "save_dns_config", "save_security_settings", "save_auto_update_config", "restore_backup", "switch_singbox_variant", "perform_update"]`.
+- **Синхронизация каталогов ACL:**
+  Файл определений доступа установлен как в `/usr/share/rpcd/acl.d/`, так и в `/usr/share/luci/acl.d/`.
+
+### Стабильность веб-интерфейса и сборка пакетов
+- **Ликвидация сброса сессии при установке пакета LuCI:**
+  В `luci_postinst` исключены прямые вызовы `uhttpd restart` и `rpcd restart`, приводившие к разрыву сокета HTTP и потере сессии авторизации прямо во время отправки формы установки пакета в LuCI. Применена мягкая перезагрузка разрешений `killall -HUP rpcd` и очистка кеша `/tmp/luci-indexcache*`.
+- **Иерархия каталогов `tarfile.DIRTYPE` в IPK:**
+  В архиватор `make_tar_gz` добавлено автоматическое включение всех промежуточных директорий со статусом `DIRTYPE` (`0755`), что устранило ошибку `wfopen: No such file or directory` в `opkg`.
+- **Надежное отображение меню в LuCI 24.10:**
+  В `menu.d/luci-app-openstream.json` убрана блокирующая зависимость `"uci": { "openstream": true }` на корневом узле. Устранено дублирование маршрутов страниц меню в `openstream.lua`.
 
 ### Надежность и бесшовность сетевого стека
 - **Сохранение динамических nftables-сетов при реконфигурации (M4):**

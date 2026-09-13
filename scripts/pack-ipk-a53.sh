@@ -11,7 +11,7 @@ export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-0}"
 export PKG_SOURCE_DATE_EPOCH="${PKG_SOURCE_DATE_EPOCH:-$SOURCE_DATE_EPOCH}"
 
 VERSION="${OPENSTREAM_VERSION:-0.4.2}"
-RELEASE="${OPENSTREAM_RELEASE:-35}"
+RELEASE="${OPENSTREAM_RELEASE:-37}"
 ARCH="${OPENSTREAM_IPK_ARCH:-aarch64_cortex-a53}"
 TARGET="aarch64-unknown-linux-musl"
 IPKG_BUILD="$ROOT/scripts/ipkg-build"
@@ -288,6 +288,7 @@ pack_engine() {
     "$ENGINE_PKG/etc/config" \
     "$ENGINE_PKG/etc/openstream" \
     "$ENGINE_PKG/etc/openstream/rules" \
+    "$ENGINE_PKG/usr/share/openstream/rules" \
     "$ENGINE_PKG/etc/uci-defaults" \
     "$ENGINE_PKG/usr/share/openstream/nft" \
     "$ENGINE_PKG/usr/share/openstream/hostlists" \
@@ -300,6 +301,7 @@ pack_engine() {
   install -m 0755 "$ROOT/package/openwrt/files/openstream-refresh-hls-set" "$ENGINE_PKG/usr/libexec/openstream-refresh-hls-set"
   install -m 0755 "$ROOT/package/openwrt/files/openstream-refresh-opkg-list" "$ENGINE_PKG/usr/libexec/openstream-refresh-opkg-list"
   install -m 0755 "$ROOT/package/openwrt/files/openstream-resolve-smartdns" "$ENGINE_PKG/usr/libexec/openstream-resolve-smartdns"
+  install -m 0755 "$ROOT/package/openwrt/files/openstream-update" "$ENGINE_PKG/usr/libexec/openstream-update"
   # Рендерер конфигураций. Ранее не попадал в пакет: init всегда уходил в
   # fallback, а RPC вызывал несуществующий файл (путь /usr/share/... вместо
   # /usr/libexec/...). Без него декларативные правила не применялись.
@@ -308,10 +310,11 @@ pack_engine() {
   install -m 0644 "$ROOT/package/openwrt/files/openstream.config" "$ENGINE_PKG/etc/config/openstream"
   install -m 0644 "$ROOT/package/openwrt/files/config.yaml" "$ENGINE_PKG/etc/openstream/config.yaml"
   # Каталог декларативных правил: единый путь /etc/openstream/rules для init,
-  # RPC и рендерера. Ранее правила не устанавливались вообще, из-за чего
-  # компиляция правил не запускалась ни при каких условиях.
+  # RPC и рендерера, а также /usr/share/openstream/rules как fallback.
   install -m 0644 "$ROOT/rules/streaming/"*.osrule.yaml "$ENGINE_PKG/etc/openstream/rules/"
   install -m 0644 "$ROOT/rules/privacy/"*.osrule.yaml "$ENGINE_PKG/etc/openstream/rules/"
+  install -m 0644 "$ROOT/rules/streaming/"*.osrule.yaml "$ENGINE_PKG/usr/share/openstream/rules/"
+  install -m 0644 "$ROOT/rules/privacy/"*.osrule.yaml "$ENGINE_PKG/usr/share/openstream/rules/"
   install -m 0644 "$ROOT/package/openwrt/files/openstream.nft" "$ENGINE_PKG/usr/share/openstream/nft/openstream.nft"
   install -m 0644 "$ROOT/package/openwrt/files/hostlist-hls.txt" "$ENGINE_PKG/usr/share/openstream/hostlist-hls.txt"
   install -m 0644 "$ROOT/package/openwrt/files/hostlists/"*.txt "$ENGINE_PKG/usr/share/openstream/hostlists/"

@@ -5,57 +5,8 @@ local http = require "luci.http"
 module("luci.controller.openstream", package.seeall)
 
 function index()
-	-- Menu primarily from /usr/share/luci/menu.d/luci-app-openstream.json (LuCI 24).
-	-- Keep Lua entries as fallback for older luci-mod-admin without menu.d merge.
-	if not nixio.fs.access("/etc/config/openstream") then
-		return
-	end
-
-	local page = entry(
-		{ "admin", "services", "openstream" },
-		firstchild(),
-		_("OpenStream Engine"),
-		60
-	)
-	page.dependent = false
-	page.acl_depends = { "luci-app-openstream" }
-
-	entry(
-		{ "admin", "services", "openstream", "status" },
-		template("openstream/status"),
-		_("Status"),
-		1
-	)
-	entry(
-		{ "admin", "services", "openstream", "routing" },
-		template("openstream/routing"),
-		_("Policy Routing"),
-		2
-	)
-	entry(
-		{ "admin", "services", "openstream", "services" },
-		view("openstream/services"),
-		_("Services"),
-		3
-	)
-	entry(
-		{ "admin", "services", "openstream", "twitch" },
-		view("openstream/twitch"),
-		_("Twitch"),
-		4
-	)
-	entry(
-		{ "admin", "services", "openstream", "logs" },
-		template("openstream/logs"),
-		_("Logs"),
-		5
-	)
-	entry(
-		{ "admin", "services", "openstream", "diagnostics" },
-		template("openstream/diagnostics"),
-		_("Diagnostics"),
-		6
-	)
+	-- Menu is defined declaratively via /usr/share/luci/menu.d/luci-app-openstream.json (LuCI 21.02+ / 24.10).
+	-- Controller only handles API endpoints.
 	entry(
 		{ "admin", "services", "openstream", "api_status" },
 		call("action_api_status")

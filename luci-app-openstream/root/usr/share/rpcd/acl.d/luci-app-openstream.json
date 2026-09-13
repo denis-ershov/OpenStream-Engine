@@ -2,8 +2,10 @@
 	"luci-app-openstream": {
 		"description": "Grant access to OpenStream Engine configuration and RPC",
 		"read": {
+			"uci": [ "openstream" ],
 			"ubus": {
 				"service": [ "list" ],
+				"luci": [ "getInitList" ],
 				"openstream": [
 					"status",
 					"get_routing",
@@ -20,9 +22,15 @@
 					"get_update_log"
 				]
 			},
-			"uci": [ "openstream" ]
+			"file": {
+				"/etc/openstream/rules/*": [ "read" ],
+				"/tmp/dhcp.leases": [ "read" ],
+				"/tmp/dnsmasq.d/openstream-rules.conf": [ "read" ],
+				"/tmp/openstream_update.log": [ "read" ]
+			}
 		},
 		"write": {
+			"uci": [ "openstream" ],
 			"ubus": {
 				"openstream": [
 					"save_routing",
@@ -37,7 +45,9 @@
 					"perform_update"
 				]
 			},
-			"uci": [ "openstream" ]
+			"file": {
+				"/etc/openstream/rules/*": [ "write" ]
+			}
 		}
 	}
 }

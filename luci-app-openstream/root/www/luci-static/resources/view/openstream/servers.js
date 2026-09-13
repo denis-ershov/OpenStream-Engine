@@ -6,8 +6,20 @@
 
 /*
  * OpenStream Engine 2.1 - Servers & Subscriptions View (sing-box 4-flavor)
- * Mobile-First, OLED Dark Card Layout, No HTML Tables (Rules #8, #10, #11)
+ * Unified Linear/Apple Design System, Mobile-First, 100% i18n
  */
+
+function ensureStylesheet() {
+	var id = 'openstream-css';
+	if (document.getElementById(id)) return;
+	var link = E('link', {
+		'id': id,
+		'rel': 'stylesheet',
+		'type': 'text/css',
+		'href': (window.L && L.resource) ? L.resource('openstream/openstream.css') : '/luci-static/resources/openstream/openstream.css'
+	});
+	document.head.appendChild(link);
+}
 
 var callGetServers = rpc.declare({
 	object: 'openstream',
@@ -50,221 +62,173 @@ return view.extend({
 	},
 
 	render: function(results) {
+		ensureStylesheet();
+
 		var initial = results[0] || {};
 		var servers = initial.servers || [];
 		var selectorMode = initial.selector_mode || 'urltest';
 		var activeServer = initial.active_server || 'auto';
 
-		var viewRoot = E('div', { 'class': 'cbi-map' });
+		var viewRoot = E('div', { 'class': 'os-container' });
 
-		// Стили дизайн-системы (OLED Dark, Linear/Apple modern UI)
-		var styleNode = E('style', {}, `
-			:root {
-				--os-bg: #020617;
-				--os-card: #0b1329;
-				--os-border: #1e293b;
-				--os-blue: #3b82f6;
-				--os-emerald: #10b981;
-				--os-rose: #f43f5e;
-				--os-amber: #f59e0b;
-				--os-purple: #a855f7;
-				--os-cyan: #06b6d4;
-				--os-muted: #64748b;
-				--os-radius: 12px;
-			}
-			.os-card {
-				background: var(--os-card);
-				border: 1px solid var(--os-border);
-				border-radius: var(--os-radius);
-				padding: 20px;
-				margin-bottom: 16px;
-				box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-				transition: border-color 0.2s;
-			}
-			.os-card:hover { border-color: #475569; }
-			.os-btn {
-				display: inline-flex;
-				align-items: center;
-				gap: 8px;
-				padding: 9px 18px;
-				font-size: 13px;
-				font-weight: 600;
-				border-radius: 8px;
-				cursor: pointer;
-				border: none;
-				transition: all 0.2s;
-			}
-			.os-btn-primary { background: #3b82f6; color: #fff; }
-			.os-btn-primary:hover { background: #2563eb; }
-			.os-btn-success { background: #10b981; color: #fff; }
-			.os-btn-success:hover { background: #059669; }
-			.os-btn-dark { background: #1e293b; color: #f8fafc; border: 1px solid var(--os-border); }
-			.os-btn-dark:hover { background: #334155; }
-			.os-badge {
-				display: inline-flex;
-				align-items: center;
-				font-size: 11px;
-				font-weight: 700;
-				padding: 3px 8px;
-				border-radius: 6px;
-				text-transform: uppercase;
-				letter-spacing: 0.05em;
-			}
-			.os-badge-blue { background: rgba(59,130,246,0.2); color: var(--os-blue); border: 1px solid rgba(59,130,246,0.4); }
-			.os-badge-emerald { background: rgba(16,185,129,0.2); color: var(--os-emerald); border: 1px solid rgba(16,185,129,0.4); }
-			.os-badge-purple { background: rgba(168,85,247,0.2); color: var(--os-purple); border: 1px solid rgba(168,85,247,0.4); }
-			.os-badge-amber { background: rgba(245,158,11,0.2); color: var(--os-amber); border: 1px solid rgba(245,158,11,0.4); }
-			.os-badge-cyan { background: rgba(6,182,212,0.2); color: var(--os-cyan); border: 1px solid rgba(6,182,212,0.4); }
-			.os-input, .os-select, .os-textarea {
-				background: #020617;
-				border: 1px solid var(--os-border);
-				border-radius: 8px;
-				padding: 9px 12px;
-				color: #fff;
-				font-size: 13px;
-				outline: none;
-				width: 100%;
-				box-sizing: border-box;
-			}
-			.os-input:focus, .os-select:focus, .os-textarea:focus { border-color: var(--os-blue); }
-			.os-server-grid {
-				display: grid;
-				grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-				gap: 16px;
-				margin-top: 16px;
-			}
-			.os-server-card {
-				background: #020617;
-				border: 1px solid var(--os-border);
-				border-radius: 10px;
-				padding: 16px;
-				display: flex;
-				flex-direction: column;
-				gap: 12px;
-				position: relative;
-			}
-		`);
-		viewRoot.appendChild(styleNode);
-
-		// Header
-		var headerNode = E('div', { 'class': 'os-card', 'style': 'margin-bottom: 20px;' }, [
-			E('div', { 'style': 'display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;' }, [
-				E('div', {}, [
-					E('h2', { 'style': 'margin: 0 0 6px 0; font-size: 22px; font-weight: 800; color: #fff;' }, '🌐 Серверы и подписки sing-box'),
-					E('p', { 'style': 'margin: 0; color: var(--os-muted); font-size: 13px;' },
-						'Поддержка VLESS Reality/xHTTP, Hysteria 2, TUIC, Shadowsocks 2022, Trojan и автовыбора узла по наименьшему пингу.'
-					)
-				]),
-				E('div', { 'style': 'display: flex; gap: 10px;' }, [
-					E('button', {
-						'class': 'os-btn os-btn-primary',
-						'id': 'os-btn-test-ping',
-						'click': function(ev) {
-							var btn = ev.target;
-							btn.disabled = true;
-							btn.innerText = '⏳ Замер задержки...';
-							callTestLatency('', 443).then(function(res) {
-								btn.disabled = false;
-								btn.innerText = '⚡ Проверить пинг';
-								if (res && res.servers) {
-									servers = res.servers;
-									renderServerCards();
-									ui.addNotification(null, E('p', {}, '✓ Замер задержки серверов успешно выполнен!'), 'info');
-								}
-							}).catch(function(err) {
-								btn.disabled = false;
-								btn.innerText = '⚡ Проверить пинг';
-								ui.addNotification(null, E('p', {}, '❌ Ошибка проверки пинга: ' + err), 'error');
-							});
-						}
-					}, [ '⚡ Проверить пинг' ]),
-					E('button', {
-						'class': 'os-btn os-btn-success',
-						'click': function(ev) {
-							var btn = ev.target;
-							btn.disabled = true;
-							btn.innerText = 'Сохранение...';
-							callSaveServers(servers, selectorMode, activeServer).then(function() {
-								btn.disabled = false;
-								btn.innerText = '💾 Сохранить и применить';
-								ui.addNotification(null, E('p', {}, '✓ Список серверов и outbounds sing-box успешно применены!'), 'info');
-							}).catch(function(err) {
-								btn.disabled = false;
-								btn.innerText = '💾 Сохранить и применить';
-								ui.addNotification(null, E('p', {}, '❌ Ошибка RPC: ' + err), 'error');
-							});
-						}
-					}, [ '💾 Сохранить и применить' ])
-				])
+		// Hero Card
+		var heroNode = E('div', { 'class': 'os-hero' }, [
+			E('div', { 'class': 'os-hero-title-wrap' }, [
+				E('h2', { 'class': 'os-hero-title' }, [ '🌐 ', _('Outbound Servers & Subscriptions') ]),
+				E('p', { 'class': 'os-hero-subtitle' },
+					_('Management of sing-box outbounds: VLESS Reality, Hysteria 2, TUIC, Shadowsocks 2022, Trojan and auto-failover.')
+				)
+			]),
+			E('div', { 'class': 'os-hero-actions' }, [
+				E('button', {
+					'class': 'os-btn os-btn-secondary',
+					'id': 'os-btn-test-ping',
+					'click': function(ev) {
+						var btn = ev.target;
+						btn.disabled = true;
+						btn.innerText = '⏳ ' + _('Measuring latency...');
+						callTestLatency('', 443).then(function(res) {
+							btn.disabled = false;
+							btn.innerText = '⚡ ' + _('Check Ping');
+							if (res && res.servers) {
+								servers = res.servers;
+								renderServerCards();
+								ui.addNotification(null, E('p', {}, '✓ ' + _('Server latency test completed!')), 'info');
+							}
+						}).catch(function(err) {
+							btn.disabled = false;
+							btn.innerText = '⚡ ' + _('Check Ping');
+							ui.addNotification(null, E('p', {}, '❌ ' + _('Ping test failed: ') + err), 'error');
+						});
+					}
+				}, [ '⚡ ', _('Check Ping') ]),
+				E('button', {
+					'class': 'os-btn os-btn-primary',
+					'click': function(ev) {
+						var btn = ev.target;
+						btn.disabled = true;
+						btn.innerText = _('Saving...');
+						callSaveServers(servers, selectorMode, activeServer).then(function() {
+							btn.disabled = false;
+							btn.innerText = '💾 ' + _('Save & Apply');
+							ui.addNotification(null, E('p', {}, '✓ ' + _('Server list and outbounds successfully applied!')), 'info');
+						}).catch(function(err) {
+							btn.disabled = false;
+							btn.innerText = '💾 ' + _('Save & Apply');
+							ui.addNotification(null, E('p', {}, '❌ ' + _('RPC Error: ') + err), 'error');
+						});
+					}
+				}, [ '💾 ', _('Save & Apply') ])
 			])
 		]);
-		viewRoot.appendChild(headerNode);
+		viewRoot.appendChild(heroNode);
 
-		// Selector Mode Switcher (URLTest vs Fixed)
+		// Selector Mode Card
+		var activeServerSelect;
 		var modeCard = E('div', { 'class': 'os-card' }, [
-			E('div', { 'style': 'font-weight: 700; font-size: 15px; margin-bottom: 12px; color: #fff;' }, '⚡ Алгоритм выбора исходящего шлюза (Outbound Selector)'),
-			E('div', { 'style': 'display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;' }, [
-				E('div', {}, [
-					E('label', { 'style': 'display: block; font-size: 12px; font-weight: 600; color: var(--os-muted); margin-bottom: 6px;' }, 'РЕЖИМ ВЫБОРА ШЛЮЗА'),
+			E('div', { 'class': 'os-card-header' }, [
+				E('h3', { 'class': 'os-card-title' }, [ '⚡ ', _('Outbound Gateway Selector') ])
+			]),
+			E('div', { 'class': 'os-grid-2' }, [
+				E('div', { 'class': 'os-form-group' }, [
+					E('label', { 'class': 'os-label' }, _('Selector Mode')),
 					E('select', {
 						'class': 'os-select',
 						'change': function(ev) {
 							selectorMode = ev.target.value;
+							updateSelectorVisibility();
 							renderServerCards();
 						}
 					}, [
-						E('option', { 'value': 'urltest', 'selected': selectorMode === 'urltest' }, '⚡ Автовыбор наименьшей задержки (URLTest Auto-Best)'),
-						E('option', { 'value': 'manual', 'selected': selectorMode === 'manual' }, '📌 Фиксированный сервер (Manual Choice)')
-					])
+						E('option', { 'value': 'urltest', 'selected': selectorMode === 'urltest' }, '⚡ ' + _('URLTest (Auto-best latency)')),
+						E('option', { 'value': 'manual', 'selected': selectorMode === 'manual' }, '📌 ' + _('Manual Selection'))
+					]),
+					E('div', { 'class': 'os-help' }, _('URLTest automatically chooses the lowest-latency outbound; Manual locks to a specific server.'))
 				]),
-				E('div', {}, [
-					E('label', { 'style': 'display: block; font-size: 12px; font-weight: 600; color: var(--os-muted); margin-bottom: 6px;' }, 'ТЕКУЩИЙ АКТИВНЫЙ УЗЕЛ'),
-					E('div', { 'style': 'font-size: 14px; font-weight: 700; padding: 9px 12px; background: #020617; border: 1px solid var(--os-border); border-radius: 8px; color: var(--os-emerald);' },
-						selectorMode === 'urltest' ? '⚡ Автоматический выбор (Best Latency < 50ms)' : (activeServer || 'Не выбран')
+				E('div', { 'class': 'os-form-group' }, [
+					E('label', { 'class': 'os-label' }, _('Active Outbound Node')),
+					activeServerSelect = E('select', {
+						'class': 'os-select',
+						'disabled': selectorMode === 'urltest',
+						'change': function(ev) {
+							activeServer = ev.target.value;
+							renderServerCards();
+						}
+					}),
+					E('div', { 'class': 'os-help', 'id': 'os-active-help' },
+						selectorMode === 'urltest' ? _('Automatically determined based on lowest ping') : _('Traffic routes through this selected server')
 					)
 				])
 			])
 		]);
 		viewRoot.appendChild(modeCard);
 
+		function updateSelectorVisibility() {
+			dom.content(activeServerSelect, null);
+			if (selectorMode === 'urltest') {
+				activeServerSelect.disabled = true;
+				activeServerSelect.appendChild(E('option', { 'value': 'auto', 'selected': true }, '⚡ ' + _('Auto (Lowest Latency)')));
+				var hEl = document.getElementById('os-active-help');
+				if (hEl) hEl.textContent = _('Automatically determined based on lowest ping');
+			} else {
+				activeServerSelect.disabled = false;
+				if (!servers.length) {
+					activeServerSelect.appendChild(E('option', { 'value': '' }, _('No servers available')));
+				} else {
+					servers.forEach(function(s) {
+						var sId = s.id || s.server;
+						var opt = E('option', { 'value': sId, 'selected': activeServer === sId }, (s.name || s.server) + ' (' + (s.protocol || 'node') + ')');
+						activeServerSelect.appendChild(opt);
+					});
+				}
+				var hEl2 = document.getElementById('os-active-help');
+				if (hEl2) hEl2.textContent = _('Traffic routes through this selected server');
+			}
+		}
+
 		// Import Subscription Box
 		var importCard = E('div', { 'class': 'os-card' }, [
-			E('div', { 'style': 'font-weight: 700; font-size: 15px; margin-bottom: 10px; color: #fff;' }, '📥 Импорт подписок и ссылок (VLESS / Hy2 / TUIC / SS / Clash YAML / Base64)'),
-			E('textarea', {
-				'class': 'os-textarea',
-				'id': 'os-subscription-input',
-				'rows': 3,
-				'placeholder': 'Вставьте ссылку на подписку (https://...), Base64 код или ссылки vless://, hysteria2://, tuic://, ss://, trojan://'
-			}),
-			E('div', { 'style': 'display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 10px;' }, [
-				E('div', {}, [
-					E('label', { 'style': 'display: block; font-size: 11px; font-weight: 600; color: var(--os-muted); margin-bottom: 4px;' }, 'USER-AGENT ПОДПИСКИ (ПО УМОЛЧАНИЮ: ClashMeta)'),
+			E('div', { 'class': 'os-card-header' }, [
+				E('h3', { 'class': 'os-card-title' }, [ '📥 ', _('Import Subscriptions & Nodes') ])
+			]),
+			E('div', { 'class': 'os-form-group' }, [
+				E('label', { 'class': 'os-label' }, _('Subscription URL, Base64 or Node URI')),
+				E('textarea', {
+					'class': 'os-textarea',
+					'id': 'os-subscription-input',
+					'rows': 3,
+					'placeholder': _('Paste https:// subscription link, Base64 block, or vless://, hysteria2://, tuic://, ss://, trojan:// URI')
+				})
+			]),
+			E('div', { 'class': 'os-grid-2' }, [
+				E('div', { 'class': 'os-form-group' }, [
+					E('label', { 'class': 'os-label' }, _('User-Agent Header (Default: ClashMeta)')),
 					E('input', {
 						'type': 'text',
 						'class': 'os-input',
 						'id': 'os-subscription-ua',
-						'placeholder': 'ClashMeta/v1.18.0, sing-box/1.10, v2rayN',
+						'placeholder': 'ClashMeta/v1.18.0, sing-box/1.10',
 						'value': 'ClashMeta/v1.18.0'
 					})
 				]),
-				E('div', {}, [
-					E('label', { 'style': 'display: block; font-size: 11px; font-weight: 600; color: var(--os-muted); margin-bottom: 4px;' }, 'АППАРАТНЫЙ ID (X-HWID ДЛЯ ПРИВАТНЫХ ПОДПИСОК #50, #63)'),
+				E('div', { 'class': 'os-form-group' }, [
+					E('label', { 'class': 'os-label' }, _('Hardware ID (X-HWID for Private Providers)')),
 					E('input', {
 						'type': 'text',
 						'class': 'os-input',
 						'id': 'os-subscription-hwid',
-						'placeholder': 'Опционально: d41d8cd98f00b204e9800998ecf8427e'
+						'placeholder': _('Optional: e.g. 64-char hex hardware ID')
 					})
 				])
 			]),
-			E('div', { 'style': 'display: flex; justify-content: flex-end; margin-top: 12px;' }, [
+			E('div', { 'style': 'display: flex; justify-content: flex-end; margin-top: 8px;' }, [
 				E('button', {
 					'class': 'os-btn os-btn-primary',
 					'click': function(ev) {
 						var txt = document.getElementById('os-subscription-input');
 						var val = txt ? txt.value.trim() : '';
 						if (!val) {
-							ui.addNotification(null, E('p', {}, 'Поле ввода ссылки или подписки пусто.'), 'warning');
+							ui.addNotification(null, E('p', {}, _('Subscription or node link field is empty.')), 'warning');
 							return;
 						}
 						var uaElem = document.getElementById('os-subscription-ua');
@@ -274,93 +238,131 @@ return view.extend({
 
 						var btn = ev.target;
 						btn.disabled = true;
-						btn.innerText = 'Загрузка и парсинг...';
+						btn.innerText = '⏳ ' + _('Downloading & parsing...');
 						callImportSubscription(val, uaVal, hwidVal).then(function(res) {
 							btn.disabled = false;
-							btn.innerText = '📥 Импортировать узлы';
+							btn.innerText = '📥 ' + _('Import Nodes');
 							if (res && res.success) {
-								ui.addNotification(null, E('p', {}, '✓ ' + (res.message || 'Узлы успешно импортированы!')), 'info');
+								ui.addNotification(null, E('p', {}, '✓ ' + (res.message || _('Nodes imported successfully!'))), 'info');
 								if (txt) txt.value = '';
 								callGetServers().then(function(sRes) {
 									if (sRes && sRes.servers) {
 										servers = sRes.servers;
+										updateSelectorVisibility();
 										renderServerCards();
 									}
 								});
 							} else {
-								ui.addNotification(null, E('p', {}, '❌ Ошибка импорта: ' + (res.error || 'Неизвестная ошибка')), 'error');
+								ui.addNotification(null, E('p', {}, '❌ ' + _('Import failed: ') + (res.error || _('Unknown error'))), 'error');
 							}
 						}).catch(function(err) {
 							btn.disabled = false;
-							btn.innerText = '📥 Импортировать узлы';
-							ui.addNotification(null, E('p', {}, '❌ Ошибка импорта: ' + err), 'error');
+							btn.innerText = '📥 ' + _('Import Nodes');
+							ui.addNotification(null, E('p', {}, '❌ ' + _('Import error: ') + err), 'error');
 						});
 					}
-				}, [ '📥 Импортировать узлы' ])
+				}, [ '📥 ', _('Import Nodes') ])
 			])
 		]);
 		viewRoot.appendChild(importCard);
 
-		// Servers Grid Container (Cards layout, strictly Mobile First - Rule #8)
-		var serversContainer = E('div', { 'class': 'os-server-grid', 'id': 'os-server-grid-box' });
-		viewRoot.appendChild(serversContainer);
+		// Servers List Card
+		var serversCard = E('div', { 'class': 'os-card' }, [
+			E('div', { 'class': 'os-card-header' }, [
+				E('h3', { 'class': 'os-card-title' }, [ '🖥️ ', _('Configured Servers') ]),
+				E('span', { 'class': 'os-badge os-badge-info', 'id': 'os-server-count' }, servers.length + ' ' + _('nodes'))
+			]),
+			E('div', { 'id': 'os-server-grid-box' })
+		]);
+		viewRoot.appendChild(serversCard);
 
 		function renderServerCards() {
+			var serversContainer = document.getElementById('os-server-grid-box');
+			if (!serversContainer) return;
+
+			var countEl = document.getElementById('os-server-count');
+			if (countEl) countEl.textContent = servers.length + ' ' + _('nodes');
+
 			dom.content(serversContainer, null);
 
 			if (!servers.length) {
-				serversContainer.appendChild(E('div', { 'class': 'os-card', 'style': 'grid-column: 1/-1; text-align: center; color: var(--os-muted); padding: 40px;' }, [
-					'Нет добавленных серверов. Вставьте ссылку на подписку выше для импорта узлов.'
+				serversContainer.appendChild(E('div', { 'style': 'text-align: center; padding: 40px 16px; color: var(--os-text-secondary);' }, [
+					E('div', { 'style': 'font-size: 32px; margin-bottom: 8px;' }, '🌐'),
+					E('div', { 'style': 'font-size: 14px; font-weight: 600;' }, _('No servers added yet')),
+					E('div', { 'style': 'font-size: 12px; margin-top: 4px;' }, _('Paste a subscription link or node URI above to import outbounds.'))
 				]));
 				return;
 			}
 
 			servers.forEach(function(s, idx) {
-				var protoBadge = 'os-badge-blue';
+				var protoBadge = 'os-badge-info';
 				if (s.protocol === 'vless') protoBadge = 'os-badge-purple';
-				if (s.protocol === 'hysteria2') protoBadge = 'os-badge-cyan';
-				if (s.protocol === 'shadowsocks') protoBadge = 'os-badge-amber';
+				else if (s.protocol === 'hysteria2') protoBadge = 'os-badge-info';
+				else if (s.protocol === 'shadowsocks') protoBadge = 'os-badge-warning';
 
-				var latencyColor = 'var(--os-emerald)';
-				var latencyText = (s.latency_ms ? s.latency_ms + ' ms' : 'Не проверен');
-				if (s.latency_ms > 120) latencyColor = 'var(--os-rose)';
-				else if (s.latency_ms > 70) latencyColor = 'var(--os-amber)';
+				var latencyBadge = 'os-badge-muted';
+				var latencyText = _('Untested');
+				if (s.latency_ms && s.latency_ms > 0) {
+					latencyText = s.latency_ms + ' ms';
+					if (s.latency_ms < 70) latencyBadge = 'os-badge-success';
+					else if (s.latency_ms < 150) latencyBadge = 'os-badge-warning';
+					else latencyBadge = 'os-badge-danger';
+				}
 
-				var card = E('div', { 'class': 'os-server-card' }, [
-					E('div', { 'style': 'display: flex; justify-content: space-between; align-items: center;' }, [
-						E('div', { 'style': 'display: flex; align-items: center; gap: 8px;' }, [
-							E('span', { 'style': 'font-size: 20px;' }, s.country_flag || '🌐'),
-							E('span', { 'style': 'font-weight: 700; font-size: 15px; color: #fff;' }, s.name || s.server)
-						]),
-						E('span', { 'class': 'os-badge ' + protoBadge }, s.protocol)
+				var isSelectedActive = (selectorMode === 'manual' && activeServer === (s.id || s.server));
+
+				var card = E('div', {
+					'class': 'os-entity-row',
+					'style': isSelectedActive ? 'border-color: var(--os-primary); background: var(--os-primary-light);' : ''
+				}, [
+					E('div', { 'class': 'os-entity-main' }, [
+						E('span', { 'style': 'font-size: 24px;' }, s.country_flag || '🌐'),
+						E('div', { 'class': 'os-entity-details' }, [
+							E('div', { 'style': 'display: flex; align-items: center; gap: 8px; flex-wrap: wrap;' }, [
+								E('span', { 'class': 'os-entity-name' }, s.name || s.server),
+								E('span', { 'class': 'os-badge ' + protoBadge }, s.protocol || 'node'),
+								isSelectedActive ? E('span', { 'class': 'os-badge os-badge-success' }, '✓ ' + _('Active')) : null
+							]),
+							E('div', { 'class': 'os-entity-desc' }, [
+								s.server + ':' + s.port,
+								s.network ? ' • ' + s.network : '',
+								s.security ? ' • ' + s.security : ''
+							])
+						])
 					]),
-					E('div', { 'style': 'font-size: 13px; color: var(--os-muted); display: flex; justify-content: space-between;' }, [
-						E('span', {}, s.server + ':' + s.port),
-						E('span', { 'style': 'font-weight: 700; color: ' + latencyColor }, [ '⚡ ' + latencyText ])
-					]),
-					E('div', { 'style': 'display: flex; justify-content: space-between; align-items: center; margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--os-border);' }, [
+					E('div', { 'class': 'os-entity-actions' }, [
+						E('span', { 'class': 'os-badge ' + latencyBadge }, [ '⚡ ' + latencyText ]),
+						selectorMode === 'manual' ? E('button', {
+							'class': 'os-btn os-btn-sm ' + (isSelectedActive ? 'os-btn-success' : 'os-btn-secondary'),
+							'click': function() {
+								activeServer = s.id || s.server;
+								updateSelectorVisibility();
+								renderServerCards();
+							}
+						}, isSelectedActive ? _('Selected') : _('Select')) : null,
 						E('button', {
-							'class': 'os-btn os-btn-dark',
-							'style': 'padding: 5px 12px; font-size: 12px;',
+							'class': 'os-btn os-btn-secondary os-btn-sm',
 							'click': function(ev) {
 								var b = ev.target;
 								b.innerText = '⏳';
 								callTestLatency(s.server, s.port).then(function(res) {
-									b.innerText = '⚡ Тест';
+									b.innerText = '⚡ ' + _('Ping');
 									if (res && res.latency_ms) {
 										s.latency_ms = res.latency_ms;
 										renderServerCards();
 									}
+								}).catch(function() {
+									b.innerText = '⚡ ' + _('Ping');
 								});
 							}
-						}, [ '⚡ Тест' ]),
+						}, [ '⚡ ', _('Ping') ]),
 						E('button', {
-							'class': 'os-btn os-btn-dark',
-							'style': 'padding: 5px 10px; color: var(--os-rose);',
-							'title': 'Удалить сервер',
+							'class': 'os-btn os-btn-danger os-btn-sm',
+							'title': _('Delete server'),
 							'click': function() {
-								if (confirm('Удалить сервер ' + (s.name || s.server) + '?')) {
+								if (confirm(_('Delete server: ') + (s.name || s.server) + '?')) {
 									servers.splice(idx, 1);
+									updateSelectorVisibility();
 									renderServerCards();
 								}
 							}
@@ -372,7 +374,9 @@ return view.extend({
 			});
 		}
 
-		renderServerCards();
+		updateSelectorVisibility();
+		setTimeout(renderServerCards, 20);
+
 		return viewRoot;
 	},
 
